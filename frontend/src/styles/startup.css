@@ -52,3 +52,120 @@
 .startup-banner.unavailable .startup-glyph {
   color: var(--coral-400);
 }
+
+/* Broadcast composer sheet */
+
+.messages-screen {
+  min-width: 0;
+}
+
+.broadcast-bar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+  margin-bottom: var(--space-4);
+}
+
+.sheet-scrim {
+  position: fixed;
+  inset: 0;
+  background: rgba(4, 10, 17, 0.55);
+  z-index: 40;
+}
+
+.sheet {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 41;
+  width: min(520px, 94vw);
+  display: flex;
+  flex-direction: column;
+  background: var(--surface-850);
+  border-left: 1px solid var(--line-700);
+  box-shadow: var(--overlay-shadow);
+}
+
+.sheet-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--line-700);
+}
+
+.sheet-header h2 {
+  font: var(--heading-lg);
+}
+
+.sheet-header h2:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.sheet-body {
+  padding: var(--space-4);
+  overflow-y: auto;
+  flex: 1;
+}
+
+.sheet-body .control {
+  margin-bottom: var(--space-3);
+}
+
+.sheet-body input[readonly] {
+  color: var(--text-200);
+  background: var(--surface-900);
+}
+
+.sheet-actions {
+  display: flex;
+  gap: var(--space-2);
+  margin: var(--space-4) 0 var(--space-3);
+}
+
+.optional-fields summary {
+  cursor: pointer;
+  font: var(--body-sm);
+  color: var(--text-200);
+  margin-bottom: var(--space-2);
+}
+
+.field-error {
+  color: var(--coral-400);
+  font: var(--body-sm);
+  margin: var(--space-1) 0 0;
+}
+
+.sent-receipt {
+  background: var(--tint-mint);
+  border: 1px solid rgba(61, 220, 151, 0.4);
+  border-radius: var(--radius-input);
+  padding: var(--space-3);
+  margin-bottom: var(--space-3);
+}
+
+.sent-receipt p {
+  margin: 0;
+}
+
+.sent-title {
+  font: var(--body-strong);
+  color: var(--mint-400);
+}
+
+/* Below 900px the composer is a sequential full-screen view. */
+@media (max-width: 899px) {
+  .sheet-scrim {
+    display: none;
+  }
+
+  .sheet {
+    width: 100%;
+    border-left: none;
+    box-shadow: none;
+  }
+}

@@ -11,7 +11,16 @@ import { useResource } from "../state/useResource.ts";
 import type { RouteName } from "../state/useHashRoute.ts";
 import { RECORD_CONFIGS } from "./recordConfigs.tsx";
 
-export function RecordsView({ route, filter }: { route: RouteName; filter: string }) {
+export function RecordsView({
+  route,
+  filter,
+  reloadKey = 0,
+}: {
+  route: RouteName;
+  filter: string;
+  /** Bumped by a caller to force a refetch, e.g. after sending a broadcast. */
+  reloadKey?: number;
+}) {
   const { coordination } = useApp();
   const config = RECORD_CONFIGS[route];
   const [statusValue, setStatusValue] = useState("");
@@ -25,7 +34,7 @@ export function RecordsView({ route, filter }: { route: RouteName; filter: strin
 
   const records = useResource(
     () => (config ? config.load(coordination, query) : Promise.resolve([])),
-    [route, query],
+    [route, query, reloadKey],
     { enabled: Boolean(config) },
   );
 

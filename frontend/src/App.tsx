@@ -18,6 +18,7 @@ import { useResource } from "./state/useResource.ts";
 import { AuditView } from "./views/AuditView.tsx";
 import { ExportView } from "./views/ExportView.tsx";
 import { HealthView } from "./views/HealthView.tsx";
+import { MessagesView } from "./views/MessagesView.tsx";
 import { RecordsView } from "./views/RecordsView.tsx";
 import { TasksView } from "./views/TasksView.tsx";
 import { RECORD_CONFIGS } from "./views/recordConfigs.tsx";
@@ -114,7 +115,9 @@ export function App() {
           {route.name === "audit" ? <AuditView filter={filter} /> : null}
           {route.name === "export" ? <ExportView /> : null}
 
-          {RECORD_CONFIGS[route.name] ? (
+          {route.name === "messages" ? (
+            <MessagesView filter={filter} agents={agentList} />
+          ) : RECORD_CONFIGS[route.name] ? (
             <RecordsView route={route.name} filter={filter} />
           ) : null}
         </main>
