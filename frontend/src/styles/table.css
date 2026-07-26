@@ -108,3 +108,45 @@
   font: var(--body-strong);
   color: var(--text-50);
 }
+
+/* Sortable headers */
+
+.sort-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  min-height: 28px;
+  padding: 0;
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-tag);
+  color: inherit;
+  font: inherit;
+  text-align: inherit;
+  cursor: pointer;
+}
+
+.sort-button:hover:not(:disabled) {
+  background: transparent;
+  border-color: transparent;
+  color: var(--text-50);
+}
+
+.align-end .sort-button {
+  justify-content: flex-end;
+}
+
+.sort-button.active {
+  color: var(--violet-400);
+}
+
+.sort-indicator {
+  font-size: 9px;
+  opacity: 0.5;
+}
+
+.sort-button:hover .sort-indicator,
+.sort-button.active .sort-indicator {
+  opacity: 1;
+}

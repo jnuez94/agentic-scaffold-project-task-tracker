@@ -73,6 +73,7 @@ export function RecordsView({ route, filter }: { route: RouteName; filter: strin
         columns={config.columns}
         rowKey={(row) => String((row as Record<string, unknown>)["id"])}
         caption={config.title}
+        defaultOrder={config.defaultOrder}
         loading={records.loading}
         loaded={records.loaded}
         emptyTitle={filter ? `No ${config.title.toLowerCase()} match this filter` : config.emptyTitle}

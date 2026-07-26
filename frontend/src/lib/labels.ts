@@ -99,3 +99,16 @@ export function splitTags(tags: string): string[] {
     .map((tag) => tag.trim())
     .filter(Boolean);
 }
+
+/**
+ * Rank a task status by lifecycle position rather than alphabet.
+ *
+ * Sorting the stored values as text gives blocked, done, in_progress, review,
+ * todo — an order with no relationship to how work actually moves. Ranking by
+ * position in the lifecycle puts a queue in the order an operator reads it.
+ */
+export function statusRank(status: string): number {
+  const order = ["todo", "in_progress", "review", "blocked", "done"];
+  const index = order.indexOf(status);
+  return index === -1 ? order.length : index;
+}

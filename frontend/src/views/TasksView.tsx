@@ -4,21 +4,17 @@
 
 import { useMemo, useState } from "react";
 import type { CSSProperties } from "react";
-import type { Agent, TaskListRow } from "../api/contract.ts";
+import type { Agent } from "../api/contract.ts";
+import { DataTable } from "../components/DataTable.tsx";
 import { TASK_STATUSES } from "../api/contract.ts";
-import { DataTable, type Column } from "../components/DataTable.tsx";
 import { ErrorBanner } from "../components/Feedback.tsx";
-import { IdCell } from "../components/Fields.tsx";
-import { Owners } from "../components/Owners.tsx";
 import { ResizeHandle } from "../components/ResizeHandle.tsx";
-import { PriorityTag, StatusPill, TagList } from "../components/Pill.tsx";
-import { relativeTime } from "../lib/format.ts";
 import { filterRows } from "../lib/filters.ts";
-import { splitTags } from "../lib/labels.ts";
 import { useApp } from "../state/AppContext.tsx";
 import { BOUNDS } from "../state/layoutStore.ts";
 import { useResource } from "../state/useResource.ts";
 import { TaskInspector } from "./TaskInspector.tsx";
+import { TASK_DEFAULT_ORDER, taskColumns } from "./taskColumns.tsx";
 
 const FILTER_FIELDS = ["id", "title", "description", "tags", "assignees", "claimed_by"];
 
@@ -58,50 +54,7 @@ export function TasksView({
     return (id: string) => byId.get(id) ?? id;
   }, [agents]);
 
-  const columns: Column<TaskListRow>[] = [
-    {
-      key: "id",
-      header: "ID / Title",
-      priority: 1,
-      render: (task) => <IdCell id={task.id} title={task.title} />,
-    },
-    { key: "state", header: "State", priority: 2, render: (t) => <StatusPill status={t.status} /> },
-    { key: "priority", header: "Priority", priority: 7, render: (t) => <PriorityTag priority={t.priority} /> },
-    {
-      key: "owner",
-      header: "Assignees / Claim",
-      priority: 3,
-      render: (task) => <Owners task={task} nameFor={nameFor} />,
-    },
-    { key: "rev", header: "Rev", priority: 5, align: "end", render: (t) => <span className="mono">{t.revision}</span> },
-    {
-      key: "evidence",
-      header: "Evidence",
-      priority: 6,
-      align: "end",
-      render: (task) => (
-        <span className={task.evidence_count === 0 ? "mono muted" : "mono"}>
-          {task.evidence_count}
-        </span>
-      ),
-    },
-    {
-      key: "updated",
-      header: "Updated",
-      priority: 8,
-      render: (task) => (
-        <span title={task.updated_at} className="small">
-          {relativeTime(task.updated_at)}
-        </span>
-      ),
-    },
-    {
-      key: "tags",
-      header: "Tags",
-      priority: 9,
-      render: (task) => <TagList tags={splitTags(task.tags)} />,
-    },
-  ];
+  const columns = useMemo(() => taskColumns(nameFor), [nameFor]);
 
   return (
     <div
@@ -154,6 +107,7 @@ export function TasksView({
           columns={columns}
           rowKey={(task) => task.id}
           caption="Coordination tasks"
+          defaultOrder={TASK_DEFAULT_ORDER}
           loading={tasks.loading}
           loaded={tasks.loaded}
           selectedKey={selectedId}
