@@ -3,11 +3,15 @@
  */
 
 import { useState } from "react";
+import type { CSSProperties } from "react";
 import { ErrorBanner, LiveRegion } from "./components/Feedback.tsx";
 import { NavSidebar } from "./components/NavSidebar.tsx";
+import { ResizeHandle } from "./components/ResizeHandle.tsx";
 import { TopBar } from "./components/TopBar.tsx";
 import { useApp } from "./state/AppContext.tsx";
+import { BOUNDS } from "./state/layoutStore.ts";
 import { useHashRoute } from "./state/useHashRoute.ts";
+import { useLayout } from "./state/useLayout.ts";
 import { useResource } from "./state/useResource.ts";
 import { AuditView } from "./views/AuditView.tsx";
 import { ExportView } from "./views/ExportView.tsx";
@@ -19,6 +23,7 @@ import { RECORD_CONFIGS } from "./views/recordConfigs.tsx";
 export function App() {
   const { coordination, identity, setActor, setSession, announcement } = useApp();
   const { route, navigate } = useHashRoute();
+  const { widths, setWidth, reset } = useLayout();
   const [filter, setFilter] = useState("");
 
   const meta = useResource(() => coordination.meta(), []);
@@ -40,12 +45,25 @@ export function App() {
       : (RECORD_CONFIGS[route.name]?.filterPlaceholder ?? "Filter loaded rows…");
 
   return (
-    <div className="shell">
+    <div
+      className="shell"
+      style={{ "--nav-width": `${widths.nav}px` } as CSSProperties}
+    >
       <NavSidebar
         active={route.name}
         meta={meta.data}
         actorLabel={actor ? `${actor.name} · ${actor.id}` : "No actor selected"}
         sessionLabel={identity.sessionId ? `Session ${identity.sessionId}` : "No active session"}
+      />
+
+      <ResizeHandle
+        label="Resize navigation"
+        value={widths.nav}
+        min={BOUNDS.nav.min}
+        max={BOUNDS.nav.max}
+        direction={1}
+        onResize={(next) => setWidth("nav", next)}
+        onReset={() => reset("nav")}
       />
 
       <div className="main">
@@ -73,6 +91,9 @@ export function App() {
               agents={agentList}
               selectedId={route.detail}
               onSelect={(id) => navigate("tasks", id)}
+              inspectorWidth={widths.inspector}
+              onInspectorResize={(next) => setWidth("inspector", next)}
+              onInspectorReset={() => reset("inspector")}
             />
           ) : null}
 

@@ -119,6 +119,11 @@
 @media (max-width: 1279px) {
   .queue-layout.with-inspector {
     grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-4);
+  }
+
+  .queue-layout.with-inspector > .queue {
+    padding-right: 0;
   }
 
   .data-table th[data-priority="7"],

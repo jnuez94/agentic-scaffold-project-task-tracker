@@ -3,17 +3,20 @@
  */
 
 import { useMemo, useState } from "react";
+import type { CSSProperties } from "react";
 import type { Agent, TaskListRow } from "../api/contract.ts";
 import { TASK_STATUSES } from "../api/contract.ts";
 import { DataTable, type Column } from "../components/DataTable.tsx";
 import { ErrorBanner } from "../components/Feedback.tsx";
 import { IdCell } from "../components/Fields.tsx";
 import { Owners } from "../components/Owners.tsx";
+import { ResizeHandle } from "../components/ResizeHandle.tsx";
 import { PriorityTag, StatusPill, TagList } from "../components/Pill.tsx";
 import { relativeTime } from "../lib/format.ts";
 import { filterRows } from "../lib/filters.ts";
 import { splitTags } from "../lib/labels.ts";
 import { useApp } from "../state/AppContext.tsx";
+import { BOUNDS } from "../state/layoutStore.ts";
 import { useResource } from "../state/useResource.ts";
 import { TaskInspector } from "./TaskInspector.tsx";
 
@@ -24,11 +27,17 @@ export function TasksView({
   agents,
   selectedId,
   onSelect,
+  inspectorWidth,
+  onInspectorResize,
+  onInspectorReset,
 }: {
   filter: string;
   agents: Agent[];
   selectedId: string | null;
   onSelect: (id: string | null) => void;
+  inspectorWidth: number;
+  onInspectorResize: (next: number) => void;
+  onInspectorReset: () => void;
 }) {
   const { coordination } = useApp();
   const [status, setStatus] = useState("");
@@ -56,26 +65,15 @@ export function TasksView({
       priority: 1,
       render: (task) => <IdCell id={task.id} title={task.title} />,
     },
-    { key: "state", header: "State", priority: 2, render: (task) => <StatusPill status={task.status} /> },
-    {
-      key: "priority",
-      header: "Priority",
-      priority: 7,
-      render: (task) => <PriorityTag priority={task.priority} />,
-    },
+    { key: "state", header: "State", priority: 2, render: (t) => <StatusPill status={t.status} /> },
+    { key: "priority", header: "Priority", priority: 7, render: (t) => <PriorityTag priority={t.priority} /> },
     {
       key: "owner",
       header: "Assignees / Claim",
       priority: 3,
       render: (task) => <Owners task={task} nameFor={nameFor} />,
     },
-    {
-      key: "rev",
-      header: "Rev",
-      priority: 5,
-      align: "end",
-      render: (task) => <span className="mono">{task.revision}</span>,
-    },
+    { key: "rev", header: "Rev", priority: 5, align: "end", render: (t) => <span className="mono">{t.revision}</span> },
     {
       key: "evidence",
       header: "Evidence",
@@ -106,7 +104,10 @@ export function TasksView({
   ];
 
   return (
-    <div className={selectedId ? "queue-layout with-inspector" : "queue-layout"}>
+    <div
+      className={selectedId ? "queue-layout with-inspector" : "queue-layout"}
+      style={{ "--inspector-width": `${inspectorWidth}px` } as CSSProperties}
+    >
       <section className="queue" aria-label="Task queue">
         <div className="queue-toolbar">
           <div className="control">
@@ -167,12 +168,23 @@ export function TasksView({
       </section>
 
       {selectedId ? (
-        <TaskInspector
-          taskId={selectedId}
-          agents={agents}
-          onClose={() => onSelect(null)}
-          onChanged={tasks.refresh}
-        />
+        <>
+          <ResizeHandle
+            label="Resize task inspector"
+            value={inspectorWidth}
+            min={BOUNDS.inspector.min}
+            max={BOUNDS.inspector.max}
+            direction={-1}
+            onResize={onInspectorResize}
+            onReset={onInspectorReset}
+          />
+          <TaskInspector
+            taskId={selectedId}
+            agents={agents}
+            onClose={() => onSelect(null)}
+            onChanged={tasks.refresh}
+          />
+        </>
       ) : null}
     </div>
   );

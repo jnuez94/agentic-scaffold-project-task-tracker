@@ -2,7 +2,8 @@
 
 .shell {
   display: grid;
-  grid-template-columns: var(--nav-width) minmax(0, 1fr);
+  /* nav | separator | main */
+  grid-template-columns: var(--nav-width) auto minmax(0, 1fr);
   height: 100%;
 }
 

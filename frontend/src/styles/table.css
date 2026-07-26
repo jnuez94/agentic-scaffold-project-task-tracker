@@ -8,7 +8,13 @@
 }
 
 .queue-layout.with-inspector {
-  grid-template-columns: minmax(0, 1fr) var(--inspector-width);
+  /* queue | separator | inspector */
+  grid-template-columns: minmax(0, 1fr) auto var(--inspector-width);
+  gap: 0;
+}
+
+.queue-layout.with-inspector > .queue {
+  padding-right: var(--space-4);
 }
 
 .queue-toolbar {

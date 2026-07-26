@@ -1,0 +1,61 @@
+/* Pane separators. */
+
+.resize-handle {
+  align-self: stretch;
+  width: 7px;
+  cursor: col-resize;
+  background: transparent;
+  border: none;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /* Stops the browser from panning instead of resizing on touch. */
+  touch-action: none;
+  position: relative;
+  z-index: 2;
+}
+
+.resize-grip {
+  width: 1px;
+  height: 100%;
+  background: var(--line-700);
+  transition: background 120ms ease, width 120ms ease;
+}
+
+.resize-handle:hover .resize-grip,
+.resize-handle:focus-visible .resize-grip {
+  width: 3px;
+  background: var(--violet-400);
+}
+
+.resize-handle:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+  border-radius: var(--radius-tag);
+}
+
+/* While dragging, suppress selection and the I-beam everywhere. */
+body.resizing {
+  user-select: none;
+  cursor: col-resize;
+}
+
+body.resizing .resize-grip {
+  width: 3px;
+  background: var(--violet-400);
+}
+
+/* The panes collapse to a single column at these widths, so a horizontal
+   separator would have nothing to separate. */
+@media (max-width: 899px) {
+  .shell > .resize-handle {
+    display: none;
+  }
+}
+
+@media (max-width: 1279px) {
+  .queue-layout > .resize-handle {
+    display: none;
+  }
+}

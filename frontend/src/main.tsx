@@ -11,6 +11,7 @@ import "./styles/table.css";
 import "./styles/pills.css";
 import "./styles/inspector.css";
 import "./styles/feedback.css";
+import "./styles/resize.css";
 
 const container = document.getElementById("root");
 if (!container) throw new Error("#root is missing from the document");
