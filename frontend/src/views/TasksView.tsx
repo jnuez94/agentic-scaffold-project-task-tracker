@@ -72,6 +72,13 @@ export function TasksView({
       style={{ "--inspector-width": `${inspectorWidth}px` } as CSSProperties}
     >
       <section className="queue" aria-label="Task queue">
+        {/* Every other route announces itself with a heading; Tasks, which is
+            where the console opens, had none, so a screen reader landing here
+            was told nothing about where "here" is. Visually hidden rather than
+            drawn: the visible design of this route belongs to the UX spec, and
+            the gap being fixed is an announcement, not a layout. */}
+        <h1 className="visually-hidden">Tasks</h1>
+
         <div className="queue-toolbar">
           <div className="control">
             <label htmlFor="status-filter">State</label>
