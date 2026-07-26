@@ -93,8 +93,25 @@ class ReadTests(unittest.TestCase):
         body = self.reader.read(headers(8), io.BytesIO(raw))
         self.assertEqual(body, {"a": 1})
 
-    def test_zero_length_is_an_empty_body(self) -> None:
-        self.assertEqual(self.reader.read(headers(0, None), io.BytesIO(b"")), {})
+    def test_zero_length_json_is_an_empty_body(self) -> None:
+        # Bodyless routes depend on this; an honest content type is all that is
+        # asked of them.
+        self.assertEqual(self.reader.read(headers(0), io.BytesIO(b"")), {})
+
+    def test_zero_length_still_requires_the_json_content_type(self) -> None:
+        # This case used to return {} without checking anything, which is how a
+        # cross-origin form POST reached session heartbeat and session end:
+        # those routes take no body, so Content-Length: 0 was all it took.
+        for content_type in (
+            None,
+            "application/x-www-form-urlencoded",
+            "multipart/form-data",
+            "text/plain",
+        ):
+            with self.subTest(content_type=content_type):
+                with self.assertRaises(CoordinationError) as caught:
+                    self.reader.read(headers(0, content_type), io.BytesIO(b""))
+                self.assertEqual(caught.exception.code, "invalid_arguments")
 
     def test_requires_json_content_type(self) -> None:
         # A cross-site HTML form can only send urlencoded, multipart, or plain

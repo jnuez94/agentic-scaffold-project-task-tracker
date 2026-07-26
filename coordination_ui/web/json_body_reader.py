@@ -49,15 +49,26 @@ class JsonBodyReader:
         return (headers.get("Content-Type") or "").split(";", 1)[0].strip().lower()
 
     def read(self, headers: Mapping[str, str], stream: BinaryIO) -> dict[str, Any]:
+        """Validate the content type before anything else, empty body included.
+
+        The order is the whole control. Returning early on ``Content-Length: 0``
+        meant a bodyless POST was never content-type checked, and a bodyless
+        POST is exactly what an HTML form on another origin can send without a
+        preflight. Session heartbeat and session end take no body, so those
+        mutations were reachable cross-origin by a plain form submission.
+
+        An empty ``application/json`` POST still yields ``{}``; the bodyless
+        routes depend on that and it is not what was unsafe.
+        """
         length = self.content_length(headers)
-        if length == 0:
-            return {}
         if self.content_type(headers) != REQUIRED_CONTENT_TYPE:
             raise CoordinationError(
                 "invalid_arguments",
                 f"Content-Type must be {REQUIRED_CONTENT_TYPE}",
                 exit_code=2,
             )
+        if length == 0:
+            return {}
         return self.parse(stream.read(length))
 
     @staticmethod

@@ -146,3 +146,76 @@ class MutationTests(LiveServerTestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class BodylessPostContentTypeTests(LiveServerTestCase):
+    """UI-19: a bodyless POST must still prove it is not a cross-origin form.
+
+    Requiring ``application/json`` is this server's CSRF control: a form on
+    another origin can only send ``application/x-www-form-urlencoded``,
+    ``multipart/form-data``, or ``text/plain``, and anything else forces a
+    preflight that is never answered. The check used to be skipped whenever
+    ``Content-Length`` was 0 — and a bodyless POST is precisely what such a
+    form can send. Session heartbeat and session end take no body, so both were
+    reachable that way.
+    """
+
+    def setUp(self) -> None:
+        super().setUp()
+        self.temp.seed_session("s-csrf", agent_id="alice")
+
+    def raw_post(self, path: str, content_type: str | None) -> tuple[int, dict]:
+        """POST with Content-Length: 0 and a content type of our choosing."""
+        connection = self.connect()
+        headers = {"Host": f"127.0.0.1:{self.port}", "Content-Length": "0"}
+        if content_type is not None:
+            headers["Content-Type"] = content_type
+        try:
+            connection.request("POST", path, body=b"", headers=headers)
+            response = connection.getresponse()
+            return response.status, json.loads(response.read())
+        finally:
+            connection.close()
+
+    def test_form_encoded_empty_post_cannot_reach_heartbeat(self) -> None:
+        status, payload = self.raw_post("/api/sessions/s-csrf/heartbeat", "application/x-www-form-urlencoded")
+        self.assertEqual(status, 400)
+        self.assertEqual(payload["error"]["code"], "invalid_arguments")
+
+    def test_text_plain_empty_post_cannot_reach_heartbeat(self) -> None:
+        status, payload = self.raw_post("/api/sessions/s-csrf/heartbeat", "text/plain")
+        self.assertEqual(status, 400)
+        self.assertEqual(payload["error"]["code"], "invalid_arguments")
+
+    def test_multipart_empty_post_cannot_reach_heartbeat(self) -> None:
+        status, _ = self.raw_post("/api/sessions/s-csrf/heartbeat", "multipart/form-data")
+        self.assertEqual(status, 400)
+
+    def test_missing_content_type_empty_post_is_refused(self) -> None:
+        status, _ = self.raw_post("/api/sessions/s-csrf/heartbeat", None)
+        self.assertEqual(status, 400)
+
+    def test_form_encoded_empty_post_cannot_end_a_session(self) -> None:
+        # The destructive one: ending another origin's session by form POST.
+        status, _ = self.raw_post("/api/sessions/s-csrf/end", "application/x-www-form-urlencoded")
+        self.assertEqual(status, 400)
+        listed = self.get_json("/api/sessions")[1]["data"]
+        still_active = [s for s in listed if s["id"] == "s-csrf" and s["status"] == "active"]
+        self.assertEqual(len(still_active), 1, "the session must survive a refused request")
+
+    def test_empty_json_post_still_reaches_a_bodyless_route(self) -> None:
+        # The behaviour that must not regress: bodyless routes still work when
+        # the content type is honest.
+        status, payload = self.raw_post("/api/sessions/s-csrf/heartbeat", "application/json")
+        self.assertEqual(status, 200, payload)
+        self.assertTrue(payload["ok"])
+
+    def test_json_content_type_with_parameters_is_accepted(self) -> None:
+        status, _ = self.raw_post("/api/sessions/s-csrf/heartbeat", "application/json; charset=utf-8")
+        self.assertEqual(status, 200)
+
+    def test_ordinary_json_mutation_is_unaffected(self) -> None:
+        status, payload = self.post_json(
+            "/api/agents", {"id": "bob", "name": "Bob", "role": "Engineer"}
+        )
+        self.assertEqual(status, 200, payload)
