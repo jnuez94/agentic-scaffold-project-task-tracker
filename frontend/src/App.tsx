@@ -33,6 +33,7 @@ export function App() {
     announce,
     bootstrap,
     retryBootstrap,
+    session,
   } = useApp();
   const { route, navigate } = useHashRoute();
   // One instance only: a second useLayout would persist to the same key from
@@ -43,7 +44,6 @@ export function App() {
 
   const meta = useResource(() => coordination.meta(), []);
   const agents = useResource(() => coordination.agents({ all: "1", limit: 500 }), []);
-  const sessions = useResource(() => coordination.sessions({ limit: 500 }), []);
 
   const agentList = agents.data ?? [];
   const actor = agentList.find((agent) => agent.id === identity.actorId);
@@ -51,7 +51,7 @@ export function App() {
   const refreshAll = () => {
     meta.refresh();
     agents.refresh();
-    sessions.refresh();
+    session.refresh();
   };
 
   const placeholder =
@@ -68,7 +68,11 @@ export function App() {
         active={route.name}
         meta={meta.data}
         actorLabel={actor ? `${actor.name} · ${actor.id}` : "No actor selected"}
-        sessionLabel={identity.sessionId ? `Session ${identity.sessionId}` : "No active session"}
+        sessionLabel={
+          session.activeSessionId
+            ? `Session ${session.activeSessionId}`
+            : "No active session"
+        }
       />
 
       <ResizeHandle
@@ -87,14 +91,15 @@ export function App() {
           onFilter={setFilter}
           filterPlaceholder={placeholder}
           agents={agentList}
-          sessions={sessions.data ?? []}
+          sessions={session.selectable}
           actorId={identity.actorId}
-          sessionId={identity.sessionId}
+          sessionId={session.activeSessionId}
+          sessionReason={session.reason}
           onActor={setActor}
           onSession={setSession}
           onRefresh={refreshAll}
           lastUpdated={agents.lastUpdated}
-          busy={agents.loading || sessions.loading}
+          busy={agents.loading || session.loading}
         />
 
         <main className="content" id="content">

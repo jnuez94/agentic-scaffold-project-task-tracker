@@ -25,14 +25,16 @@ export function TaskActions({
   agents: Agent[];
   onDone: () => void;
 }) {
-  const { coordination, identity, announce, mutationsEnabled } = useApp();
+  const { coordination, identity, announce, mutationsEnabled, session } = useApp();
   const [note, setNote] = useState("");
   const [error, setError] = useState<ApiError | undefined>();
   const [busy, setBusy] = useState<TaskStatus | null>(null);
 
   const actions = availableActions(task, {
     actorId: identity.actorId,
-    sessionId: identity.sessionId,
+    // The validated session, never the raw persisted id: a stale one would
+    // make the footer promise an attribution the CLI would reject.
+    sessionId: session.activeSessionId,
   }).map((action) =>
     mutationsEnabled
       ? action
@@ -134,7 +136,7 @@ export function TaskActions({
           <span className="mono">{identity.actorId ? (actorName ?? identity.actorId) : "no actor"}</span>
         </span>
         <span>
-          Session <span className="mono">{identity.sessionId ?? "none"}</span>
+          Session <span className="mono">{session.activeSessionId ?? "none"}</span>
         </span>
         <span>
           Revision <span className="mono">{task.revision}</span>

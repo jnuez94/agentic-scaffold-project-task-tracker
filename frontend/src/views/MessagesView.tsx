@@ -26,7 +26,7 @@ export function MessagesView({
   agents: Agent[];
   layout: Layout;
 }) {
-  const { identity, mutationsEnabled } = useApp();
+  const { identity, mutationsEnabled, session } = useApp();
   const [open, setOpen] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
   const [selected, setSelected] = useState<Message | null>(null);
@@ -37,7 +37,7 @@ export function MessagesView({
   const actor = agents.find((agent) => agent.id === identity.actorId);
   const readiness = broadcastReadiness({
     actor,
-    sessionId: identity.sessionId,
+    sessionId: session.activeSessionId,
     mutationsEnabled,
   });
   const blocked = readiness.kind === "blocked";
@@ -104,13 +104,13 @@ export function MessagesView({
         ) : null}
       </div>
 
-      {open && readiness.kind === "ready" && identity.sessionId ? (
+      {open && readiness.kind === "ready" && session.activeSessionId ? (
         <>
           <div className="sheet-scrim" onClick={close} aria-hidden="true" />
           <BroadcastComposer
             senderId={readiness.senderId}
             senderName={actor?.name ?? readiness.senderId}
-            sessionId={identity.sessionId}
+            sessionId={session.activeSessionId}
             onClose={close}
             onSent={() => setReloadKey((value) => value + 1)}
           />

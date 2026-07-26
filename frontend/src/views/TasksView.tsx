@@ -33,7 +33,7 @@ export function TasksView({
   layout: Layout;
 }) {
   const inspectorWidth = layout.widths.inspector;
-  const { coordination, identity } = useApp();
+  const { coordination, identity, session } = useApp();
   const [status, setStatus] = useState("");
   const [assignee, setAssignee] = useState("");
 
@@ -53,8 +53,10 @@ export function TasksView({
   }, [agents]);
 
   const columns = useMemo(
-    () => taskColumns(nameFor, { actorId: identity.actorId, sessionId: identity.sessionId }),
-    [nameFor, identity.actorId, identity.sessionId],
+    // Resolved session, so the Next action column cannot offer Claim on the
+    // strength of a session that has ended.
+    () => taskColumns(nameFor, { actorId: identity.actorId, sessionId: session.activeSessionId }),
+    [nameFor, identity.actorId, session.activeSessionId],
   );
 
   return (

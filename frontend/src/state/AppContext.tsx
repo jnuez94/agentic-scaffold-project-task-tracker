@@ -13,6 +13,7 @@ import {
   type IdentityStore,
 } from "./identityStore.ts";
 import { useBootstrap, type BootstrapPhase } from "./useBootstrap.ts";
+import { useOperatorSession, type OperatorSession } from "./useOperatorSession.ts";
 
 export interface AppValue {
   coordination: Coordination;
@@ -24,6 +25,14 @@ export interface AppValue {
   announce: (message: string) => void;
   bootstrap: BootstrapPhase;
   retryBootstrap: () => void;
+  /**
+   * The validated session every identity surface must read.
+   *
+   * `identity.sessionId` is only what was persisted; it may name a session
+   * that ended or belongs to another actor. `session.activeSessionId` is the
+   * one that actually exists and matches the selected actor.
+   */
+  session: OperatorSession;
   /**
    * Whether mutation controls may be enabled at all.
    *
@@ -99,6 +108,17 @@ export function AppProvider({ children, store, client }: AppProviderProps) {
     [persist, identityRef],
   );
 
+  const clearStaleSession = useCallback(() => {
+    persist({ ...identityRef.current, sessionId: null });
+  }, [persist, identityRef]);
+
+  const session = useOperatorSession(
+    coordination,
+    identity.actorId,
+    identity.sessionId,
+    clearStaleSession,
+  );
+
   const { phase, retry } = useBootstrap(bootstrapCoordination, adoptDefault);
   const announce = useCallback((message: string) => setAnnouncement(message), []);
 
@@ -112,9 +132,10 @@ export function AppProvider({ children, store, client }: AppProviderProps) {
       announce,
       bootstrap: phase,
       retryBootstrap: retry,
+      session,
       mutationsEnabled: phase.kind !== "loading" && Boolean(identity.actorId),
     }),
-    [coordination, identity, setActor, setSession, announcement, announce, phase, retry],
+    [coordination, identity, setActor, setSession, announcement, announce, phase, retry, session],
   );
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;

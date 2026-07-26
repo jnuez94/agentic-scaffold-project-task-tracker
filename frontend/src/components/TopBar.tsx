@@ -23,12 +23,13 @@ export interface TopBarProps {
   onRefresh: () => void;
   lastUpdated: Date | undefined;
   busy: boolean;
+  /** The single explanation shown wherever a session is required. */
+  sessionReason: string | null;
 }
 
 export function TopBar(props: TopBarProps) {
-  const sessionsForActor = props.sessions.filter(
-    (session) => session.status === "active" && session.agent_id === props.actorId,
-  );
+  // Already filtered to active sessions owned by the selected actor.
+  const sessionsForActor = props.sessions;
 
   return (
     <header className="topbar">
@@ -72,6 +73,7 @@ export function TopBar(props: TopBarProps) {
             value={props.sessionId ?? ""}
             onChange={(event) => props.onSession(event.target.value || null)}
             disabled={!props.actorId}
+            aria-describedby={props.sessionReason ? "session-reason" : undefined}
           >
             <option value="">No session</option>
             {sessionsForActor.map((session) => (
@@ -80,6 +82,11 @@ export function TopBar(props: TopBarProps) {
               </option>
             ))}
           </select>
+          {props.sessionReason ? (
+            <p id="session-reason" className="small muted session-reason">
+              {props.sessionReason}
+            </p>
+          ) : null}
         </div>
 
         <div className="topbar-refresh">
