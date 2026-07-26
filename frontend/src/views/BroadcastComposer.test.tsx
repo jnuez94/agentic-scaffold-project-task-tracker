@@ -173,4 +173,31 @@ describe("BroadcastComposer", () => {
 
     expect((sends[1] as { id: string }).id).not.toBe((sends[0] as { id: string }).id);
   });
+
+  it("prevents a duplicate submit while a send is pending", async () => {
+    const user = userEvent.setup();
+    let release: (value: unknown) => void = () => {};
+    const gate = new Promise((resolve) => {
+      release = resolve;
+    });
+    const { sends, fetchImpl } = harness(async () => {
+      await gate;
+      return { id: "bcast-pending" };
+    });
+    renderComposer(fetchImpl as unknown as typeof fetch);
+
+    await user.type(screen.getByLabelText("Message"), "slow send");
+    const send = screen.getByRole("button", { name: /send broadcast/i });
+    await user.click(send);
+
+    // While in flight the control is disabled and further clicks do nothing.
+    await waitFor(() => expect((send as HTMLButtonElement).disabled).toBe(true));
+    await user.click(send);
+    await user.click(send);
+    expect(sends).toHaveLength(1);
+
+    release(null);
+    await waitFor(() => expect((send as HTMLButtonElement).disabled).toBe(false));
+    expect(sends).toHaveLength(1);
+  });
 });
