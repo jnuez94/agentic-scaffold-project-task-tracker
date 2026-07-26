@@ -23,3 +23,16 @@ export function getScrollParent(node: Element | null): HTMLElement | null {
 export function distanceFromBottom(element: HTMLElement): number {
   return element.scrollHeight - element.scrollTop - element.clientHeight;
 }
+
+/**
+ * Send a scroller to its newest content.
+ *
+ * Smooth by default, but honours a reduced-motion preference: a long transcript
+ * scrolled thousands of pixels is precisely the animation that preference
+ * exists to suppress.
+ */
+export function scrollToBottom(element: HTMLElement): void {
+  const reduced =
+    typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
+  element.scrollTo({ top: element.scrollHeight, behavior: reduced ? "auto" : "smooth" });
+}
