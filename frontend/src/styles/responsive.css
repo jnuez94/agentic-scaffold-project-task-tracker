@@ -6,13 +6,24 @@
  *   900-1279  inspector becomes an overlay side sheet above the queue
  *   <900      list and detail are sequential
  *
- * The overriding rule at every width is that the document itself never scrolls
- * horizontally. Wide content scrolls inside its own container instead.
+ * The overriding rule at every width is that the document itself never scrolls.
+ * Wide content scrolls inside its own container instead.
  */
 
+/* Both axes, deliberately.
+ *
+ * `overflow-x: hidden` alone does not do what it reads like it does: when one
+ * axis is hidden and the other is `visible`, CSS promotes the visible axis to
+ * `auto` (overflow.html#overflow-properties). So clipping the document
+ * horizontally silently turned it into a *vertical* scroll container, and the
+ * shell — which is exactly `height: 100%` — could be wheeled off the top of the
+ * screen while the content pane sat still. That was the second scrollbar.
+ *
+ * The shell is sized to the viewport and every scrollable region inside it
+ * declares its own scroller, so the document has nothing left to scroll. */
 html,
 body {
-  overflow-x: hidden;
+  overflow: hidden;
 }
 
 /* Declared before the breakpoints: a later base rule of equal specificity

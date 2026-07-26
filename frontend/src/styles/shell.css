@@ -1,6 +1,17 @@
 /* Application shell: navigation, top bar, content, status bar. */
 
+/* Pinned to the viewport, not merely sized to it.
+ *
+ * `height: 100%` alone leaves the shell scrollable *by the browser*: hiding the
+ * document's overflow stops the wheel, but `scrollIntoView` — which the browser
+ * fires whenever focus lands on an off-screen control — still scrolls a hidden
+ * overflow, and with no scrollbar the operator has no way to bring the shell
+ * back. Anchoring it to the viewport makes that displacement impossible rather
+ * than merely unlikely; scrolling then has nowhere to go but the region that
+ * asked for it. */
 .shell {
+  position: fixed;
+  inset: 0;
   display: grid;
   /* nav | separator | main */
   grid-template-columns: var(--nav-width) auto minmax(0, 1fr);
@@ -138,9 +149,11 @@
 .main {
   display: grid;
   grid-template-rows: auto minmax(0, 1fr) auto;
-  /* min-width:0 is load-bearing: a grid item defaults to min-width:auto and
-     would refuse to shrink below the task table's min-content, pushing the
-     whole document wider than the viewport. */
+  /* Both are load-bearing. A grid item defaults to min-width/min-height auto
+     and refuses to shrink below its content, so without these the shell's row
+     grows to the full content height, the document scrolls behind a shell that
+     looks fixed, and .content never becomes a scroll region at all. */
   min-width: 0;
+  min-height: 0;
   background: var(--surface-900);
 }
