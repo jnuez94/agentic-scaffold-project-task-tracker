@@ -11,12 +11,8 @@ import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { EmptyState, SkeletonRows } from "./Feedback.tsx";
 import { Pagination } from "./Pagination.tsx";
 import { SortableHead } from "./SortableHead.tsx";
-import {
-  clampPage,
-  DEFAULT_PAGE_SIZE,
-  pageSlice,
-  type PageSize,
-} from "../lib/pagination.ts";
+import { clampPage, pageSlice } from "../lib/pagination.ts";
+import { usePageSize } from "../state/usePageSize.ts";
 import { nextSortState, sortRows, type SortState, type SortValue } from "../lib/sorting.ts";
 
 export interface Column<T> {
@@ -73,7 +69,8 @@ export function DataTable<T>({
 }: DataTableProps<T>) {
   const [sort, setSort] = useState<SortState | null>(null);
   const [page, setPage] = useState(1);
-  const [size, setSize] = useState<PageSize>(DEFAULT_PAGE_SIZE);
+  // Keyed by idPrefix so each table keeps its own remembered size.
+  const [size, setSize] = usePageSize(idPrefix);
 
   const sorted = useMemo(() => {
     if (!sort) return rows;

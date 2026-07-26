@@ -14,8 +14,8 @@
 
 export const PAGE_SIZES = [10, 25, 50, 100] as const;
 export type PageSize = (typeof PAGE_SIZES)[number];
-/** 10 is available for cramped viewports, but 25 stays the default. */
-export const DEFAULT_PAGE_SIZE: PageSize = 25;
+/** Starting point only; each table remembers the operator's own choice. */
+export const DEFAULT_PAGE_SIZE: PageSize = 10;
 
 /** How many pages `total` rows occupy. Always at least one, so page 1 exists. */
 export function pageCount(total: number, size: number): number {
