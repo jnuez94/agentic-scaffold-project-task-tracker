@@ -12,6 +12,7 @@ import {
   type Identity,
   type IdentityStore,
 } from "./identityStore.ts";
+import { useBootstrap, type BootstrapPhase } from "./useBootstrap.ts";
 
 export interface AppValue {
   coordination: Coordination;
@@ -21,6 +22,17 @@ export interface AppValue {
   /** Text pushed to the polite live region after a successful mutation. */
   announcement: string;
   announce: (message: string) => void;
+  bootstrap: BootstrapPhase;
+  retryBootstrap: () => void;
+  /**
+   * Whether mutation controls may be enabled at all.
+   *
+   * False for the whole of startup, so the queue never shows an enabled action
+   * before an accountable actor is resolved. After startup settles it depends
+   * only on having an actor, which keeps a manual actor choice usable when the
+   * automatic bootstrap hit a conflict.
+   */
+  mutationsEnabled: boolean;
 }
 
 const AppContext = createContext<AppValue | null>(null);
@@ -41,10 +53,17 @@ export function AppProvider({ children, store, client }: AppProviderProps) {
   const identityRef = useMemo(() => ({ current: identity }), []);
   identityRef.current = identity;
 
-  const coordination = useMemo(() => {
-    const api = client ?? new ApiClient(() => identityRef.current.sessionId);
-    return new Coordination(api);
-  }, [client, identityRef]);
+  const api = useMemo(
+    () => client ?? new ApiClient(() => identityRef.current.sessionId),
+    [client, identityRef],
+  );
+  const coordination = useMemo(() => new Coordination(api), [api]);
+  // Startup acts as local-operator before that actor has a session, so it must
+  // not send one persisted from a previous actor.
+  const bootstrapCoordination = useMemo(
+    () => new Coordination(api.withoutSession()),
+    [api],
+  );
 
   const persist = useCallback(
     (next: Identity) => {
@@ -70,11 +89,32 @@ export function AppProvider({ children, store, client }: AppProviderProps) {
     [persist, identityRef],
   );
 
+  // Bootstrap selects the local operator as the *default*; an actor the user
+  // already chose is left alone.
+  const adoptDefault = useCallback(
+    (actorId: string, sessionId: string) => {
+      if (identityRef.current.actorId) return;
+      persist({ actorId, sessionId });
+    },
+    [persist, identityRef],
+  );
+
+  const { phase, retry } = useBootstrap(bootstrapCoordination, adoptDefault);
   const announce = useCallback((message: string) => setAnnouncement(message), []);
 
   const value = useMemo<AppValue>(
-    () => ({ coordination, identity, setActor, setSession, announcement, announce }),
-    [coordination, identity, setActor, setSession, announcement, announce],
+    () => ({
+      coordination,
+      identity,
+      setActor,
+      setSession,
+      announcement,
+      announce,
+      bootstrap: phase,
+      retryBootstrap: retry,
+      mutationsEnabled: phase.kind !== "loading" && Boolean(identity.actorId),
+    }),
+    [coordination, identity, setActor, setSession, announcement, announce, phase, retry],
   );
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;

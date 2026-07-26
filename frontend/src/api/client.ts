@@ -28,6 +28,21 @@ export class ApiClient {
     this.fetchImpl = fetchImpl;
   }
 
+  /**
+   * A client that never sends a session header.
+   *
+   * Startup identity bootstrap needs this. It acts as `local-operator` before
+   * any session for that actor exists, while the header would still carry a
+   * session persisted from a previous actor — and the CLI rejects a global
+   * session that belongs to someone other than the accountable actor with
+   * `session_actor_mismatch`. None of the three bootstrap calls need a session:
+   * `agent add` attributes to the new id, and `session start` attributes to the
+   * session it creates.
+   */
+  withoutSession(): ApiClient {
+    return new ApiClient(() => null, this.baseUrl, this.fetchImpl);
+  }
+
   /** Build a URL, dropping empty query values so filters can be optional. */
   url(path: string, query?: Query): string {
     if (!query) return `${this.baseUrl}${path}`;

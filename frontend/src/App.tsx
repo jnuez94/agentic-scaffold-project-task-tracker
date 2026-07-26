@@ -6,6 +6,7 @@ import { useState } from "react";
 import type { CSSProperties } from "react";
 import { ErrorBanner, LiveRegion } from "./components/Feedback.tsx";
 import { NavSidebar } from "./components/NavSidebar.tsx";
+import { StartupBanner } from "./components/StartupBanner.tsx";
 import { ResizeHandle } from "./components/ResizeHandle.tsx";
 import { TopBar } from "./components/TopBar.tsx";
 import { useApp } from "./state/AppContext.tsx";
@@ -21,7 +22,8 @@ import { TasksView } from "./views/TasksView.tsx";
 import { RECORD_CONFIGS } from "./views/recordConfigs.tsx";
 
 export function App() {
-  const { coordination, identity, setActor, setSession, announcement } = useApp();
+  const { coordination, identity, setActor, setSession, announcement, bootstrap, retryBootstrap } =
+    useApp();
   const { route, navigate } = useHashRoute();
   const { widths, setWidth, reset } = useLayout();
   const [filter, setFilter] = useState("");
@@ -83,6 +85,8 @@ export function App() {
         />
 
         <main className="content" id="content">
+          <StartupBanner phase={bootstrap} onRetry={retryBootstrap} />
+
           {meta.error ? <ErrorBanner error={meta.error} onRetry={meta.refresh} /> : null}
 
           {route.name === "tasks" ? (

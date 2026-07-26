@@ -118,3 +118,29 @@ describe("ApiClient.getText", () => {
     await expect(client.getText("/api/export")).rejects.toMatchObject({ code: "database_busy" });
   });
 });
+
+describe("ApiClient.withoutSession", () => {
+  it("never sends the session header", async () => {
+    const fetchImpl = vi.fn().mockResolvedValue(jsonResponse({ ok: true, data: {} }));
+    const client = new ApiClient(() => "s-1", "", fetchImpl as unknown as typeof fetch);
+    await client.withoutSession().post("/api/agents", { id: "local-operator" });
+    const headers = fetchImpl.mock.calls[0]?.[1]?.headers as Record<string, string>;
+    expect(headers[SESSION_HEADER]).toBeUndefined();
+  });
+
+  it("keeps the original client sending its session", async () => {
+    const fetchImpl = vi.fn().mockResolvedValue(jsonResponse({ ok: true, data: {} }));
+    const client = new ApiClient(() => "s-1", "", fetchImpl as unknown as typeof fetch);
+    client.withoutSession();
+    await client.get("/api/meta");
+    const headers = fetchImpl.mock.calls[0]?.[1]?.headers as Record<string, string>;
+    expect(headers[SESSION_HEADER]).toBe("s-1");
+  });
+
+  it("preserves the base URL and fetch implementation", async () => {
+    const fetchImpl = vi.fn().mockResolvedValue(jsonResponse({ ok: true, data: {} }));
+    const client = new ApiClient(() => "s", "/base", fetchImpl as unknown as typeof fetch);
+    await client.withoutSession().get("/api/meta");
+    expect(fetchImpl.mock.calls[0]?.[0]).toBe("/base/api/meta");
+  });
+});

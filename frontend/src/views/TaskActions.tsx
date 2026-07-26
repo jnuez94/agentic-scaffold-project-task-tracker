@@ -14,6 +14,8 @@ import { ErrorBanner } from "../components/Feedback.tsx";
 import { availableActions, type TaskAction } from "../lib/transitions.ts";
 import { useApp } from "../state/AppContext.tsx";
 
+const SETUP_PENDING = "Waiting for identity setup to finish.";
+
 export function TaskActions({
   task,
   agents,
@@ -23,7 +25,7 @@ export function TaskActions({
   agents: Agent[];
   onDone: () => void;
 }) {
-  const { coordination, identity, announce } = useApp();
+  const { coordination, identity, announce, mutationsEnabled } = useApp();
   const [note, setNote] = useState("");
   const [error, setError] = useState<ApiError | undefined>();
   const [busy, setBusy] = useState<TaskStatus | null>(null);
@@ -31,7 +33,11 @@ export function TaskActions({
   const actions = availableActions(task, {
     actorId: identity.actorId,
     sessionId: identity.sessionId,
-  });
+  }).map((action) =>
+    mutationsEnabled
+      ? action
+      : { ...action, blockedReason: action.blockedReason ?? SETUP_PENDING },
+  );
 
   const actorName = agents.find((agent) => agent.id === identity.actorId)?.name;
 

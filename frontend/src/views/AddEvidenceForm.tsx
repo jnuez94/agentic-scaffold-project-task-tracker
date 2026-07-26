@@ -16,7 +16,7 @@ export function AddEvidenceForm({
   onAdded: () => void;
   onCancel: () => void;
 }) {
-  const { coordination, identity, announce } = useApp();
+  const { coordination, identity, announce, mutationsEnabled } = useApp();
   const [uri, setUri] = useState("");
   const [type, setType] = useState("artifact");
   const [error, setError] = useState<ApiError | undefined>();
@@ -71,7 +71,12 @@ export function AddEvidenceForm({
         />
       </div>
       <div className="form-actions">
-        <button type="submit" className="primary" disabled={busy || !uri.trim()}>
+        <button
+          type="submit"
+          className="primary"
+          disabled={busy || !uri.trim() || !mutationsEnabled}
+          title={mutationsEnabled ? undefined : "Waiting for identity setup to finish."}
+        >
           {busy ? "Adding…" : "Add evidence"}
         </button>
         <button type="button" onClick={onCancel} disabled={busy}>
