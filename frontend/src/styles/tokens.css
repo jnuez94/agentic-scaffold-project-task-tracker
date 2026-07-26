@@ -1,0 +1,79 @@
+/*
+ * Flowline visual system — tokens from ux-visual-interaction-spec.md section 4.
+ *
+ * One deviation, per FE-ARCH-REVIEW-1 item 4: white on violet-500 (#8B5CF6)
+ * measures ~4.1:1, below WCAG AA 4.5:1 for 15px button labels. Primary fills
+ * therefore use violet-600 (~4.9:1 with white). violet-500 remains available
+ * for non-text accents, and violet-400 is the token for violet *text* on dark
+ * surfaces.
+ */
+
+:root {
+  /* Surfaces */
+  --shell-950: #07131f;
+  --surface-900: #0d1b28;
+  --surface-850: #122333;
+  --surface-800: #182c3e;
+  --line-700: #294054;
+
+  /* Text */
+  --text-50: #f4f7fa;
+  --text-200: #c8d2dc;
+  --text-400: #8fa1b2;
+
+  /* Accents */
+  --violet-600: #7c3aed;
+  --violet-500: #8b5cf6;
+  --violet-400: #a78bfa;
+  --blue-400: #4da3ff;
+  --mint-400: #3ddc97;
+  --amber-400: #f2b84b;
+  --coral-400: #ff6470;
+
+  /* State surfaces: 18% tints for pill backgrounds on dark surfaces */
+  --tint-blue: rgba(77, 163, 255, 0.16);
+  --tint-mint: rgba(61, 220, 151, 0.16);
+  --tint-amber: rgba(242, 184, 75, 0.16);
+  --tint-coral: rgba(255, 100, 112, 0.16);
+  --tint-neutral: rgba(143, 161, 178, 0.16);
+  --tint-violet: rgba(124, 58, 237, 0.18);
+
+  /* Spacing — 4px base */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-6: 24px;
+  --space-8: 32px;
+
+  /* Radii */
+  --radius-tag: 4px;
+  --radius-input: 6px;
+  --radius-panel: 8px;
+
+  /* Sizing */
+  --control-height: 44px;
+  --control-height-compact: 36px;
+  --nav-width: 200px;
+  --inspector-width: 480px;
+
+  /* Typography. Atkinson Hyperlegible is named first as the spec intends, but
+   * nothing is bundled or fetched: adding a font file would introduce a
+   * third-party asset that FE-STACK-1 does not authorize, and the spec
+   * explicitly permits the system stack in that case. */
+  --font-sans: "Atkinson Hyperlegible Next", "Atkinson Hyperlegible",
+    ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: ui-monospace, "SFMono-Regular", "Cascadia Mono", "Roboto Mono",
+    monospace;
+
+  --display-sm: 650 24px/32px var(--font-sans);
+  --heading-lg: 650 20px/28px var(--font-sans);
+  --heading-md: 650 16px/24px var(--font-sans);
+  --body: 400 15px/22px var(--font-sans);
+  --body-strong: 600 15px/22px var(--font-sans);
+  --body-sm: 400 13px/19px var(--font-sans);
+  --code-sm: 500 12px/18px var(--font-mono);
+
+  --focus-ring: 0 0 0 2px var(--shell-950), 0 0 0 4px var(--violet-400);
+  --overlay-shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
+}

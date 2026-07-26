@@ -1,0 +1,153 @@
+/* Reset and primitives shared by every surface. */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  background: var(--shell-950);
+  color: var(--text-50);
+  font: var(--body);
+  -webkit-font-smoothing: antialiased;
+}
+
+:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+  border-radius: var(--radius-tag);
+}
+
+h1,
+h2,
+h3 {
+  margin: 0;
+}
+
+h1 {
+  font: var(--display-sm);
+}
+
+h2 {
+  font: var(--heading-lg);
+}
+
+h3 {
+  font: var(--heading-md);
+}
+
+p {
+  margin: 0 0 var(--space-3);
+}
+
+code,
+.mono {
+  font: var(--code-sm);
+  color: var(--text-200);
+}
+
+a {
+  color: var(--violet-400);
+}
+
+button {
+  font: var(--body-strong);
+  font-size: 14px;
+  color: var(--text-50);
+  background: var(--surface-800);
+  border: 1px solid var(--line-700);
+  border-radius: var(--radius-input);
+  min-height: var(--control-height-compact);
+  padding: 0 var(--space-3);
+  cursor: pointer;
+}
+
+button:hover:not(:disabled) {
+  background: var(--surface-850);
+  border-color: var(--violet-400);
+}
+
+button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+button.primary {
+  background: var(--violet-600);
+  border-color: var(--violet-600);
+  color: #fff;
+  min-height: var(--control-height);
+}
+
+button.primary:hover:not(:disabled) {
+  background: var(--violet-500);
+  border-color: var(--violet-400);
+}
+
+button.danger {
+  color: var(--coral-400);
+  border-color: rgba(255, 100, 112, 0.5);
+}
+
+input,
+select,
+textarea {
+  font: var(--body);
+  color: var(--text-50);
+  background: var(--surface-900);
+  border: 1px solid var(--line-700);
+  border-radius: var(--radius-input);
+  min-height: var(--control-height-compact);
+  padding: 0 var(--space-3);
+  width: 100%;
+}
+
+textarea {
+  padding: var(--space-2) var(--space-3);
+  min-height: 72px;
+  resize: vertical;
+}
+
+label {
+  display: block;
+  font: var(--body-sm);
+  color: var(--text-200);
+  margin-bottom: var(--space-1);
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.muted {
+  color: var(--text-400);
+}
+
+.small {
+  font: var(--body-sm);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
