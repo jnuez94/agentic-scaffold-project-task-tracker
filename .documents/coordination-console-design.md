@@ -2,10 +2,11 @@
 
 | Field | Value |
 | --- | --- |
-| Status | Draft for review |
+| Status | Backend implemented and tested; frontend specified, reviewed, not built |
 | Owner | `david` — Principal Software Development Engineer (Frontend) |
-| Tracked by | `UI-1`, `UI-2`, `UI-3` |
+| Tracked by | `UI-1`, `UI-2`, `UI-3`, `UI-5` |
 | Decisions | `FE-STACK-1` (React + Vite + TypeScript) |
+| Reviews | `FE-ARCH-REVIEW-1` (UX spec feasibility, conditionally accepted) |
 | Contract of record | `.agents/agentic-project-scaffold-lite/docs/cli-contract.md` v1.2.0 |
 | Schema of record | `.agents/agentic-project-scaffold-lite/sqlite/schema.sql` v1 |
 
@@ -24,10 +25,22 @@ exposes, health and audit views, and the Markdown export.
 filesystem-publishing operations whose failure modes need an operator at a
 terminal reading exit codes, not a browser button. They stay CLI-only.
 
-**Not yet decided:** the visual system, page structure, navigation model, and
-component inventory. `mikhail-ux` is producing three UX directions under `UX-1`;
-per `UX-1-HANDOFF-1` this document deliberately stops at architecture. Section 7
-defines the seams that keep any of those directions cheap to adopt.
+**Settled since first draft:** the visual system and page structure. `mikhail-ux`
+published three directions under `UX-1`; the Coordination Ledger layout with the
+Flowline palette was selected and specified in
+`ux-visual-interaction-spec.md`. `FE-ARCH-REVIEW-1` conditionally accepted it for
+frontend feasibility with four required changes, three of which are data
+availability limits recorded as `UI-5`:
+
+1. list results carry no total count, so exact "showing N of M" is not renderable;
+2. `task list` has no tag or blocked-state filter;
+3. `message list` filters by recipient only, so the inspector has no per-task
+   message source;
+4. white on `violet-500` measures ~4.1:1, under WCAG AA for button labels.
+
+Section 7 still describes the layer boundaries rather than the visual system,
+because those boundaries are what keep the selected direction — or a later
+revision of it — cheap to apply.
 
 ## 2. Constraints that shape the design
 
@@ -50,11 +63,11 @@ flowchart LR
     end
 
     subgraph python["python3 -m coordination_ui — one process"]
-        HTTP["server.py<br/>ThreadingHTTPServer"]
-        API["api.py<br/>route table"]
-        BRIDGE["bridge.py<br/>subprocess wrapper"]
-        RO["readonly.py<br/>query_only connection"]
-        DISC["discovery.py<br/>project resolution"]
+        HTTP["web/<br/>ThreadingHTTPServer"]
+        API["api/<br/>route table"]
+        BRIDGE["cli/<br/>subprocess wrapper"]
+        RO["readonly/<br/>query_only connection"]
+        DISC["discovery/<br/>project resolution"]
     end
 
     CLI["bin/coordination<br/>contract v1.2.0"]
@@ -85,34 +98,48 @@ Two paths reach the database and they are deliberately asymmetric:
   opened `mode=ro` **and** pinned with `PRAGMA query_only = ON`, so it cannot
   write even if a future bug tried to.
 
-### 3.1 Python module dependencies
+### 3.1 Python package dependencies
+
+Packages depend strictly downward; there are no cycles. `cli/client.py` is the
+only module that spawns a process, and `readonly/connection.py` is the only
+module that opens a SQLite connection.
 
 ```mermaid
 flowchart TD
-    MAIN["__main__.py<br/>argparse, startup checks"]
-    SERVER["server.py<br/>HTTP, static, CSP, Host check"]
-    API["api.py<br/>route table, argument mapping"]
-    BRIDGE["bridge.py<br/>CoordinationCLI, CoordinationError"]
-    RO["readonly.py<br/>ReadOnlyDatabase"]
-    DISC["discovery.py<br/>Project, find_project"]
+    MAIN["__main__.py + arguments.py<br/>argparse"]
+    LAUNCH["launcher.py<br/>Launcher"]
+    WEB["web/<br/>server, handler, host policy,<br/>security headers, body reader, static"]
+    API["api/<br/>router, request, context, enums<br/>+ routes/ per entity"]
+    CLI["cli/<br/>client, arguments, identifier,<br/>response parser, errors"]
+    RO["readonly/<br/>connection, audit, summary"]
+    DISC["discovery/<br/>locator, config, executable, project"]
 
-    MAIN --> DISC
-    MAIN --> BRIDGE
-    MAIN --> SERVER
-    SERVER --> API
-    API --> BRIDGE
+    MAIN --> LAUNCH
+    LAUNCH --> DISC
+    LAUNCH --> CLI
+    LAUNCH --> WEB
+    WEB --> API
+    API --> CLI
     API --> RO
     API --> DISC
-    RO --> BRIDGE
-    SERVER --> BRIDGE
+    RO --> CLI
 ```
 
-No cycles. `bridge.py` is the only module that spawns a process; `readonly.py`
-is the only module that opens a SQLite connection.
+Each file holds one class and stays under 200 lines, so every unit is
+importable and testable in isolation. The counts below are the shipped state.
+
+| Package | Files | Responsibility |
+| --- | ---: | --- |
+| `cli/` | 9 | Run `bin/coordination`; build argv; parse its contract |
+| `discovery/` | 6 | Resolve project, config, database, executable |
+| `readonly/` | 5 | `query_only` audit and aggregate reads |
+| `api/` | 6 + 10 routes | Route table; one handler per CLI command |
+| `web/` | 7 | HTTP, loopback policy, CSP, static serving |
+| root | 4 | Package metadata, argparse, launcher, entry point |
 
 ## 4. Component responsibilities
 
-### 4.1 `discovery.py`
+### 4.1 `discovery/`
 
 Resolves *which project the UI serves* before anything else runs: walks up from
 the working directory to the nearest `.coordination/config.yml`, validates
@@ -124,7 +151,7 @@ every path it touches, so this module is a locator, not a gatekeeper.
 Also resolves the executable: `$COORDINATION_BIN`, else
 `.agents/agentic-project-scaffold-lite/bin/coordination`.
 
-### 4.2 `bridge.py`
+### 4.2 `cli/`
 
 The single choke point for CLI invocation.
 
@@ -144,14 +171,14 @@ The single choke point for CLI invocation.
 
 No shell is ever involved: `subprocess.run` receives a list, `shell=False`.
 
-### 4.3 `readonly.py`
+### 4.3 `readonly/`
 
 Two queries the CLI cannot serve: the filtered audit timeline (with total count
 and facet values) and the dashboard summary (per-table counts, task status and
 priority histograms, per-agent workload, recent audit entries). The summary runs
 all of its statements on one connection so the tiles are mutually consistent.
 
-### 4.4 `api.py`
+### 4.4 `api/`
 
 A flat route table. Each handler is a mechanical translation of exactly one
 documented CLI command — it appends options and returns the CLI's `data`
@@ -161,7 +188,7 @@ non-overlapping add/remove, `update` requires one content field) exist only to
 produce a better message than a generic argparse failure, and the CLI still
 enforces all three.
 
-### 4.5 `server.py`
+### 4.5 `web/`
 
 `ThreadingHTTPServer` so a slow CLI call cannot block the whole UI. Serves the
 Vite build output from `coordination_ui/static/` and the `/api/` surface.
@@ -308,7 +335,7 @@ system, not exceptional.
 
 ### 6.4 Exit code to HTTP status
 
-Mapping lives in one table in `bridge.py`. `error.code` is never rewritten —
+Mapping lives in one table in `cli/exit_codes.py`. `error.code` is never rewritten —
 the UI branches on the code, and the status line is only for HTTP semantics.
 
 | CLI exit | HTTP | Meaning | Representative codes |
@@ -423,10 +450,10 @@ possible; `UI-3` covers a check that the committed bundle matches its sources.
 
 | Layer | Approach |
 | --- | --- |
-| `discovery.py` | Temporary directory trees: valid project, missing config, malformed config, traversal attempts |
-| `bridge.py` | Real CLI against a throwaway database; assert `--flag=value` tokenization and identifier rejection, including values beginning with `-` |
-| `api.py` | Route dispatch, enum validation, 405 vs 404, argument mapping per command |
-| `server.py` | Live loopback server: Host rejection, content-type rejection, traversal rejection, CSP headers present |
+| `discovery/` | Temporary directory trees: valid project, missing config, malformed config, traversal attempts |
+| `cli/` | Real CLI against a throwaway database; assert `--flag=value` tokenization and identifier rejection, including values beginning with `-` |
+| `api/` | Route dispatch, enum validation, 405 vs 404, argument mapping per command |
+| `web/` | Live loopback server: Host rejection, content-type rejection, traversal rejection, CSP headers present |
 | Error mapping | Force each exit class and assert HTTP status and preserved `error.code` |
 | Frontend | `tsc --noEmit` in CI plus unit tests for the API client and revision-conflict reducer |
 
