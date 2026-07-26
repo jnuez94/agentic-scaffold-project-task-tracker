@@ -1,0 +1,6 @@
+# agentic-project-scaffold-lite sqlite state
+/.coordination/coordination.sqlite3*
+.coordination/*.sqlite3*
+.coordination/**/*.sqlite3*
+.coordination/backups/
+# /agentic-project-scaffold-lite sqlite state
