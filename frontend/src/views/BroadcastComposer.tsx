@@ -15,6 +15,7 @@ import { buildBroadcastRequest, checkBody, requiresNewId } from "../lib/broadcas
 import { newBroadcastId } from "../lib/messageId.ts";
 import { absoluteTime } from "../lib/format.ts";
 import { useApp } from "../state/AppContext.tsx";
+import { useFocusTrap } from "../state/useFocusTrap.ts";
 
 export interface BroadcastComposerProps {
   senderId: string;
@@ -42,6 +43,12 @@ export function BroadcastComposer({
   // Resolved once per attempt and reused, except after a duplicate-id failure.
   const attemptId = useRef<string | null>(null);
   const heading = useRef<HTMLHeadingElement>(null);
+  const sheet = useRef<HTMLElement>(null);
+
+  // `aria-modal="true"` is a promise that the rest of the page is unavailable.
+  // Without this, Tab walked out into the navigation behind the dialog and the
+  // promise was false.
+  useFocusTrap(sheet, true);
 
   useEffect(() => {
     heading.current?.focus();
@@ -109,7 +116,13 @@ export function BroadcastComposer({
   };
 
   return (
-    <aside className="sheet" role="dialog" aria-modal="true" aria-labelledby="broadcast-heading">
+    <aside
+      className="sheet"
+      ref={sheet}
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="broadcast-heading"
+    >
       <div className="sheet-header">
         <h2 id="broadcast-heading" ref={heading} tabIndex={-1}>
           Broadcast to team

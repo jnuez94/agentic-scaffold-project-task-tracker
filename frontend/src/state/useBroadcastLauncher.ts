@@ -7,7 +7,7 @@
  * any one view.
  */
 
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { Agent } from "../api/contract.ts";
 import { broadcastReadiness, type Readiness } from "../lib/broadcast.ts";
 
@@ -36,11 +36,18 @@ export function useBroadcastLauncher(
 
   const readiness = broadcastReadiness({ actor, sessionId, mutationsEnabled });
 
-  const onClose = useCallback(() => {
-    setOpen(false);
-    // Focus returns to the trigger, which is always present in the toolbar.
-    triggerRef.current?.focus();
-  }, []);
+  const onClose = useCallback(() => setOpen(false), []);
+
+  // Focus returns to the trigger after the close has been committed, not during
+  // it. While the dialog is open the whole background shell is `inert`, and
+  // focusing an inert element silently does nothing — so restoring focus in the
+  // same tick as the state change dropped the operator on <body> instead, with
+  // the next Tab starting from the top of the page.
+  const wasOpen = useRef(false);
+  useEffect(() => {
+    if (wasOpen.current && !open) triggerRef.current?.focus();
+    wasOpen.current = open;
+  }, [open]);
 
   return {
     open,

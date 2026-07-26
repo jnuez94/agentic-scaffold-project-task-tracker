@@ -168,3 +168,14 @@
   min-height: 0;
   background: var(--surface-900);
 }
+
+/* A boundary without a box.
+ *
+ * Wraps everything behind the Broadcast dialog so one `inert` covers the
+ * navigation, resize handle, toolbar, content, and footer together, which is
+ * what `aria-modal="true"` already claims. `display: contents` keeps the nav,
+ * the handle, and the main column as direct participants in the shell grid, so
+ * adding the boundary changes no layout. */
+.shell-background {
+  display: contents;
+}

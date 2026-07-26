@@ -81,95 +81,109 @@ export function App() {
       className="shell"
       style={{ "--nav-width": `${widths.nav}px` } as CSSProperties}
     >
-      <NavSidebar
-        active={route.name}
-        meta={meta.data}
-        actorLabel={actor ? `${actor.name} · ${actor.id}` : "No actor selected"}
-        sessionLabel={
-          session.activeSessionId
-            ? `Session ${session.activeSessionId}`
-            : "No active session"
-        }
-      />
-
-      <ResizeHandle
-        label="Resize navigation"
-        value={widths.nav}
-        min={BOUNDS.nav.min}
-        max={BOUNDS.nav.max}
-        direction={1}
-        onResize={(next) => setWidth("nav", next)}
-        onReset={() => reset("nav")}
-      />
-
-      <div className="main">
-        <TopBar
-          filter={filter}
-          onFilter={setFilter}
-          filterPlaceholder={placeholder}
-          agents={agentList}
-          sessions={session.selectable}
-          actorId={identity.actorId}
-          sessionId={session.activeSessionId}
-          sessionReason={session.reason}
-          onActor={setActor}
-          onSession={setSession}
-          onRefresh={refreshAll}
-          broadcastRef={broadcast.triggerRef}
-          broadcastDisabledReason={broadcast.disabledReason}
-          onBroadcast={broadcast.onOpen}
-          lastUpdated={agents.lastUpdated}
-          busy={agents.loading || session.loading}
+      {/* One boundary for everything behind the dialog.
+       *
+       * `aria-modal="true"` claims the rest of the page is unavailable, and
+       * marking only the content region inert left the navigation, toolbar,
+       * resize handle, and footer reachable — the claim was false, and a
+       * keyboard operator mid-draft could land on a route link.
+       *
+       * `display: contents` so this wrapper adds a boundary without adding a
+       * box: nav, handle, and main stay direct participants in the shell grid.
+       * `inert` still applies to the whole subtree. */}
+      <div className="shell-background" inert={broadcast.open}>
+        <NavSidebar
+          active={route.name}
+          meta={meta.data}
+          actorLabel={
+            actor ? `${actor.name} · ${actor.id}` : "No actor selected"
+          }
+          sessionLabel={
+            session.activeSessionId
+              ? `Session ${session.activeSessionId}`
+              : "No active session"
+          }
         />
 
-        {/* The scrollport's own height, published for the sticky inspectors.
+        <ResizeHandle
+          label="Resize navigation"
+          value={widths.nav}
+          min={BOUNDS.nav.min}
+          max={BOUNDS.nav.max}
+          direction={1}
+          onResize={(next) => setWidth("nav", next)}
+          onReset={() => reset("nav")}
+        />
+
+        <div className="main">
+          <TopBar
+            filter={filter}
+            onFilter={setFilter}
+            filterPlaceholder={placeholder}
+            agents={agentList}
+            sessions={session.selectable}
+            actorId={identity.actorId}
+            sessionId={session.activeSessionId}
+            sessionReason={session.reason}
+            onActor={setActor}
+            onSession={setSession}
+            onRefresh={refreshAll}
+            broadcastRef={broadcast.triggerRef}
+            broadcastDisabledReason={broadcast.disabledReason}
+            onBroadcast={broadcast.onOpen}
+            lastUpdated={agents.lastUpdated}
+            busy={agents.loading || session.loading}
+          />
+
+          {/* The scrollport's own height, published for the sticky inspectors.
             They must not grow past what is visible, and neither `100%` nor
             `100vh` says that: `100%` resolves against the scrolling content,
             which is far taller, and `100vh` counts chrome this region does not
             occupy. Measuring is the only expression of "as tall as what the
             operator can actually see". */}
-        <main
-          className="content"
-          id="content"
-          ref={contentRef}
-          style={
-            { "--scrollport-height": `${scrollportHeight}px` } as CSSProperties
-          }
-          inert={broadcast.open}
-        >
-          <StartupBanner phase={bootstrap} onRetry={retryBootstrap} />
+          <main
+            className="content"
+            id="content"
+            ref={contentRef}
+            style={
+              {
+                "--scrollport-height": `${scrollportHeight}px`,
+              } as CSSProperties
+            }
+          >
+            <StartupBanner phase={bootstrap} onRetry={retryBootstrap} />
 
-          {meta.error ? (
-            <ErrorBanner error={meta.error} onRetry={meta.refresh} />
-          ) : null}
-
-          {/* Scoped to the routed surface only, so a view that fails to render
-              costs the operator that view and not the navigation, the identity
-              controls, or their bearings. Navigating away clears it. */}
-          <RouteErrorBoundary resetKey={route.name}>
-            {route.name === "tasks" ? (
-              <TasksView
-                filter={filter}
-                agents={agentList}
-                selectedId={route.detail}
-                onSelect={(id) => navigate("tasks", id)}
-                layout={layout}
-              />
+            {meta.error ? (
+              <ErrorBanner error={meta.error} onRetry={meta.refresh} />
             ) : null}
 
-            {route.name === "health" ? <HealthView /> : null}
-            {route.name === "audit" ? <AuditView filter={filter} /> : null}
-            {route.name === "export" ? <ExportView /> : null}
+            {/* Scoped to the routed surface only, so a view that fails to render
+              costs the operator that view and not the navigation, the identity
+              controls, or their bearings. Navigating away clears it. */}
+            <RouteErrorBoundary resetKey={route.name}>
+              {route.name === "tasks" ? (
+                <TasksView
+                  filter={filter}
+                  agents={agentList}
+                  selectedId={route.detail}
+                  onSelect={(id) => navigate("tasks", id)}
+                  layout={layout}
+                />
+              ) : null}
 
-            {route.name === "messages" ? (
-              <MessagesView
-                filter={filter}
-                agents={agentList}
-                layout={layout}
-                reloadKey={broadcast.sentNonce}
-              />
-            ) : RECORD_CONFIGS[route.name] ? (
-              /* Keyed by route, and that key is the whole fix for a stop-ship
+              {route.name === "health" ? <HealthView /> : null}
+              {route.name === "audit" ? <AuditView filter={filter} /> : null}
+              {route.name === "export" ? <ExportView /> : null}
+
+              {route.name === "messages" ? (
+                <MessagesView
+                  filter={filter}
+                  agents={agentList}
+                  layout={layout}
+                  reloadKey={broadcast.sentNonce}
+                />
+              ) : RECORD_CONFIGS[route.name] ? (
+                /* Keyed by route, and that key is the whole fix for a stop-ship
                crash. Every generic entity shares this one component position,
                so React reused the instance across routes: useResource keeps the
                previous rows while the next request is in flight, which is right
@@ -181,22 +195,23 @@ export function App() {
                different route is a different component: fresh resource, and
                with it fresh status filter, sort, pagination, and selection.
                None of those belong to the route the operator just left. */
-              <RecordsView
-                key={route.name}
-                route={route.name}
-                filter={filter}
-              />
-            ) : null}
-          </RouteErrorBoundary>
-        </main>
+                <RecordsView
+                  key={route.name}
+                  route={route.name}
+                  filter={filter}
+                />
+              ) : null}
+            </RouteErrorBoundary>
+          </main>
 
-        <footer className="statusbar small">
-          <DatabaseIdentity path={meta.data?.database} onCopied={announce} />
-          <span className="muted statusbar-note">
-            Local only · loopback · every write goes through the coordination
-            CLI
-          </span>
-        </footer>
+          <footer className="statusbar small">
+            <DatabaseIdentity path={meta.data?.database} onCopied={announce} />
+            <span className="muted statusbar-note">
+              Local only · loopback · every write goes through the coordination
+              CLI
+            </span>
+          </footer>
+        </div>
       </div>
 
       {broadcast.open &&
