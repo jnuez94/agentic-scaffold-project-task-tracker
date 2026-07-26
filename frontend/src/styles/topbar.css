@@ -1,6 +1,7 @@
 /* Top bar, content area, and status bar. */
 
 .topbar {
+  min-width: 0;
   display: flex;
   align-items: flex-end;
   gap: var(--space-4);
@@ -46,6 +47,7 @@
 }
 
 .content {
+  min-width: 0;
   overflow: auto;
   padding: var(--space-4);
   min-height: 0;
@@ -74,14 +76,24 @@
 @media (max-width: 899px) {
   .shell {
     grid-template-columns: 1fr;
+    /* Without an explicit auto row the nav is squeezed into an equal share and
+       its own overflow-y clips the links. */
+    grid-template-rows: auto minmax(0, 1fr);
   }
 
   .nav {
     flex-direction: row;
     flex-wrap: wrap;
     align-items: center;
+    gap: var(--space-2);
+    padding: var(--space-2) var(--space-3);
+    overflow-y: visible;
     border-right: none;
     border-bottom: 1px solid var(--line-700);
+  }
+
+  .nav-brand {
+    width: 100%;
   }
 
   .nav-footer,
@@ -93,4 +105,32 @@
     flex-direction: row;
     flex-wrap: wrap;
   }
+}
+
+.db-identity {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.db-identity .mono {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.link-button {
+  min-height: 22px;
+  padding: 0 6px;
+  background: transparent;
+  border: 1px solid var(--line-700);
+  color: var(--text-200);
+  font: var(--body-sm);
+}
+
+.next-action {
+  font: var(--body-sm);
+  color: var(--violet-400);
+  white-space: nowrap;
 }

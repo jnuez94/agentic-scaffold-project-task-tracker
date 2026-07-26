@@ -1,6 +1,7 @@
 /* Queue layout and the data table. */
 
 .queue-layout {
+  min-width: 0;
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   gap: var(--space-4);
@@ -15,6 +16,11 @@
 
 .queue-layout.with-inspector > .queue {
   padding-right: var(--space-4);
+}
+
+.queue,
+.records {
+  min-width: 0;
 }
 
 .queue-toolbar {
@@ -149,4 +155,15 @@
 .sort-button:hover .sort-indicator,
 .sort-button.active .sort-indicator {
   opacity: 1;
+}
+
+@media (max-width: 1279px) {
+  .queue-layout.with-inspector {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-4);
+  }
+
+  .queue-layout.with-inspector > .queue {
+    padding-right: 0;
+  }
 }

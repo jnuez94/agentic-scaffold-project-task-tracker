@@ -115,32 +115,3 @@
 .record-list p {
   margin: 2px 0 0;
 }
-
-@media (max-width: 1279px) {
-  .queue-layout.with-inspector {
-    grid-template-columns: minmax(0, 1fr);
-    gap: var(--space-4);
-  }
-
-  .queue-layout.with-inspector > .queue {
-    padding-right: 0;
-  }
-
-  .data-table th[data-priority="7"],
-  .data-table td[data-priority="7"],
-  .data-table th[data-priority="8"],
-  .data-table td[data-priority="8"],
-  .data-table th[data-priority="9"],
-  .data-table td[data-priority="9"] {
-    display: none;
-  }
-}
-
-@media (max-width: 899px) {
-  .data-table th[data-priority="5"],
-  .data-table td[data-priority="5"],
-  .data-table th[data-priority="6"],
-  .data-table td[data-priority="6"] {
-    display: none;
-  }
-}

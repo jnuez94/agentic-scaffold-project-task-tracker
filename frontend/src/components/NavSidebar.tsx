@@ -3,43 +3,44 @@
  */
 
 import type { Meta } from "../api/contract.ts";
+import { Icon, type IconName } from "./icons.tsx";
 import { buildHash, type RouteName } from "../state/useHashRoute.ts";
 
 interface Group {
   title: string;
-  items: { route: RouteName; label: string; glyph: string }[];
+  items: { route: RouteName; label: string; icon: IconName }[];
 }
 
 const GROUPS: Group[] = [
   {
     title: "Work",
     items: [
-      { route: "tasks", label: "Tasks", glyph: "☰" },
-      { route: "reviews", label: "Reviews", glyph: "★" },
-      { route: "messages", label: "Messages", glyph: "✉" },
+      { route: "tasks", label: "Tasks", icon: "tasks" },
+      { route: "reviews", label: "Reviews", icon: "reviews" },
+      { route: "messages", label: "Messages", icon: "messages" },
     ],
   },
   {
     title: "People",
     items: [
-      { route: "agents", label: "Agents", glyph: "◍" },
-      { route: "sessions", label: "Sessions", glyph: "▤" },
+      { route: "agents", label: "Agents", icon: "agents" },
+      { route: "sessions", label: "Sessions", icon: "sessions" },
     ],
   },
   {
     title: "Governance",
     items: [
-      { route: "decisions", label: "Decisions", glyph: "⚖" },
-      { route: "artifacts", label: "Artifacts", glyph: "🗎" },
-      { route: "escalations", label: "Escalations", glyph: "⚠" },
+      { route: "decisions", label: "Decisions", icon: "decisions" },
+      { route: "artifacts", label: "Artifacts", icon: "artifacts" },
+      { route: "escalations", label: "Escalations", icon: "escalations" },
     ],
   },
   {
     title: "System",
     items: [
-      { route: "health", label: "Health", glyph: "✚" },
-      { route: "audit", label: "Audit log", glyph: "⧗" },
-      { route: "export", label: "Export", glyph: "⤓" },
+      { route: "health", label: "Health", icon: "health" },
+      { route: "audit", label: "Audit log", icon: "audit" },
+      { route: "export", label: "Export", icon: "export" },
     ],
   },
 ];
@@ -58,8 +59,8 @@ export function NavSidebar({
   return (
     <nav className="nav" aria-label="Sections">
       <div className="nav-brand">
-        <span className="nav-mark" aria-hidden="true">
-          ◆
+        <span className="nav-mark">
+          <Icon name="brand" size={22} />
         </span>
         <span>
           <span className="nav-product">Agentic Project Scaffold Lite</span>
@@ -80,8 +81,8 @@ export function NavSidebar({
                   className={item.route === active ? "nav-link active" : "nav-link"}
                   aria-current={item.route === active ? "page" : undefined}
                 >
-                  <span className="nav-glyph" aria-hidden="true">
-                    {item.glyph}
+                  <span className="nav-glyph">
+                    <Icon name={item.icon} />
                   </span>
                   {item.label}
                 </a>

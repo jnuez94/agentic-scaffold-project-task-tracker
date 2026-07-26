@@ -8,6 +8,7 @@
 
 import type { Agent, Session } from "../api/contract.ts";
 import { relativeTime } from "../lib/format.ts";
+import { Icon } from "./icons.tsx";
 
 export interface TopBarProps {
   filter: string;
@@ -35,8 +36,8 @@ export function TopBar(props: TopBarProps) {
         <label htmlFor="row-filter" className="visually-hidden">
           Filter loaded rows
         </label>
-        <span className="topbar-glyph" aria-hidden="true">
-          ⌕
+        <span className="topbar-glyph">
+          <Icon name="search" size={16} />
         </span>
         <input
           id="row-filter"

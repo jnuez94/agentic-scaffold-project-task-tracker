@@ -14,10 +14,22 @@ import { PriorityTag, StatusPill, TagList } from "../components/Pill.tsx";
 import type { TaskListRow } from "../api/contract.ts";
 import { relativeTime } from "../lib/format.ts";
 import { splitTags, statusRank } from "../lib/labels.ts";
+import { availableActions, type ActionContext } from "../lib/transitions.ts";
 
 export const TASK_DEFAULT_ORDER = "the CLI order: priority, then updated, then id";
 
-export function taskColumns(nameFor: (id: string) => string): Column<TaskListRow>[] {
+/** The action an operator would most likely take next, or null if none is offered. */
+export function nextActionLabel(task: TaskListRow, context: ActionContext): string | null {
+  const actions = availableActions(task, context);
+  const usable = actions.filter((action) => !action.blockedReason);
+  const primary = usable.find((action) => action.primary) ?? usable[0];
+  return primary?.label ?? null;
+}
+
+export function taskColumns(
+  nameFor: (id: string) => string,
+  context: ActionContext,
+): Column<TaskListRow>[] {
   return [
     {
       key: "id",
@@ -77,6 +89,20 @@ export function taskColumns(nameFor: (id: string) => string): Column<TaskListRow
         </span>
       ),
       sortValue: (task) => task.updated_at,
+    },
+    {
+      key: "next",
+      header: "Next action",
+      priority: 4,
+      render: (task) => {
+        const label = nextActionLabel(task, context);
+        return label ? (
+          <span className="next-action">{label}</span>
+        ) : (
+          <span className="muted small">—</span>
+        );
+      },
+      sortValue: (task) => nextActionLabel(task, context),
     },
     {
       key: "tags",

@@ -2,16 +2,18 @@
  * The task inspector: detail without losing queue context.
  */
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { KeyboardEvent } from "react";
-import type { Agent, TaskDetail } from "../api/contract.ts";
+import type { Agent } from "../api/contract.ts";
 import { ErrorBanner, SkeletonRows } from "../components/Feedback.tsx";
-import { Field, MetricRow, Tags, TextBlock } from "../components/Fields.tsx";
+import { MetricRow } from "../components/Fields.tsx";
 import { StatusPill } from "../components/Pill.tsx";
+import { Icon } from "../components/icons.tsx";
 import { absoluteTime, relativeTime } from "../lib/format.ts";
 import { useApp } from "../state/AppContext.tsx";
 import { useResource } from "../state/useResource.ts";
 import { TaskActions } from "./TaskActions.tsx";
+import { Overview } from "./TaskOverview.tsx";
 import { TaskTabPanel, TASK_TABS, type TaskTab } from "./TaskTabs.tsx";
 
 export function TaskInspector({
@@ -28,18 +30,43 @@ export function TaskInspector({
   const { coordination } = useApp();
   const [tab, setTab] = useState<TaskTab>("overview");
   const task = useResource(() => coordination.task(taskId), [taskId]);
+  const panel = useRef<HTMLElement>(null);
+
+  // Escape closes the inspector. It is an overlay below 1280px, and an overlay
+  // that cannot be dismissed from the keyboard traps the operator.
+  useEffect(() => {
+    const onKey = (event: globalThis.KeyboardEvent) => {
+      if (event.key === "Escape") onClose();
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [onClose]);
+
+  // Move focus to the panel when it opens so the next Tab lands inside it.
+  useEffect(() => {
+    panel.current?.focus();
+  }, [taskId]);
 
   const detail = task.data;
 
   return (
-    <aside className="inspector" aria-label={`Task ${taskId}`}>
+    <aside
+      className="inspector"
+      aria-label={`Task ${taskId}`}
+      ref={panel}
+      tabIndex={-1}
+    >
+      <button className="inspector-back" onClick={onClose}>
+        <Icon name="back" size={16} />
+        Back to queue
+      </button>
       <div className="inspector-header">
         <div>
           <span className="mono inspector-id">{taskId}</span>
           <h2 className="inspector-title">{detail?.title ?? "Loading…"}</h2>
         </div>
         <button onClick={onClose} aria-label="Close inspector" className="close">
-          ✕
+          <Icon name="close" size={16} />
         </button>
       </div>
 
@@ -118,48 +145,6 @@ export function TaskInspector({
         </>
       )}
     </aside>
-  );
-}
-
-function Overview({ detail }: { detail: TaskDetail }) {
-  return (
-    <>
-      <Field label="Description">
-        <TextBlock text={detail.description} />
-      </Field>
-      <Field label="Assignees">
-        {detail.assignees.length ? detail.assignees.join(", ") : <span className="muted">Unassigned</span>}
-      </Field>
-      <Field label="Claim">
-        {detail.claimed_by ? (
-          <span className="mono">
-            {detail.claimed_by} · session {detail.claim_session_id}
-          </span>
-        ) : (
-          <span className="muted">Not claimed</span>
-        )}
-      </Field>
-      <Field label="Acceptance criteria">
-        <TextBlock text={detail.acceptance_criteria} />
-      </Field>
-      <Field label="Next steps" hideWhenEmpty>
-        {detail.next_steps ? <TextBlock text={detail.next_steps} /> : ""}
-      </Field>
-      <Field label="Blocked claims" hideWhenEmpty>
-        {detail.blocked_claims ? <TextBlock text={detail.blocked_claims} /> : ""}
-      </Field>
-      <Field label="Notes" hideWhenEmpty>
-        {detail.notes ? <TextBlock text={detail.notes} /> : ""}
-      </Field>
-      <Field label="Tags">
-        <Tags value={detail.tags} />
-      </Field>
-      <Field label="Created">
-        <span className="small">
-          {absoluteTime(detail.created_at)} by <span className="mono">{detail.created_by}</span>
-        </span>
-      </Field>
-    </>
   );
 }
 

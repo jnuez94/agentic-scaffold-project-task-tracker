@@ -10,6 +10,7 @@
 /* Navigation */
 
 .nav {
+  min-width: 0;
   background: var(--shell-950);
   border-right: 1px solid var(--line-700);
   padding: var(--space-4) var(--space-3);
@@ -137,6 +138,9 @@
 .main {
   display: grid;
   grid-template-rows: auto minmax(0, 1fr) auto;
+  /* min-width:0 is load-bearing: a grid item defaults to min-width:auto and
+     would refuse to shrink below the task table's min-content, pushing the
+     whole document wider than the viewport. */
   min-width: 0;
   background: var(--surface-900);
 }

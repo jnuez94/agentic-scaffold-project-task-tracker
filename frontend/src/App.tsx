@@ -5,6 +5,7 @@
 import { useState } from "react";
 import type { CSSProperties } from "react";
 import { ErrorBanner, LiveRegion } from "./components/Feedback.tsx";
+import { DatabaseIdentity } from "./components/DatabaseIdentity.tsx";
 import { NavSidebar } from "./components/NavSidebar.tsx";
 import { StartupBanner } from "./components/StartupBanner.tsx";
 import { ResizeHandle } from "./components/ResizeHandle.tsx";
@@ -22,8 +23,16 @@ import { TasksView } from "./views/TasksView.tsx";
 import { RECORD_CONFIGS } from "./views/recordConfigs.tsx";
 
 export function App() {
-  const { coordination, identity, setActor, setSession, announcement, bootstrap, retryBootstrap } =
-    useApp();
+  const {
+    coordination,
+    identity,
+    setActor,
+    setSession,
+    announcement,
+    announce,
+    bootstrap,
+    retryBootstrap,
+  } = useApp();
   const { route, navigate } = useHashRoute();
   const { widths, setWidth, reset } = useLayout();
   const [filter, setFilter] = useState("");
@@ -111,7 +120,7 @@ export function App() {
         </main>
 
         <footer className="statusbar small">
-          <span className="mono">{meta.data?.database ?? "resolving database…"}</span>
+          <DatabaseIdentity path={meta.data?.database} onCopied={announce} />
           <span className="muted">
             Local only · loopback · every write goes through the coordination CLI
           </span>

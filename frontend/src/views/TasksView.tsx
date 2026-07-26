@@ -35,7 +35,7 @@ export function TasksView({
   onInspectorResize: (next: number) => void;
   onInspectorReset: () => void;
 }) {
-  const { coordination } = useApp();
+  const { coordination, identity } = useApp();
   const [status, setStatus] = useState("");
   const [assignee, setAssignee] = useState("");
 
@@ -54,7 +54,10 @@ export function TasksView({
     return (id: string) => byId.get(id) ?? id;
   }, [agents]);
 
-  const columns = useMemo(() => taskColumns(nameFor), [nameFor]);
+  const columns = useMemo(
+    () => taskColumns(nameFor, { actorId: identity.actorId, sessionId: identity.sessionId }),
+    [nameFor, identity.actorId, identity.sessionId],
+  );
 
   return (
     <div
@@ -123,6 +126,8 @@ export function TasksView({
 
       {selectedId ? (
         <>
+          {/* Only painted in the overlay regimes; CSS hides it elsewhere. */}
+          <div className="inspector-scrim" onClick={() => onSelect(null)} aria-hidden="true" />
           <ResizeHandle
             label="Resize task inspector"
             value={inspectorWidth}

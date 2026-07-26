@@ -1,0 +1,143 @@
+/*
+ * Viewport behaviour for the queue and inspector.
+ *
+ * Three regimes, from ux-visual-interaction-spec.md section 7:
+ *   >=1280px  nav, queue, and inspector all visible at once
+ *   900-1279  inspector becomes an overlay side sheet above the queue
+ *   <900      list and detail are sequential
+ *
+ * The overriding rule at every width is that the document itself never scrolls
+ * horizontally. Wide content scrolls inside its own container instead.
+ */
+
+html,
+body {
+  overflow-x: hidden;
+}
+
+/* Declared before the breakpoints: a later base rule of equal specificity
+   would override the narrow-width override and leave the operator with the
+   queue hidden and no way back to it. */
+.inspector-back {
+  display: none;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
+  align-self: flex-start;
+}
+
+/* --- Compact desktop and tablet: inspector as an overlay side sheet ------ */
+
+/* The scrim is a child of the queue grid, so it must be display:none at
+   desktop or it becomes a fourth grid item and wraps the inspector onto a
+   second row. */
+.inspector-scrim {
+  display: none;
+}
+
+@media (max-width: 1279px) {
+  .inspector-scrim {
+    display: block;
+    position: fixed;
+    inset: 0;
+    background: rgba(4, 10, 17, 0.55);
+    z-index: 30;
+  }
+
+  .queue-layout.with-inspector > .inspector {
+    position: fixed;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 31;
+    width: min(var(--inspector-width), 92vw);
+    max-height: none;
+    border-radius: 0;
+    border-right: none;
+    box-shadow: var(--overlay-shadow);
+  }
+}
+
+/* --- Narrow: sequential list and detail ---------------------------------- */
+
+@media (max-width: 899px) {
+  .inspector-scrim {
+    display: none;
+  }
+
+  /* The queue is hidden rather than shrunk, so detail owns the viewport. */
+  .queue-layout.with-inspector > .queue {
+    display: none;
+  }
+
+  .queue-layout.with-inspector > .inspector {
+    position: static;
+    width: auto;
+    box-shadow: none;
+    border: 1px solid var(--line-700);
+    border-radius: var(--radius-panel);
+  }
+
+  .inspector-back {
+    display: inline-flex;
+  }
+}
+
+
+/* --- Table density --------------------------------------------------------
+ * Columns respond to the *table's own* width, not the viewport.
+ *
+ * A media query cannot do this correctly: both the nav and the inspector are
+ * user-resizable, so the space left for the queue is not a function of the
+ * viewport. A container query measures the space that actually exists.
+ *
+ * Columns drop lowest-value first, so the fields a decision needs stay on
+ * screen instead of behind a nested horizontal scrollbar.
+ */
+
+.queue,
+.records {
+  container-type: inline-size;
+  container-name: tablearea;
+}
+
+@container tablearea (max-width: 1080px) {
+  .data-table th[data-priority="9"],
+  .data-table td[data-priority="9"] {
+    display: none;
+  }
+}
+
+@container tablearea (max-width: 940px) {
+  .data-table th[data-priority="8"],
+  .data-table td[data-priority="8"] {
+    display: none;
+  }
+}
+
+@container tablearea (max-width: 820px) {
+  .data-table th[data-priority="7"],
+  .data-table td[data-priority="7"] {
+    display: none;
+  }
+}
+
+@container tablearea (max-width: 700px) {
+  .data-table th[data-priority="6"],
+  .data-table td[data-priority="6"] {
+    display: none;
+  }
+}
+
+@container tablearea (max-width: 600px) {
+  .data-table th[data-priority="5"],
+  .data-table td[data-priority="5"] {
+    display: none;
+  }
+}
+
+@container tablearea (max-width: 480px) {
+  .id-cell {
+    min-width: 0;
+  }
+}
