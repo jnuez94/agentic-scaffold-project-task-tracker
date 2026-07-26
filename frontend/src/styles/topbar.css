@@ -171,3 +171,126 @@
   margin: 0;
   max-width: 30ch;
 }
+
+/* --- Progressive disclosure at constrained height (UI-16) -----------------
+ *
+ * At a 640x360 equivalent — 200% zoom far more often than a small screen — the
+ * toolbar's controls wrap to several times their usual height. Scrolling that
+ * within its squeezed row left selects sliced horizontally at the boundary:
+ * half an "Acting as" control above the cut, half below, and no route content
+ * visible at all.
+ *
+ * So below that height the toolbar becomes one row. Broadcast, Refresh, and a
+ * plain-language identity summary stay on it; the filter and the two selectors
+ * move behind a labelled control. Accountability is not what gets hidden — the
+ * control itself names the actor and says whether a session backs them.
+ *
+ * Above that height none of this applies: the button is display:none and the
+ * panel is display:contents, so the flex row is exactly what it always was. */
+
+.topbar-disclosure {
+  display: none;
+}
+
+.topbar-panel {
+  display: contents;
+}
+
+.topbar-actions {
+  display: contents;
+}
+
+@media (max-height: 600px) {
+  .topbar {
+    flex-wrap: nowrap;
+    align-items: center;
+    gap: var(--space-2);
+    /* One row now, so there is nothing to scroll and nothing to slice. */
+    overflow: visible;
+  }
+
+  .topbar-disclosure {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    flex: 1 1 auto;
+    min-width: 0;
+    justify-content: flex-start;
+    min-height: var(--control-height-compact);
+  }
+
+  .topbar-disclosure-identity {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .topbar-actions {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    flex: 0 0 auto;
+  }
+
+  /* The reasons are already stated in the panel and beside the disabled
+     control; repeating them here would consume the row they explain. */
+  .topbar-actions .broadcast-reason,
+  .topbar-refresh span {
+    display: none;
+  }
+
+  .topbar-panel {
+    display: none;
+  }
+
+  /* Opens over the content rather than pushing it: the route keeps its height,
+     and the panel is dismissed by the same control that opened it. */
+  .topbar-panel.open {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    z-index: 20;
+    padding: var(--space-3);
+    background: var(--shell-950);
+    border-bottom: 1px solid var(--line-700);
+    box-shadow: var(--overlay-shadow);
+    max-height: 60vh;
+    overflow-y: auto;
+  }
+
+  .topbar-panel.open .topbar-identity {
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--space-3);
+  }
+
+  .topbar {
+    position: relative;
+  }
+
+  /* A wrapped navigation strip sliced its own rows at the scroll boundary the
+     same way. One row that scrolls sideways keeps every destination whole. */
+  .nav {
+    flex-wrap: nowrap;
+    max-height: none;
+    overflow-x: auto;
+    overflow-y: hidden;
+  }
+
+  .nav-brand {
+    width: auto;
+    flex: 0 0 auto;
+  }
+
+  .nav-group ul {
+    flex-wrap: nowrap;
+  }
+
+  .nav-link {
+    white-space: nowrap;
+  }
+}
