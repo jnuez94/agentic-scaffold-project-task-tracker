@@ -5,7 +5,12 @@
   top: 0;
   display: flex;
   flex-direction: column;
-  max-height: calc(100% - var(--space-2));
+  /* Bounded by what is visible, not by the scrolling content it sits in.
+     `100%` here resolves against the full scroll height — hundreds of rows tall
+     — so the inspector grew well past the bottom of the screen and its footer
+     actions became unreachable. --scrollport-height is .content's own measured
+     height (App.tsx); the subtraction removes that element's padding. */
+  max-height: calc(var(--scrollport-height, 100%) - var(--space-4) * 2 - var(--space-2));
   background: var(--surface-850);
   border: 1px solid var(--line-700);
   border-radius: var(--radius-panel);

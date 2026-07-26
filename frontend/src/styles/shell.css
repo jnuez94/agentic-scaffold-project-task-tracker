@@ -148,7 +148,18 @@
 
 .main {
   display: grid;
-  grid-template-rows: auto minmax(0, 1fr) auto;
+  /* The content row is guaranteed a floor, and the toolbar row may be squeezed
+     below its natural height to honour it.
+   *
+   * With a plain `auto` first row the toolbar took whatever it wanted: at 200%
+   * zoom its controls wrap to several times their usual height, which sized the
+   * row at 345px inside a 211px column, collapsed the content row to exactly
+   * 0px, and pushed the status bar off the bottom of the screen. The operator
+   * got a screen of toolbar and no content at all.
+   *
+   * The toolbar scrolls internally when squeezed (see .topbar), which is the
+   * right trade: a cramped but reachable toolbar beats invisible content. */
+  grid-template-rows: minmax(0, auto) minmax(96px, 1fr) auto;
   /* Both are load-bearing. A grid item defaults to min-width/min-height auto
      and refuses to shrink below its content, so without these the shell's row
      grows to the full content height, the document scrolls behind a shell that

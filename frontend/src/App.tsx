@@ -2,7 +2,7 @@
  * The application shell: navigation, identity, and the routed view.
  */
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import type { CSSProperties } from "react";
 import { ErrorBanner, LiveRegion } from "./components/Feedback.tsx";
 import { DatabaseIdentity } from "./components/DatabaseIdentity.tsx";
@@ -16,6 +16,7 @@ import { BOUNDS } from "./state/layoutStore.ts";
 import { useHashRoute } from "./state/useHashRoute.ts";
 import { useLayout } from "./state/useLayout.ts";
 import { useBroadcastLauncher } from "./state/useBroadcastLauncher.ts";
+import { useMeasuredHeight } from "./state/useMeasuredHeight.ts";
 import { useResource } from "./state/useResource.ts";
 import { AuditView } from "./views/AuditView.tsx";
 import { ExportView } from "./views/ExportView.tsx";
@@ -44,6 +45,9 @@ export function App() {
   const layout = useLayout();
   const { widths, setWidth, reset } = layout;
   const [filter, setFilter] = useState("");
+
+  const contentRef = useRef<HTMLDivElement>(null);
+  const scrollportHeight = useMeasuredHeight(contentRef);
 
   const meta = useResource(() => coordination.meta(), []);
   const agents = useResource(() => coordination.agents({ all: "1", limit: 500 }), []);
@@ -109,7 +113,19 @@ export function App() {
           busy={agents.loading || session.loading}
         />
 
-        <main className="content" id="content" inert={broadcast.open}>
+        {/* The scrollport's own height, published for the sticky inspectors.
+            They must not grow past what is visible, and neither `100%` nor
+            `100vh` says that: `100%` resolves against the scrolling content,
+            which is far taller, and `100vh` counts chrome this region does not
+            occupy. Measuring is the only expression of "as tall as what the
+            operator can actually see". */}
+        <main
+          className="content"
+          id="content"
+          ref={contentRef}
+          style={{ "--scrollport-height": `${scrollportHeight}px` } as CSSProperties}
+          inert={broadcast.open}
+        >
           <StartupBanner phase={bootstrap} onRetry={retryBootstrap} />
 
           {meta.error ? <ErrorBanner error={meta.error} onRetry={meta.refresh} /> : null}
@@ -142,7 +158,7 @@ export function App() {
 
         <footer className="statusbar small">
           <DatabaseIdentity path={meta.data?.database} onCopied={announce} />
-          <span className="muted">
+          <span className="muted statusbar-note">
             Local only · loopback · every write goes through the coordination CLI
           </span>
         </footer>
