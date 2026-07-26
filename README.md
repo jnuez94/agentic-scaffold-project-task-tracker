@@ -108,7 +108,14 @@ coordination_ui/
   readonly/    query_only SQLite for the audit log and dashboard counts
   api/         route table; one handler per documented CLI command
   web/         loopback HTTP server, security policy, static serving
+  static/      the built frontend bundle (committed)
   launcher.py  startup orchestration
+frontend/
+  src/api/     typed client and the row types mirrored from the contract
+  src/lib/     transition rules, labels, formatting, filtering
+  src/state/   identity, hash routing, resource loading
+  src/views/   task queue, inspector, entity browsers, health, audit, export
+  src/styles/  Flowline design tokens and per-concern stylesheets
 ```
 
 One class per file, every file under 200 lines, every class and function under
@@ -137,13 +144,34 @@ still runs in a checkout without the scaffold.
 - [`.documents/ux-data-shape-and-workflow-spec.md`](.documents/ux-data-shape-and-workflow-spec.md)
   — data shapes and workflows behind that direction.
 
-## Status
+## The frontend
 
-The backend is complete and tested. The React/TypeScript frontend (`UI-2`) is
-specified and architecturally reviewed but not yet implemented;
-`coordination_ui/static/` currently holds a placeholder. Until it lands, the
-JSON API is usable directly:
+A React 19 + TypeScript console, bundled by Vite into `coordination_ui/static/`
+and committed, so a clean checkout runs with Python alone.
+
+Working on it needs Node:
 
 ```bash
-curl -s http://127.0.0.1:8787/api/tasks | python3 -m json.tool
+cd frontend && npm install && npm run dev
 ```
+
+`npm run dev` serves on :5173 and proxies `/api` to the Python server on :8787,
+so you get hot reload against a real database. `npm run build` regenerates the
+committed bundle — do that whenever frontend sources change.
+
+```bash
+cd frontend && npm test
+```
+
+62 unit tests over the API client, error mapping, transition rules, labels, and
+identity storage.
+
+Three things the UI deliberately does *not* do, because the CLI cannot back
+them honestly:
+
+- it reports "N loaded", never "N of M" — list results carry no total count;
+- its filter box says "Filter loaded rows", not "Search";
+- it has no per-task Messages tab — `message list` filters by recipient only.
+
+The audit view is the exception: it shows a real total, because that read
+computes an unpaged `COUNT` alongside the page.
