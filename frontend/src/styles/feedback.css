@@ -1,0 +1,185 @@
+/* Errors, empty states, conflicts, forms, timeline, health, export. */
+
+/* Feedback */
+
+.empty-state {
+  padding: var(--space-8) var(--space-4);
+  text-align: center;
+  border: 1px dashed var(--line-700);
+  border-radius: var(--radius-panel);
+}
+
+.empty-title {
+  font: var(--body-strong);
+  margin-bottom: var(--space-1);
+}
+
+.error-banner,
+.conflict {
+  display: flex;
+  gap: var(--space-3);
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: var(--space-3);
+  border-radius: var(--radius-input);
+  margin-bottom: var(--space-3);
+}
+
+.error-banner {
+  background: var(--tint-coral);
+  border: 1px solid rgba(255, 100, 112, 0.45);
+}
+
+.error-message {
+  font: var(--body-strong);
+  margin: 0 0 2px;
+}
+
+.error-code {
+  margin: var(--space-1) 0 0;
+  color: var(--coral-400);
+}
+
+.error-banner p,
+.conflict p {
+  margin: 0;
+}
+
+.error-actions {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.conflict {
+  background: var(--tint-amber);
+  border: 1px solid rgba(242, 184, 75, 0.45);
+}
+
+.conflict-title {
+  font: var(--body-strong);
+  color: var(--amber-400);
+}
+
+.inline-form {
+  border: 1px solid var(--line-700);
+  border-radius: var(--radius-input);
+  padding: var(--space-3);
+  background: var(--surface-900);
+}
+
+.inline-form h3 {
+  margin-bottom: var(--space-2);
+}
+
+.inline-form .control {
+  margin-bottom: var(--space-2);
+}
+
+.form-actions {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.skeleton-row {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.skeleton-cell {
+  height: 14px;
+  flex: 1;
+  border-radius: var(--radius-tag);
+  background: var(--surface-800);
+}
+
+/* Timeline */
+
+.timeline {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.timeline li {
+  display: flex;
+  gap: var(--space-3);
+}
+
+.timeline-dot {
+  width: 8px;
+  height: 8px;
+  margin-top: 6px;
+  border-radius: 50%;
+  background: var(--violet-400);
+  flex: none;
+}
+
+.audit-timeline li {
+  border-bottom: 1px solid rgba(41, 64, 84, 0.4);
+  padding-bottom: var(--space-3);
+}
+
+/* Health */
+
+.health-banner {
+  display: flex;
+  gap: var(--space-3);
+  align-items: center;
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-panel);
+  margin-bottom: var(--space-4);
+}
+
+.health-banner.healthy {
+  background: var(--tint-mint);
+  border: 1px solid rgba(61, 220, 151, 0.4);
+}
+
+.health-banner.unhealthy {
+  background: var(--tint-amber);
+  border: 1px solid rgba(242, 184, 75, 0.4);
+}
+
+.health-glyph {
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.health-title {
+  font: var(--body-strong);
+  margin: 0;
+}
+
+.health-section {
+  margin-bottom: var(--space-6);
+}
+
+.health-section h2 {
+  font: var(--heading-md);
+}
+
+.health-section .count {
+  font: var(--code-sm);
+  color: var(--text-400);
+}
+
+.report {
+  background: var(--surface-850);
+  border: 1px solid var(--line-700);
+  border-radius: var(--radius-panel);
+  padding: var(--space-4);
+  overflow-x: auto;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font: var(--code-sm);
+  color: var(--text-200);
+}

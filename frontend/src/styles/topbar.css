@@ -1,0 +1,96 @@
+/* Top bar, content area, and status bar. */
+
+.topbar {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--space-4);
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--line-700);
+  background: var(--shell-950);
+  flex-wrap: wrap;
+}
+
+.topbar-filter {
+  position: relative;
+  flex: 1 1 320px;
+  min-width: 220px;
+}
+
+.topbar-filter input {
+  padding-left: 34px;
+}
+
+.topbar-glyph {
+  position: absolute;
+  left: 11px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-400);
+}
+
+.topbar-identity {
+  display: flex;
+  gap: var(--space-3);
+  align-items: flex-end;
+  flex-wrap: wrap;
+}
+
+.topbar-refresh {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.control {
+  min-width: 160px;
+}
+
+.content {
+  overflow: auto;
+  padding: var(--space-4);
+  min-height: 0;
+}
+
+.view-header {
+  margin-bottom: var(--space-4);
+}
+
+.view-header p {
+  margin: var(--space-1) 0 0;
+  max-width: 78ch;
+}
+
+.statusbar {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding: var(--space-2) var(--space-4);
+  border-top: 1px solid var(--line-700);
+  background: var(--shell-950);
+  color: var(--text-400);
+  flex-wrap: wrap;
+}
+
+@media (max-width: 899px) {
+  .shell {
+    grid-template-columns: 1fr;
+  }
+
+  .nav {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    border-right: none;
+    border-bottom: 1px solid var(--line-700);
+  }
+
+  .nav-footer,
+  .nav-group-title {
+    display: none;
+  }
+
+  .nav-group ul {
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+}

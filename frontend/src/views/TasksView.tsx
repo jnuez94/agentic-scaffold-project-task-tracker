@@ -8,10 +8,11 @@ import { TASK_STATUSES } from "../api/contract.ts";
 import { DataTable, type Column } from "../components/DataTable.tsx";
 import { ErrorBanner } from "../components/Feedback.tsx";
 import { IdCell } from "../components/Fields.tsx";
+import { Owners } from "../components/Owners.tsx";
 import { PriorityTag, StatusPill, TagList } from "../components/Pill.tsx";
 import { relativeTime } from "../lib/format.ts";
 import { filterRows } from "../lib/filters.ts";
-import { initials, splitTags } from "../lib/labels.ts";
+import { splitTags } from "../lib/labels.ts";
 import { useApp } from "../state/AppContext.tsx";
 import { useResource } from "../state/useResource.ts";
 import { TaskInspector } from "./TaskInspector.tsx";
@@ -172,29 +173,6 @@ export function TasksView({
           onClose={() => onSelect(null)}
           onChanged={tasks.refresh}
         />
-      ) : null}
-    </div>
-  );
-}
-
-function Owners({ task, nameFor }: { task: TaskListRow; nameFor: (id: string) => string }) {
-  if (task.assignees.length === 0 && !task.claimed_by) {
-    return <span className="muted small">Unassigned</span>;
-  }
-  return (
-    <div className="owners">
-      {task.assignees.map((id) => (
-        <span className="owner" key={id} title={`Assignee: ${id}`}>
-          <span className="avatar" aria-hidden="true">
-            {initials(nameFor(id))}
-          </span>
-          <span className="small">{nameFor(id)}</span>
-        </span>
-      ))}
-      {task.claimed_by ? (
-        <span className="claim-badge" title={`Claim session: ${task.claim_session_id ?? "unknown"}`}>
-          Claimed by {nameFor(task.claimed_by)}
-        </span>
       ) : null}
     </div>
   );
