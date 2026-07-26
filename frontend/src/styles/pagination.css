@@ -1,0 +1,55 @@
+/* Table pager. */
+
+/* Pager */
+
+.pagination {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  border-top: 1px solid var(--line-700);
+  background: var(--surface-850);
+}
+
+.pagination-range {
+  margin: 0;
+}
+
+.pagination-truncated {
+  margin: 0;
+  color: var(--amber-400);
+  flex-basis: 100%;
+  order: 3;
+}
+
+.pagination-controls {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-left: auto;
+  flex-wrap: wrap;
+}
+
+.pagination-position {
+  color: var(--text-200);
+  white-space: nowrap;
+  padding: 0 var(--space-1);
+}
+
+select.page-size {
+  width: auto;
+  min-height: 30px;
+  padding: 0 var(--space-2);
+}
+
+.pagination button {
+  min-height: 30px;
+  padding: 0 var(--space-2);
+}
+
+@media (max-width: 899px) {
+  .pagination-controls {
+    margin-left: 0;
+  }
+}

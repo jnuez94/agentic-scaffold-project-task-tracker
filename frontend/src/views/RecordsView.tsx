@@ -6,10 +6,13 @@ import { useMemo, useState } from "react";
 import { DataTable } from "../components/DataTable.tsx";
 import { ErrorBanner } from "../components/Feedback.tsx";
 import { filterRows } from "../lib/filters.ts";
+import { isTruncated } from "../lib/pagination.ts";
 import { useApp } from "../state/AppContext.tsx";
 import { useResource } from "../state/useResource.ts";
 import type { RouteName } from "../state/useHashRoute.ts";
 import { RECORD_CONFIGS } from "./recordConfigs.tsx";
+
+const REQUEST_LIMIT = 500;
 
 export function RecordsView<T = Record<string, unknown>>({
   route,
@@ -32,7 +35,7 @@ export function RecordsView<T = Record<string, unknown>>({
 
   const statusParam = config?.statusOptions?.param;
   const query = useMemo(() => {
-    const built: Record<string, string> = { limit: "500" };
+    const built: Record<string, string> = { limit: String(REQUEST_LIMIT) };
     if (statusParam && statusValue) built[statusParam] = statusValue;
     return built;
   }, [statusParam, statusValue]);
@@ -75,9 +78,6 @@ export function RecordsView<T = Record<string, unknown>>({
             </select>
           </div>
         ) : null}
-        <p className="queue-count small muted" aria-live="polite">
-          {rows.length} loaded{filter ? " (filtered)" : ""}
-        </p>
       </div>
 
       {records.error ? <ErrorBanner error={records.error} onRetry={records.refresh} /> : null}
@@ -88,6 +88,9 @@ export function RecordsView<T = Record<string, unknown>>({
         rowKey={(row) => String((row as Record<string, unknown>)["id"])}
         caption={config.title}
         defaultOrder={config.defaultOrder}
+        idPrefix={route}
+        filtered={Boolean(filter)}
+        truncated={isTruncated(((records.data ?? []) as unknown[]).length, REQUEST_LIMIT)}
         loading={records.loading}
         loaded={records.loaded}
         selectedKey={selectedKey ?? null}

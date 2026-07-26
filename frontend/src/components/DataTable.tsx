@@ -7,15 +7,17 @@
  * keyboard and announced.
  */
 
-import { useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { EmptyState, SkeletonRows } from "./Feedback.tsx";
+import { Pagination } from "./Pagination.tsx";
+import { SortableHead } from "./SortableHead.tsx";
 import {
-  ariaSortFor,
-  nextSortState,
-  sortRows,
-  type SortState,
-  type SortValue,
-} from "../lib/sorting.ts";
+  clampPage,
+  DEFAULT_PAGE_SIZE,
+  pageSlice,
+  type PageSize,
+} from "../lib/pagination.ts";
+import { nextSortState, sortRows, type SortState, type SortValue } from "../lib/sorting.ts";
 
 export interface Column<T> {
   key: string;
@@ -42,9 +44,15 @@ export interface DataTableProps<T> {
   onSelect?: (row: T) => void;
   /** Describes the server-side order restored when sorting is cleared. */
   defaultOrder?: string;
+  /** Set false for short fixed lists that never need a pager. */
+  paginate?: boolean;
+  /** True when the loaded window hit the request limit. */
+  truncated?: boolean;
+  /** Whether a loaded-row filter is currently narrowing the set. */
+  filtered?: boolean;
+  /** Disambiguates pager control ids when tables share a document. */
+  idPrefix?: string;
 }
-
-const INDICATORS = { ascending: "▲", descending: "▼", none: "↕" } as const;
 
 export function DataTable<T>({
   rows,
@@ -58,8 +66,14 @@ export function DataTable<T>({
   selectedKey,
   onSelect,
   defaultOrder,
+  paginate = true,
+  truncated = false,
+  filtered = false,
+  idPrefix = "table",
 }: DataTableProps<T>) {
   const [sort, setSort] = useState<SortState | null>(null);
+  const [page, setPage] = useState(1);
+  const [size, setSize] = useState<PageSize>(DEFAULT_PAGE_SIZE);
 
   const sorted = useMemo(() => {
     if (!sort) return rows;
@@ -67,6 +81,13 @@ export function DataTable<T>({
     if (!column?.sortValue) return rows;
     return sortRows(rows, column.sortValue, sort.direction);
   }, [rows, columns, sort]);
+
+  // Filtering or sorting can shrink the set under the current page.
+  useEffect(() => {
+    setPage((current) => clampPage(current, sorted.length, size));
+  }, [sorted.length, size]);
+
+  const visible = paginate ? pageSlice(sorted, page, size) : sorted;
 
   if (!loaded && loading) {
     return <SkeletonRows rows={6} columns={columns.length} />;
@@ -86,41 +107,14 @@ export function DataTable<T>({
               ? `, in ${defaultOrder}`
               : ""}
         </caption>
-        <thead>
-          <tr>
-            {columns.map((column) => {
-              const state = ariaSortFor(sort, column.key);
-              return (
-                <th
-                  key={column.key}
-                  scope="col"
-                  style={column.width ? { width: column.width } : undefined}
-                  className={column.align === "end" ? "align-end" : undefined}
-                  data-priority={column.priority ?? 0}
-                  aria-sort={column.sortValue ? state : undefined}
-                >
-                  {column.sortValue ? (
-                    <button
-                      type="button"
-                      className={state === "none" ? "sort-button" : "sort-button active"}
-                      onClick={() => setSort((current) => nextSortState(current, column.key))}
-                      title={hintFor(state, column.header, defaultOrder)}
-                    >
-                      {column.header}
-                      <span className="sort-indicator" aria-hidden="true">
-                        {INDICATORS[state]}
-                      </span>
-                    </button>
-                  ) : (
-                    column.header
-                  )}
-                </th>
-              );
-            })}
-          </tr>
-        </thead>
+        <SortableHead
+          columns={columns}
+          sort={sort}
+          defaultOrder={defaultOrder}
+          onSort={(key) => setSort((current) => nextSortState(current, key))}
+        />
         <tbody>
-          {sorted.map((row) => {
+          {visible.map((row) => {
             const key = rowKey(row);
             const selected = selectedKey === key;
             return (
@@ -155,21 +149,25 @@ export function DataTable<T>({
           })}
         </tbody>
       </table>
+      {paginate ? (
+        <Pagination
+          page={clampPage(page, sorted.length, size)}
+          size={size}
+          total={sorted.length}
+          filtered={filtered}
+          truncated={truncated}
+          onPage={setPage}
+          onSize={(next) => {
+            setSize(next);
+            setPage(1);
+          }}
+          idPrefix={idPrefix}
+        />
+      ) : null}
     </div>
   );
 }
 
 function labelFor<T>(columns: Column<T>[], key: string): string {
   return columns.find((column) => column.key === key)?.header ?? key;
-}
-
-function hintFor(
-  state: "ascending" | "descending" | "none",
-  header: string,
-  defaultOrder: string | undefined,
-): string {
-  const restore = defaultOrder ? ` (${defaultOrder})` : "";
-  if (state === "none") return `Sort loaded rows by ${header}, ascending`;
-  if (state === "ascending") return `Sort loaded rows by ${header}, descending`;
-  return `Clear sorting and restore the default order${restore}`;
 }

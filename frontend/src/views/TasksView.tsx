@@ -10,12 +10,15 @@ import { TASK_STATUSES } from "../api/contract.ts";
 import { ErrorBanner } from "../components/Feedback.tsx";
 import { ResizeHandle } from "../components/ResizeHandle.tsx";
 import { filterRows } from "../lib/filters.ts";
+import { isTruncated } from "../lib/pagination.ts";
 import { useApp } from "../state/AppContext.tsx";
 import { BOUNDS } from "../state/layoutStore.ts";
 import type { Layout } from "../state/useLayout.ts";
 import { useResource } from "../state/useResource.ts";
 import { TaskInspector } from "./TaskInspector.tsx";
 import { TASK_DEFAULT_ORDER, taskColumns } from "./taskColumns.tsx";
+
+const REQUEST_LIMIT = 500;
 
 const FILTER_FIELDS = ["id", "title", "description", "tags", "assignees", "claimed_by"];
 
@@ -38,7 +41,11 @@ export function TasksView({
   const [assignee, setAssignee] = useState("");
 
   const tasks = useResource(
-    () => coordination.tasks({ status: status || undefined, assignee: assignee || undefined, limit: 500 }),
+    () => coordination.tasks({
+        status: status || undefined,
+        assignee: assignee || undefined,
+        limit: REQUEST_LIMIT,
+      }),
     [status, assignee],
   );
 
@@ -96,11 +103,6 @@ export function TasksView({
               ))}
             </select>
           </div>
-          <p className="queue-count small muted" aria-live="polite">
-            {/* No total is claimed: list results carry no count in the contract. */}
-            {rows.length} {rows.length === 1 ? "task" : "tasks"} loaded
-            {filter ? " (filtered)" : ""}
-          </p>
         </div>
 
         {tasks.error ? <ErrorBanner error={tasks.error} onRetry={tasks.refresh} /> : null}
@@ -111,6 +113,9 @@ export function TasksView({
           rowKey={(task) => task.id}
           caption="Coordination tasks"
           defaultOrder={TASK_DEFAULT_ORDER}
+          idPrefix="tasks"
+          filtered={Boolean(filter)}
+          truncated={isTruncated((tasks.data ?? []).length, REQUEST_LIMIT)}
           loading={tasks.loading}
           loaded={tasks.loaded}
           selectedKey={selectedId}

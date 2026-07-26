@@ -8,6 +8,7 @@ import "./styles/base.css";
 import "./styles/shell.css";
 import "./styles/topbar.css";
 import "./styles/table.css";
+import "./styles/pagination.css";
 import "./styles/pills.css";
 import "./styles/inspector.css";
 import "./styles/feedback.css";

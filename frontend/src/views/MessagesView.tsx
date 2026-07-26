@@ -17,6 +17,7 @@ import { ErrorBanner, SkeletonRows } from "../components/Feedback.tsx";
 import { ResizeHandle } from "../components/ResizeHandle.tsx";
 import { loadedCountLabel } from "../lib/conversation.ts";
 import { filterRows } from "../lib/filters.ts";
+import { isTruncated } from "../lib/pagination.ts";
 import { useApp } from "../state/AppContext.tsx";
 import { BOUNDS } from "../state/layoutStore.ts";
 import type { Layout } from "../state/useLayout.ts";
@@ -25,6 +26,8 @@ import { useMessageView } from "../state/useMessageView.ts";
 import { ConversationView } from "./ConversationView.tsx";
 import { MessageInspector } from "./MessageInspector.tsx";
 import { RECORD_CONFIGS } from "./recordConfigs.tsx";
+
+const REQUEST_LIMIT = 500;
 
 export function MessagesView({
   filter,
@@ -45,7 +48,7 @@ export function MessagesView({
 
   const config = RECORD_CONFIGS.messages;
   const resource = useResource(
-    () => coordination.messages({ limit: 500 }),
+    () => coordination.messages({ limit: REQUEST_LIMIT }),
     [coordination, reloadKey],
   );
 
@@ -123,6 +126,9 @@ export function MessagesView({
               rowKey={(row) => String((row as Record<string, unknown>)["id"])}
               caption="Coordination messages"
               defaultOrder={config.defaultOrder}
+              idPrefix="messages"
+              filtered={Boolean(filter)}
+              truncated={isTruncated((resource.data ?? []).length, REQUEST_LIMIT)}
               loaded={resource.loaded}
               loading={resource.loading}
               selectedKey={selected?.id ?? null}
