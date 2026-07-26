@@ -86,6 +86,43 @@ The selected actor and active session must be visible wherever a mutation is
 submitted. The UI must prevent an obviously mismatched actor/session pair while
 still treating the CLI as final authority.
 
+### 2.4 Automatic local human actor bootstrap
+
+Application startup must guarantee that the coordination system contains a
+stable local human actor suitable for an accountable operator:
+
+```text
+id: local-operator
+name: Local Operator
+role: Human Operator
+actor_type: human
+status: active
+```
+
+Startup behavior:
+
+1. Load all agents, including inactive agents.
+2. If `local-operator` does not exist, create it through the CLI-backed agent API
+   with `actor_type: human`. Never write it directly to SQLite.
+3. If the exact active human actor already exists, treat startup as an
+   idempotent replay and continue without creating another record.
+4. If the ID exists with a different actor type, or exists as inactive and
+   cannot safely be reactivated, stop mutation setup and show a resolvable
+   identity conflict. Do not silently rewrite authority-bearing identity data.
+5. Select the actor as the default local operator. Start or select a matching
+   active application session before enabling claim/release actions.
+6. Keep the actor and session visible in the application shell and beside every
+   consequential mutation.
+
+The automatically registered actor is a local accountability default, not
+authentication and not proof of the physical user's legal identity. The UI
+must say `Local Operator`, not `You`, unless the user explicitly personalizes
+the profile.
+
+The startup flow needs loading, created, existing, conflict, CLI unavailable,
+and retry states. The main work queue must not flash enabled mutation controls
+before identity bootstrap is resolved.
+
 ## 3. Entity inventory and presentation requirements
 
 ### 3.1 Agents
@@ -453,6 +490,12 @@ Whichever direction is selected must:
     and responsive layout review.
 12. Live UI fixtures are derived from API shapes; mockup text is never treated
     as authoritative project state.
+13. A clean project launch creates exactly one active `local-operator` human
+    actor through the CLI-backed API; subsequent launches do not duplicate it.
+14. An incompatible pre-existing `local-operator` record produces an explicit,
+    non-destructive setup conflict.
+15. Claim/release controls remain unavailable until a matching active operator
+    session exists.
 
 ## 8. Authority boundaries
 
@@ -464,4 +507,3 @@ the current schema and CLI. It does not authorize:
 - backup, restore, or destructive filesystem operations in the browser;
 - production deployment or release;
 - treating a visual concept as usability validation.
-
