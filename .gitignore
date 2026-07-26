@@ -8,3 +8,6 @@
 # Python bytecode
 __pycache__/
 *.py[cod]
+
+# Frontend toolchain
+frontend/node_modules/
