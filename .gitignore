@@ -4,3 +4,7 @@
 .coordination/**/*.sqlite3*
 .coordination/backups/
 # /agentic-project-scaffold-lite sqlite state
+
+# Python bytecode
+__pycache__/
+*.py[cod]
