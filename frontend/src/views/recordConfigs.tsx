@@ -28,6 +28,23 @@ export interface RecordConfig {
 
 const time = (value: string) => <span className="small">{relativeTime(value)}</span>;
 
+/**
+ * Read a list-valued field without assuming it is there.
+ *
+ * The casts in this registry describe the entity a column *belongs* to, and the
+ * compiler cannot check that the row it receives is that entity. When the two
+ * disagreed — Decision rows reaching the Artifacts columns during a route
+ * change — a bare `(row[key] as string[]).join()` threw and took the whole
+ * console down with it.
+ *
+ * The route key in App.tsx is what stops the mismatch happening. This is the
+ * belt to that pair of braces: a column should degrade to an em dash rather
+ * than unmount the application, whatever row it is handed.
+ */
+function list(value: unknown): string[] {
+  return Array.isArray(value) ? (value as string[]) : [];
+}
+
 // Cast helper: DataTable is generic, the registry is heterogeneous.
 function columns<T>(list: Column<T>[]): Column<never>[] {
   return list as unknown as Column<never>[];
@@ -161,7 +178,7 @@ export const RECORD_CONFIGS: Partial<Record<RouteName, RecordConfig>> = {
       { key: "status", header: "Status", priority: 2, render: (r) => <EnumPill value={String(r["status"])} />, sortValue: (r) => String(r["status"]), },
       { key: "uri", header: "URI", priority: 3, render: (r) => <span className="small mono">{String(r["uri"])}</span>, sortValue: (r) => String(r["uri"]), },
       { key: "owner", header: "Owner", priority: 4, render: (r) => <Mono>{String(r["owner_id"])}</Mono>, sortValue: (r) => String(r["owner_id"]), },
-      { key: "tasks", header: "Tasks", priority: 6, render: (r) => <Mono>{(r["related_tasks"] as string[]).join(", ") || "—"}</Mono>, sortValue: (r) => (r["related_tasks"] as string[]).length, },
+      { key: "tasks", header: "Tasks", priority: 6, render: (r) => <Mono>{list(r["related_tasks"]).join(", ") || "—"}</Mono>, sortValue: (r) => list(r["related_tasks"]).length, },
     ]),
   },
 
