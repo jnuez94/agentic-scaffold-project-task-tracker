@@ -10,6 +10,7 @@ import { useEffect, useRef } from "react";
 import type { Message } from "../api/contract.ts";
 import { EmptyState } from "../components/Feedback.tsx";
 import { groupByDay, isOwnMessage } from "../lib/conversation.ts";
+import { distanceFromBottom, getScrollParent } from "../lib/scrollParent.ts";
 import { absoluteTime, relativeTime } from "../lib/format.ts";
 import { initials, splitTags } from "../lib/labels.ts";
 
@@ -30,23 +31,28 @@ export function ConversationView({
   onSelect: (message: Message, element: HTMLElement) => void;
   filtered: boolean;
 }) {
-  const scroller = useRef<HTMLDivElement>(null);
+  const root = useRef<HTMLDivElement>(null);
   const wasNearBottom = useRef(true);
+
+  // The transcript has no scroller of its own; the surrounding content region
+  // scrolls, so anchoring has to track that ancestor.
+  useEffect(() => {
+    const scroller = getScrollParent(root.current);
+    if (!scroller) return;
+    const onScroll = () => {
+      wasNearBottom.current = distanceFromBottom(scroller) <= NEAR_BOTTOM_PX;
+    };
+    scroller.addEventListener("scroll", onScroll, { passive: true });
+    return () => scroller.removeEventListener("scroll", onScroll);
+  }, []);
 
   // Criterion 11: a refresh only jumps to the newest message when the operator
   // was already reading the newest ones. Otherwise their place is left alone.
   useEffect(() => {
-    const element = scroller.current;
-    if (!element) return;
-    if (wasNearBottom.current) element.scrollTop = element.scrollHeight;
+    const scroller = getScrollParent(root.current);
+    if (!scroller) return;
+    if (wasNearBottom.current) scroller.scrollTop = scroller.scrollHeight;
   }, [messages]);
-
-  const onScroll = () => {
-    const element = scroller.current;
-    if (!element) return;
-    const distance = element.scrollHeight - element.scrollTop - element.clientHeight;
-    wasNearBottom.current = distance <= NEAR_BOTTOM_PX;
-  };
 
   if (messages.length === 0) {
     return (
@@ -64,7 +70,7 @@ export function ConversationView({
   const groups = groupByDay(messages);
 
   return (
-    <div className="conversation" ref={scroller} onScroll={onScroll}>
+    <div className="conversation" ref={root}>
       {groups.map((group) => (
         <section key={group.key} className="day-group" aria-label={group.label}>
           <h3 className="day-heading">

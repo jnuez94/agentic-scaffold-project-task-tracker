@@ -27,10 +27,18 @@
   font-weight: 600;
 }
 
+/* No scroller of its own: the main content region scrolls. A second scrollbar
+   in the same column makes the wheel target ambiguous and strands the day
+   headings' sticky positioning against the wrong ancestor.
+ *
+ * `clip` rather than `hidden`, and the distinction is the whole point: when one
+ * axis is `hidden` and the other is `visible`, CSS promotes the visible axis to
+ * `auto`, so `overflow-x: hidden` quietly made this a vertical scroll container
+ * and the day headings stuck to *it* instead of the scrolling content region —
+ * they scrolled away rather than pinning. `clip` and `visible` do not promote
+ * each other, so this clips horizontally without becoming a scroll container. */
 .conversation {
-  max-height: calc(100vh - 300px);
-  overflow-y: auto;
-  overflow-x: hidden;
+  overflow-x: clip;
   min-width: 0;
 }
 
@@ -152,10 +160,6 @@
 }
 
 @media (max-width: 899px) {
-  .conversation {
-    max-height: none;
-  }
-
   .entry-button {
     grid-template-columns: auto minmax(0, 1fr);
   }
