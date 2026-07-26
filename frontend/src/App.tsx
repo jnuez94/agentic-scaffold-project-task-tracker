@@ -2,7 +2,7 @@
  * The application shell: navigation, identity, and the routed view.
  */
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { CSSProperties } from "react";
 import { ErrorBanner, LiveRegion } from "./components/Feedback.tsx";
 import { DatabaseIdentity } from "./components/DatabaseIdentity.tsx";
@@ -55,6 +55,19 @@ export function App() {
     () => coordination.agents({ all: "1", limit: 500 }),
     [],
   );
+
+  // Bootstrap creates the operator *after* this list is fetched, so on a clean
+  // launch the list cannot contain it. Left stale, the actor selector rendered
+  // with no options at all and Broadcast told the operator to "select an actor
+  // in the header" — from a list with nothing in it. Refetched once when
+  // bootstrap settles, never in a loop.
+  const bootstrapSettled = useRef(false);
+  const refreshAgents = agents.refresh;
+  useEffect(() => {
+    if (bootstrap.kind !== "ready" || bootstrapSettled.current) return;
+    bootstrapSettled.current = true;
+    refreshAgents();
+  }, [bootstrap.kind, refreshAgents]);
 
   const agentList = agents.data ?? [];
   const actor = agentList.find((agent) => agent.id === identity.actorId);

@@ -91,13 +91,26 @@ export function findReusableSession(
 /**
  * A session id that satisfies the contract's identifier grammar: leading
  * alphanumeric, then letters, digits, and `.\_:@+-` only.
+ *
+ * The suffix is not decoration. The stamp has one-second precision, so two
+ * consoles launched in the same second built the same id and the second one
+ * failed with `constraint_violation`. Bounded entropy makes that collision
+ * unlikely rather than certain; `constraint_violation` is still handled, since
+ * unlikely is not never.
+ *
+ * Kept short and lowercase base36 so the id stays readable in an audit trail —
+ * these appear in evidence and in messages, and an operator has to be able to
+ * recognise one.
  */
-export function newSessionId(now: Date = new Date()): string {
+export function newSessionId(now: Date = new Date(), entropy: () => number = Math.random): string {
   const pad = (value: number) => String(value).padStart(2, "0");
   const stamp =
     `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}` +
     `-${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`;
-  return `console-${stamp}`;
+  const suffix = Math.floor(entropy() * 36 ** 4)
+    .toString(36)
+    .padStart(4, "0");
+  return `console-${stamp}-${suffix}`;
 }
 
 /** The payload used to create the operator through the CLI-backed API. */

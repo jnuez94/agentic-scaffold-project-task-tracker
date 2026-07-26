@@ -65,8 +65,32 @@ export function useBootstrap(
 
         let actorCreated = false;
         if (check.kind === "missing") {
-          await coordination.createAgent(createOperatorRequest());
-          actorCreated = true;
+          try {
+            await coordination.createAgent(createOperatorRequest());
+            actorCreated = true;
+          } catch (caught) {
+            // Two consoles launched together both saw the actor missing, and
+            // the loser of that race used to fall into a generic "unavailable"
+            // even though the winner had just created the record it wanted.
+            //
+            // `constraint_violation` is the contract's duplicate-id code, and
+            // it is the only failure recovered here: anything else is a real
+            // problem and must stay visible.
+            if (!isDuplicate(caught)) throw caught;
+
+            // Exactly one re-read, and the record still has to pass every
+            // compatibility check. A duplicate id proves something occupies the
+            // name, not that it is the actor we would have created.
+            const reread = await coordination.agents({ all: "1", limit: 500 });
+            if (cancelled) return;
+            const settled = evaluateOperator(reread);
+            if (settled.kind === "conflict") {
+              setPhase({ kind: "conflict", reason: settled.reason });
+              return;
+            }
+            if (settled.kind === "missing") throw caught;
+            // Adopted, not created: the other instance made it.
+          }
           if (cancelled) return;
         }
 
@@ -86,13 +110,34 @@ export function useBootstrap(
           // Keep it off the stale-session health finding.
           await coordination.heartbeatSession(sessionId).catch(() => undefined);
         } else {
-          const started = await coordination.startSession({
-            id: newSessionId(),
-            agent: LOCAL_OPERATOR.id,
-            harness: CONSOLE_HARNESS,
-            model: "",
-          });
-          sessionId = started.id;
+          try {
+            const started = await coordination.startSession({
+              id: newSessionId(),
+              agent: LOCAL_OPERATOR.id,
+              harness: CONSOLE_HARNESS,
+              model: "",
+            });
+            sessionId = started.id;
+          } catch (caught) {
+            if (!isDuplicate(caught)) throw caught;
+
+            // The id now carries entropy, so this is rare — but a same-second,
+            // same-suffix collision is possible and must converge rather than
+            // strand the operator on an unavailable screen.
+            const reread = await coordination.sessions({
+              agent: LOCAL_OPERATOR.id,
+              status: "active",
+              limit: 500,
+            });
+            if (cancelled) return;
+            const adopted = findReusableSession(reread, LOCAL_OPERATOR.id);
+            // Only an active console session belonging to this operator counts;
+            // findReusableSession enforces all three.
+            if (!adopted) throw caught;
+            sessionId = adopted.id;
+            sessionReused = true;
+            await coordination.heartbeatSession(sessionId).catch(() => undefined);
+          }
         }
         if (cancelled) return;
 
@@ -129,4 +174,16 @@ export function useBootstrap(
 function describe(caught: unknown): string {
   if (caught instanceof Error) return caught.message;
   return "The console could not reach the local server.";
+}
+
+/**
+ * Whether a failure is the contract's duplicate-id conflict.
+ *
+ * `constraint_violation` is the stable registry code for a duplicate id, and
+ * matching on the code rather than the message is the point: the message is
+ * free text that may carry a `database_error` detail from SQLite, and a startup
+ * path that only converges when a string keeps its wording is not a fix.
+ */
+function isDuplicate(caught: unknown): boolean {
+  return caught instanceof ApiError && caught.code === "constraint_violation";
 }

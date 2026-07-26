@@ -163,4 +163,46 @@ describe("useOperatorSession", () => {
     // session it will not offer.
     expect(result.current.sessions).toHaveLength(3);
   });
+
+  it("re-reads before discarding a session the list has not caught up with", async () => {
+    // The clean-launch race: sessions are fetched at mount, bootstrap creates
+    // the session a moment later, so the first list cannot contain it. Clearing
+    // on that evidence left a ready console showing "No session" with every
+    // mutation disabled.
+    const onStaleCleared = vi.fn();
+    let reads = 0;
+    const api = {
+      sessions: () => {
+        reads += 1;
+        // Absent on the first read, present on the confirming one.
+        return Promise.resolve(reads === 1 ? [] : [session({ id: "adopted" })]);
+      },
+    } as unknown as Coordination;
+
+    const { result } = renderHook(() =>
+      useOperatorSession(api, "local-operator", "adopted", onStaleCleared),
+    );
+
+    await waitFor(() => expect(result.current.activeSessionId).toBe("adopted"));
+    expect(reads).toBe(2);
+    // The selection survived, because it was never actually stale.
+    expect(onStaleCleared).not.toHaveBeenCalled();
+  });
+
+  it("still clears a session that is genuinely gone, after confirming once", async () => {
+    const onStaleCleared = vi.fn();
+    let reads = 0;
+    const api = {
+      sessions: () => {
+        reads += 1;
+        return Promise.resolve([]);
+      },
+    } as unknown as Coordination;
+
+    renderHook(() => useOperatorSession(api, "local-operator", "gone", onStaleCleared));
+
+    await waitFor(() => expect(onStaleCleared).toHaveBeenCalledTimes(1));
+    // Exactly one confirming re-read, then the verdict stands. UI-14 still holds.
+    expect(reads).toBe(2);
+  });
 });

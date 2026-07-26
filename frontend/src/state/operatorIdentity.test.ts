@@ -137,8 +137,42 @@ describe("newSessionId", () => {
     expect(id).toMatch(/^[A-Za-z0-9][A-Za-z0-9._:@+-]{0,127}$/);
   });
 
+  it("keeps the grammar for every entropy value at the bounds", () => {
+    // The suffix is generated, so the grammar has to hold across its range
+    // rather than for one sampled value.
+    for (const value of [0, 0.5, 0.999999]) {
+      expect(newSessionId(new Date(2026, 6, 25, 9, 5, 3), () => value)).toMatch(
+        /^[A-Za-z0-9][A-Za-z0-9._:@+-]{0,127}$/,
+      );
+    }
+  });
+
   it("encodes the timestamp with zero padding", () => {
-    expect(newSessionId(new Date(2026, 6, 25, 9, 5, 3))).toBe("console-20260725-090503");
+    expect(newSessionId(new Date(2026, 6, 25, 9, 5, 3), () => 0)).toBe(
+      "console-20260725-090503-0000",
+    );
+  });
+
+  it("distinguishes two ids generated in the same second", () => {
+    // The collision this exists to prevent: one-second precision meant two
+    // consoles launched together built the same id, and the loser failed.
+    const sameInstant = new Date(2026, 6, 25, 9, 5, 3);
+    const first = newSessionId(sameInstant, () => 0.11);
+    const second = newSessionId(sameInstant, () => 0.87);
+    expect(first).not.toBe(second);
+  });
+
+  it("keeps the suffix a fixed width, so ids stay readable in an audit trail", () => {
+    for (const value of [0, 0.0001, 0.5, 0.999999]) {
+      const suffix = newSessionId(new Date(2026, 6, 25, 9, 5, 3), () => value).split("-").pop();
+      expect(suffix).toHaveLength(4);
+    }
+  });
+
+  it("still leads with the console prefix and timestamp", () => {
+    expect(newSessionId(new Date(2026, 6, 25, 9, 5, 3), () => 0.5)).toMatch(
+      /^console-20260725-090503-[a-z0-9]{4}$/,
+    );
   });
 });
 
