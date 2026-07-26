@@ -9,9 +9,13 @@
 }
 
 .messages-layout.with-inspector {
-  grid-template-columns: minmax(0, 1fr) var(--inspector-width);
-  gap: var(--space-4);
+  /* list | separator | inspector */
+  grid-template-columns: minmax(0, 1fr) auto var(--message-inspector-width, 520px);
   align-items: start;
+}
+
+.messages-layout.with-inspector > .messages-main {
+  padding-right: var(--space-4);
 }
 
 .messages-main {
@@ -43,6 +47,16 @@
 @media (max-width: 1279px) {
   .messages-layout.with-inspector {
     grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-4);
+  }
+
+  .messages-layout.with-inspector > .messages-main {
+    padding-right: 0;
+  }
+
+  /* No second column to separate below this width. */
+  .messages-layout > .resize-handle {
+    display: none;
   }
 }
 

@@ -10,19 +10,25 @@
 
 import type { StorageLike } from "./identityStore.ts";
 
-export type Pane = "nav" | "inspector";
+export type Pane = "nav" | "inspector" | "messageInspector";
 
-export interface LayoutWidths {
-  nav: number;
-  inspector: number;
-}
+export type LayoutWidths = Record<Pane, number>;
 
-export const DEFAULT_WIDTHS: LayoutWidths = { nav: 200, inspector: 480 };
+export const DEFAULT_WIDTHS: LayoutWidths = {
+  nav: 200,
+  inspector: 480,
+  // Wider by default than the task inspector: this one holds prose, and a
+  // broadcast body reads badly in a narrow column.
+  messageInspector: 520,
+};
 
 export const BOUNDS: Record<Pane, { min: number; max: number }> = {
   nav: { min: 160, max: 420 },
   inspector: { min: 360, max: 920 },
+  messageInspector: { min: 360, max: 960 },
 };
+
+export const PANES = Object.keys(DEFAULT_WIDTHS) as Pane[];
 
 const STORAGE_KEY = "coordination-console.layout";
 
@@ -38,10 +44,12 @@ export class LayoutStore {
   static normalize(value: unknown): LayoutWidths {
     if (!value || typeof value !== "object") return { ...DEFAULT_WIDTHS };
     const record = value as Record<string, unknown>;
-    return {
-      nav: LayoutStore.readWidth(record["nav"], "nav"),
-      inspector: LayoutStore.readWidth(record["inspector"], "inspector"),
-    };
+    // Iterates the pane list so adding a pane cannot silently drop it here.
+    const widths = { ...DEFAULT_WIDTHS };
+    for (const pane of PANES) {
+      widths[pane] = LayoutStore.readWidth(record[pane], pane);
+    }
+    return widths;
   }
 
   private static readWidth(value: unknown, pane: Pane): number {

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { StorageLike } from "./identityStore.ts";
-import { BOUNDS, DEFAULT_WIDTHS, LayoutStore } from "./layoutStore.ts";
+import { BOUNDS, DEFAULT_WIDTHS, LayoutStore, PANES } from "./layoutStore.ts";
 
 class MemoryStorage implements StorageLike {
   private data = new Map<string, string>();
@@ -62,9 +62,16 @@ describe("LayoutStore.clamp", () => {
 describe("LayoutStore.normalize", () => {
   it("fills in defaults for missing panes", () => {
     expect(LayoutStore.normalize({ nav: 300 })).toEqual({
+      ...DEFAULT_WIDTHS,
       nav: 300,
-      inspector: DEFAULT_WIDTHS.inspector,
     });
+  });
+
+  it("covers every declared pane", () => {
+    const normalized = LayoutStore.normalize({});
+    for (const pane of PANES) {
+      expect(typeof normalized[pane]).toBe("number");
+    }
   });
 
   it("ignores non-numeric values", () => {
@@ -77,9 +84,10 @@ describe("LayoutStore.normalize", () => {
   });
 
   it("clamps stored values that are out of range", () => {
-    expect(LayoutStore.normalize({ nav: 5000, inspector: 1 })).toEqual({
+    expect(LayoutStore.normalize({ nav: 5000, inspector: 1, messageInspector: 9999 })).toEqual({
       nav: BOUNDS.nav.max,
       inspector: BOUNDS.inspector.min,
+      messageInspector: BOUNDS.messageInspector.max,
     });
   });
 });
@@ -91,17 +99,29 @@ describe("LayoutStore persistence", () => {
 
   it("round-trips widths", () => {
     const store = new LayoutStore(new MemoryStorage());
-    store.save({ nav: 260, inspector: 640 });
-    expect(store.load()).toEqual({ nav: 260, inspector: 640 });
+    store.save({ ...DEFAULT_WIDTHS, nav: 260, inspector: 640 });
+    expect(store.load()).toEqual({ ...DEFAULT_WIDTHS, nav: 260, inspector: 640 });
   });
 
   it("clamps on the way out as well as in", () => {
     const storage = new MemoryStorage();
-    storage.setItem("coordination-console.layout", JSON.stringify({ nav: 4000, inspector: 4000 }));
+    storage.setItem(
+      "coordination-console.layout",
+      JSON.stringify({ nav: 4000, inspector: 4000, messageInspector: 4000 }),
+    );
     expect(new LayoutStore(storage).load()).toEqual({
       nav: BOUNDS.nav.max,
       inspector: BOUNDS.inspector.max,
+      messageInspector: BOUNDS.messageInspector.max,
     });
+  });
+
+  it("keeps the two inspectors independent", () => {
+    const store = new LayoutStore(new MemoryStorage());
+    store.save({ ...DEFAULT_WIDTHS, inspector: 600 });
+    // Resizing the task inspector must not move the message inspector.
+    expect(store.load().messageInspector).toBe(DEFAULT_WIDTHS.messageInspector);
+    expect(store.load().inspector).toBe(600);
   });
 
   it("survives a corrupt entry", () => {
@@ -119,7 +139,7 @@ describe("LayoutStore persistence", () => {
   it("works with no storage at all", () => {
     const store = new LayoutStore(null);
     expect(store.load()).toEqual(DEFAULT_WIDTHS);
-    expect(() => store.save({ nav: 200, inspector: 480 })).not.toThrow();
+    expect(() => store.save(DEFAULT_WIDTHS)).not.toThrow();
   });
 
   it("does not hand out a shared mutable default", () => {

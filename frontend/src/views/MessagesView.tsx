@@ -6,14 +6,26 @@
  */
 
 import { useRef, useState } from "react";
+import type { CSSProperties } from "react";
 import type { Agent, Message } from "../api/contract.ts";
 import { broadcastReadiness } from "../lib/broadcast.ts";
+import { ResizeHandle } from "../components/ResizeHandle.tsx";
+import { BOUNDS } from "../state/layoutStore.ts";
+import type { Layout } from "../state/useLayout.ts";
 import { useApp } from "../state/AppContext.tsx";
 import { BroadcastComposer } from "./BroadcastComposer.tsx";
 import { MessageInspector } from "./MessageInspector.tsx";
 import { RecordsView } from "./RecordsView.tsx";
 
-export function MessagesView({ filter, agents }: { filter: string; agents: Agent[] }) {
+export function MessagesView({
+  filter,
+  agents,
+  layout,
+}: {
+  filter: string;
+  agents: Agent[];
+  layout: Layout;
+}) {
   const { identity, mutationsEnabled } = useApp();
   const [open, setOpen] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
@@ -38,7 +50,12 @@ export function MessagesView({ filter, agents }: { filter: string; agents: Agent
 
   return (
     <div className={open ? "messages-screen with-sheet" : "messages-screen"}>
-      <div className={selected ? "messages-layout with-inspector" : "messages-layout"}>
+      <div
+        className={selected ? "messages-layout with-inspector" : "messages-layout"}
+        style={
+          { "--message-inspector-width": `${layout.widths.messageInspector}px` } as CSSProperties
+        }
+      >
         <div className="messages-main">
         <div className="broadcast-bar">
           <button
@@ -66,13 +83,24 @@ export function MessagesView({ filter, agents }: { filter: string; agents: Agent
         </div>
 
         {selected ? (
-          <MessageInspector
-            message={selected}
-            onClose={() => {
-              setSelected(null);
-              lastRow.current?.focus();
-            }}
-          />
+          <>
+            <ResizeHandle
+              label="Resize message inspector"
+              value={layout.widths.messageInspector}
+              min={BOUNDS.messageInspector.min}
+              max={BOUNDS.messageInspector.max}
+              direction={-1}
+              onResize={(next) => layout.setWidth("messageInspector", next)}
+              onReset={() => layout.reset("messageInspector")}
+            />
+            <MessageInspector
+              message={selected}
+              onClose={() => {
+                setSelected(null);
+                lastRow.current?.focus();
+              }}
+            />
+          </>
         ) : null}
       </div>
 

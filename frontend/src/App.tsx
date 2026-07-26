@@ -35,7 +35,10 @@ export function App() {
     retryBootstrap,
   } = useApp();
   const { route, navigate } = useHashRoute();
-  const { widths, setWidth, reset } = useLayout();
+  // One instance only: a second useLayout would persist to the same key from
+  // stale state and clobber the first.
+  const layout = useLayout();
+  const { widths, setWidth, reset } = layout;
   const [filter, setFilter] = useState("");
 
   const meta = useResource(() => coordination.meta(), []);
@@ -105,9 +108,7 @@ export function App() {
               agents={agentList}
               selectedId={route.detail}
               onSelect={(id) => navigate("tasks", id)}
-              inspectorWidth={widths.inspector}
-              onInspectorResize={(next) => setWidth("inspector", next)}
-              onInspectorReset={() => reset("inspector")}
+              layout={layout}
             />
           ) : null}
 
@@ -116,7 +117,7 @@ export function App() {
           {route.name === "export" ? <ExportView /> : null}
 
           {route.name === "messages" ? (
-            <MessagesView filter={filter} agents={agentList} />
+            <MessagesView filter={filter} agents={agentList} layout={layout} />
           ) : RECORD_CONFIGS[route.name] ? (
             <RecordsView route={route.name} filter={filter} />
           ) : null}

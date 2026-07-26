@@ -12,6 +12,7 @@ import { ResizeHandle } from "../components/ResizeHandle.tsx";
 import { filterRows } from "../lib/filters.ts";
 import { useApp } from "../state/AppContext.tsx";
 import { BOUNDS } from "../state/layoutStore.ts";
+import type { Layout } from "../state/useLayout.ts";
 import { useResource } from "../state/useResource.ts";
 import { TaskInspector } from "./TaskInspector.tsx";
 import { TASK_DEFAULT_ORDER, taskColumns } from "./taskColumns.tsx";
@@ -23,18 +24,15 @@ export function TasksView({
   agents,
   selectedId,
   onSelect,
-  inspectorWidth,
-  onInspectorResize,
-  onInspectorReset,
+  layout,
 }: {
   filter: string;
   agents: Agent[];
   selectedId: string | null;
   onSelect: (id: string | null) => void;
-  inspectorWidth: number;
-  onInspectorResize: (next: number) => void;
-  onInspectorReset: () => void;
+  layout: Layout;
 }) {
+  const inspectorWidth = layout.widths.inspector;
   const { coordination, identity } = useApp();
   const [status, setStatus] = useState("");
   const [assignee, setAssignee] = useState("");
@@ -134,8 +132,8 @@ export function TasksView({
             min={BOUNDS.inspector.min}
             max={BOUNDS.inspector.max}
             direction={-1}
-            onResize={onInspectorResize}
-            onReset={onInspectorReset}
+            onResize={(next) => layout.setWidth("inspector", next)}
+            onReset={() => layout.reset("inspector")}
           />
           <TaskInspector
             taskId={selectedId}
