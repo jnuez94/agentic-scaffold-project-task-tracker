@@ -24,6 +24,63 @@
   container-name: tablearea;
 }
 
+/* Orientation that survives entering at the newest message.
+ *
+ * Conversation deliberately opens scrolled to the bottom, which put the route
+ * title and the Conversation/Ledger control off-screen with no indication they
+ * existed. Sticking them means the operator can always tell where they are and
+ * get back, without changing where the transcript opens.
+ *
+ * The negative margin and matching padding let the bar's background span the
+ * content region's padding, so transcript rows pass behind it rather than
+ * beside it. */
+.messages-orientation {
+  position: sticky;
+  top: calc(var(--space-4) * -1);
+  z-index: 2;
+  margin: calc(var(--space-4) * -1) calc(var(--space-4) * -1) 0;
+  padding: var(--space-4) var(--space-4) var(--space-2);
+  background: var(--surface-900);
+  border-bottom: 1px solid var(--line-700);
+}
+
+.jump-newest {
+  margin-left: auto;
+  min-height: var(--control-height-compact);
+  white-space: nowrap;
+}
+
+/* Short viewports — most often 200% zoom rather than a small screen.
+ *
+ * A sticky bar taller than the region it sticks to hides the very transcript
+ * it is meant to orient you in: at 200% zoom the full bar is 146px against a
+ * 96px content region. The description is the only part that is purely
+ * explanatory, so it goes first, and the title joins the controls on one row.
+ * Title, presentation switch, loaded count, and Jump to newest all survive —
+ * those are the four things UI-15 asks to stay visible. */
+@media (max-height: 600px) {
+  .messages-orientation {
+    padding-top: var(--space-2);
+    padding-bottom: var(--space-2);
+  }
+
+  .messages-orientation .view-header {
+    display: flex;
+    align-items: baseline;
+    gap: var(--space-3);
+    margin-bottom: var(--space-2);
+  }
+
+  .messages-orientation .view-header p {
+    display: none;
+  }
+
+  .messages-orientation .view-header h1 {
+    font-size: 18px;
+    margin: 0;
+  }
+}
+
 /* The complete body: newlines preserved, unbroken text wrapped, never clipped. */
 .message-body {
   white-space: pre-wrap;
@@ -41,7 +98,8 @@
 }
 
 .message-inspector {
-  max-height: calc(100% - var(--space-2));
+  /* Same reasoning as .inspector: bound to the visible scrollport. */
+  max-height: calc(var(--scrollport-height, 100%) - var(--space-4) * 2 - var(--space-2));
 }
 
 @media (max-width: 1279px) {

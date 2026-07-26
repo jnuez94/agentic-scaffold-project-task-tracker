@@ -46,9 +46,17 @@
   margin-bottom: var(--space-4);
 }
 
+/* Stacks beneath the orientation bar, not underneath it.
+ *
+ * The offset is where the bar's bottom edge lands: its own sticky top
+ * (-1 * --space-4) plus its measured height. The height comes from
+ * useMeasuredHeight because the bar wraps at narrow widths and grows with text
+ * size, so a constant would be correct at exactly one viewport and one zoom
+ * level. Falls back to 0, which reads as "both stick at the top" rather than as
+ * a gap with transcript showing through it. */
 .day-heading {
   position: sticky;
-  top: 0;
+  top: calc(var(--orientation-height, var(--space-4)) - var(--space-4));
   z-index: 1;
   margin: 0 0 var(--space-2);
   padding: var(--space-2) 0;

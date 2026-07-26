@@ -18,6 +18,8 @@ import { ResizeHandle } from "../components/ResizeHandle.tsx";
 import { loadedCountLabel } from "../lib/conversation.ts";
 import { filterRows } from "../lib/filters.ts";
 import { isTruncated } from "../lib/pagination.ts";
+import { getScrollParent, scrollToBottom } from "../lib/scrollParent.ts";
+import { useMeasuredHeight } from "../state/useMeasuredHeight.ts";
 import { useApp } from "../state/AppContext.tsx";
 import { BOUNDS } from "../state/layoutStore.ts";
 import type { Layout } from "../state/useLayout.ts";
@@ -45,6 +47,15 @@ export function MessagesView({
   const [view, setView] = useMessageView();
   const [selected, setSelected] = useState<Message | null>(null);
   const lastTrigger = useRef<HTMLElement | null>(null);
+  const orientation = useRef<HTMLDivElement>(null);
+
+  // The day headings stick beneath the orientation bar rather than under it.
+  const orientationHeight = useMeasuredHeight(orientation);
+
+  const jumpToNewest = () => {
+    const scroller = getScrollParent(orientation.current);
+    if (scroller) scrollToBottom(scroller);
+  };
 
   const config = RECORD_CONFIGS.messages;
   const resource = useResource(
@@ -72,35 +83,51 @@ export function MessagesView({
       <div
         className={selected ? "messages-layout with-inspector" : "messages-layout"}
         style={
-          { "--message-inspector-width": `${layout.widths.messageInspector}px` } as CSSProperties
+          {
+            "--message-inspector-width": `${layout.widths.messageInspector}px`,
+            "--orientation-height": `${orientationHeight}px`,
+          } as CSSProperties
         }
       >
         <div className="messages-main">
-          <div className="view-header">
-            <h1>Messages</h1>
-            <p className="small muted">{config?.description}</p>
-          </div>
-
-          <div className="queue-toolbar">
-            <div className="view-switch" role="group" aria-label="Message presentation">
-              <button
-                className={view === "conversation" ? "active" : ""}
-                aria-pressed={view === "conversation"}
-                onClick={() => setView("conversation")}
-              >
-                Conversation
-              </button>
-              <button
-                className={view === "ledger" ? "active" : ""}
-                aria-pressed={view === "ledger"}
-                onClick={() => setView("ledger")}
-              >
-                Ledger
-              </button>
+          {/* Sticky as one unit. Conversation enters at the newest message, so
+              anything that scrolls away here is orientation the operator never
+              sees: which screen they are on, which presentation is active, how
+              much is loaded, and how to get back to the newest message. */}
+          <div className="messages-orientation" ref={orientation}>
+            <div className="view-header">
+              <h1>Messages</h1>
+              <p className="small muted">{config?.description}</p>
             </div>
-            <p className="queue-count small muted" aria-live="polite">
-              {loadedCountLabel(rows.length, Boolean(filter))}
-            </p>
+
+            <div className="queue-toolbar">
+              <div className="view-switch" role="group" aria-label="Message presentation">
+                <button
+                  className={view === "conversation" ? "active" : ""}
+                  aria-pressed={view === "conversation"}
+                  onClick={() => setView("conversation")}
+                >
+                  Conversation
+                </button>
+                <button
+                  className={view === "ledger" ? "active" : ""}
+                  aria-pressed={view === "ledger"}
+                  onClick={() => setView("ledger")}
+                >
+                  Ledger
+                </button>
+              </div>
+              <p className="queue-count small muted" aria-live="polite">
+                {loadedCountLabel(rows.length, Boolean(filter))}
+              </p>
+              {/* Conversation only: in the paginated, sortable Ledger "newest"
+                  depends on the current sort, so the action would be a lie. */}
+              {view === "conversation" && rows.length > 0 ? (
+                <button type="button" className="jump-newest" onClick={jumpToNewest}>
+                  Jump to newest
+                </button>
+              ) : null}
+            </div>
           </div>
 
           {resource.error ? (
