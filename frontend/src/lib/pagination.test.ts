@@ -130,9 +130,18 @@ describe("isTruncated", () => {
 });
 
 describe("page size options", () => {
-  it("offers ascending sizes starting at the default", () => {
-    expect(PAGE_SIZES[0]).toBe(DEFAULT_PAGE_SIZE);
+  it("offers the four documented sizes", () => {
+    expect([...PAGE_SIZES]).toEqual([10, 25, 50, 100]);
+  });
+
+  it("is ascending, so the selector reads naturally", () => {
     expect([...PAGE_SIZES]).toEqual([...PAGE_SIZES].sort((a, b) => a - b));
+  });
+
+  it("includes the default, so the selector can always show current state", () => {
+    // Deliberately not "first option is the default": 10 leads the list but 25
+    // is the default, and tying the two would break on any reordering.
+    expect([...PAGE_SIZES]).toContain(DEFAULT_PAGE_SIZE);
   });
 
   it("never exceeds the contract's 500-row list maximum", () => {
