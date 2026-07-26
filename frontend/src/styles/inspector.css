@@ -5,7 +5,7 @@
   top: 0;
   display: flex;
   flex-direction: column;
-  max-height: calc(100vh - 160px);
+  max-height: calc(100% - var(--space-2));
   background: var(--surface-850);
   border: 1px solid var(--line-700);
   border-radius: var(--radius-panel);

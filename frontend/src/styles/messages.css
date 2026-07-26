@@ -41,7 +41,7 @@
 }
 
 .message-inspector {
-  max-height: calc(100vh - 200px);
+  max-height: calc(100% - var(--space-2));
 }
 
 @media (max-width: 1279px) {
