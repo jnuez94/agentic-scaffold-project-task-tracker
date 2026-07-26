@@ -129,7 +129,12 @@ export function App() {
           {route.name === "export" ? <ExportView /> : null}
 
           {route.name === "messages" ? (
-            <MessagesView filter={filter} layout={layout} reloadKey={broadcast.sentNonce} />
+            <MessagesView
+              filter={filter}
+              agents={agentList}
+              layout={layout}
+              reloadKey={broadcast.sentNonce}
+            />
           ) : RECORD_CONFIGS[route.name] ? (
             <RecordsView route={route.name} filter={filter} />
           ) : null}
