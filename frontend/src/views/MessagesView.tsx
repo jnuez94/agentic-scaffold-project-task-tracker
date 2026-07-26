@@ -6,16 +6,20 @@
  */
 
 import { useRef, useState } from "react";
-import type { Agent } from "../api/contract.ts";
+import type { Agent, Message } from "../api/contract.ts";
 import { broadcastReadiness } from "../lib/broadcast.ts";
 import { useApp } from "../state/AppContext.tsx";
 import { BroadcastComposer } from "./BroadcastComposer.tsx";
+import { MessageInspector } from "./MessageInspector.tsx";
 import { RecordsView } from "./RecordsView.tsx";
 
 export function MessagesView({ filter, agents }: { filter: string; agents: Agent[] }) {
   const { identity, mutationsEnabled } = useApp();
   const [open, setOpen] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
+  const [selected, setSelected] = useState<Message | null>(null);
+  // Restores focus to the row that opened the inspector.
+  const lastRow = useRef<HTMLElement | null>(null);
   const trigger = useRef<HTMLButtonElement>(null);
 
   const actor = agents.find((agent) => agent.id === identity.actorId);
@@ -34,7 +38,8 @@ export function MessagesView({ filter, agents }: { filter: string; agents: Agent
 
   return (
     <div className={open ? "messages-screen with-sheet" : "messages-screen"}>
-      <div className="messages-main">
+      <div className={selected ? "messages-layout with-inspector" : "messages-layout"}>
+        <div className="messages-main">
         <div className="broadcast-bar">
           <button
             ref={trigger}
@@ -48,7 +53,27 @@ export function MessagesView({ filter, agents }: { filter: string; agents: Agent
           {blocked ? <p className="small muted">{readiness.reason}</p> : null}
         </div>
 
-        <RecordsView route="messages" filter={filter} reloadKey={reloadKey} />
+          <RecordsView<Message>
+            route="messages"
+            filter={filter}
+            reloadKey={reloadKey}
+            selectedKey={selected?.id ?? null}
+            onSelect={(row) => {
+              lastRow.current = document.activeElement as HTMLElement;
+              setSelected(row);
+            }}
+          />
+        </div>
+
+        {selected ? (
+          <MessageInspector
+            message={selected}
+            onClose={() => {
+              setSelected(null);
+              lastRow.current?.focus();
+            }}
+          />
+        ) : null}
       </div>
 
       {open && readiness.kind === "ready" && identity.sessionId ? (

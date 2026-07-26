@@ -14,6 +14,7 @@ import "./styles/feedback.css";
 import "./styles/resize.css";
 import "./styles/responsive.css";
 import "./styles/startup.css";
+import "./styles/messages.css";
 
 const container = document.getElementById("root");
 if (!container) throw new Error("#root is missing from the document");

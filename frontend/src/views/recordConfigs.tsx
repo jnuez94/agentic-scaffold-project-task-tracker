@@ -122,7 +122,24 @@ export const RECORD_CONFIGS: Partial<Record<RouteName, RecordConfig>> = {
     columns: columns<Record<string, string>>([
       { key: "id", header: "Message", priority: 4, render: (r) => <Mono>{r["id"]}</Mono>, sortValue: (r) => r["id"], },
       { key: "from", header: "From → To", priority: 1, render: (r) => (<span className="small"><Mono>{r["sender_id"]}</Mono> → <Mono>{r["recipient"]}</Mono></span>), sortValue: (r) => r["sender_id"], },
-      { key: "body", header: "Body", priority: 2, render: (r) => <span className="small">{preview(r["body"] ?? "", 140)}</span>, sortValue: (r) => r["body"], },
+      {
+        key: "body",
+        header: "Body",
+        priority: 2,
+        render: (r) => {
+          const full = r["body"] ?? "";
+          const shown = preview(full, 140);
+          return (
+            <span className="small body-preview">
+              {shown}
+              {shown.length < full.length ? (
+                <span className="preview-more"> Open to read the full message</span>
+              ) : null}
+            </span>
+          );
+        },
+        sortValue: (r) => r["body"],
+      },
       { key: "task", header: "Task", priority: 5, render: (r) => <Mono>{r["task_id"] ?? "—"}</Mono>, sortValue: (r) => r["task_id"], },
       { key: "tags", header: "Tags", priority: 6, render: (r) => <Tags value={r["tags"] ?? ""} />, sortValue: (r) => r["tags"], },
       { key: "created", header: "Sent", priority: 3, render: (r) => time(r["created_at"]!), sortValue: (r) => r["created_at"], },

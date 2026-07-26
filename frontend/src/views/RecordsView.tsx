@@ -11,15 +11,20 @@ import { useResource } from "../state/useResource.ts";
 import type { RouteName } from "../state/useHashRoute.ts";
 import { RECORD_CONFIGS } from "./recordConfigs.tsx";
 
-export function RecordsView({
+export function RecordsView<T = Record<string, unknown>>({
   route,
   filter,
   reloadKey = 0,
+  onSelect,
+  selectedKey,
 }: {
   route: RouteName;
   filter: string;
   /** Bumped by a caller to force a refetch, e.g. after sending a broadcast. */
   reloadKey?: number;
+  /** Receives the already-loaded row, so a detail view needs no extra query. */
+  onSelect?: (row: T) => void;
+  selectedKey?: string | null;
 }) {
   const { coordination } = useApp();
   const config = RECORD_CONFIGS[route];
@@ -85,6 +90,8 @@ export function RecordsView({
         defaultOrder={config.defaultOrder}
         loading={records.loading}
         loaded={records.loaded}
+        selectedKey={selectedKey ?? null}
+        onSelect={onSelect ? (row) => onSelect(row as T) : undefined}
         emptyTitle={filter ? `No ${config.title.toLowerCase()} match this filter` : config.emptyTitle}
         emptyHint={filter ? "Clear the filter to see everything loaded." : config.emptyHint}
       />

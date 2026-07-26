@@ -1,0 +1,58 @@
+/* Messages list layout and the read-only message inspector. */
+
+/* Messages list + read-only message inspector */
+
+.messages-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  min-width: 0;
+}
+
+.messages-layout.with-inspector {
+  grid-template-columns: minmax(0, 1fr) var(--inspector-width);
+  gap: var(--space-4);
+  align-items: start;
+}
+
+.messages-main {
+  min-width: 0;
+  container-type: inline-size;
+  container-name: tablearea;
+}
+
+/* The complete body: newlines preserved, unbroken text wrapped, never clipped. */
+.message-body {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  background: var(--surface-900);
+  border: 1px solid var(--line-700);
+  border-radius: var(--radius-input);
+  padding: var(--space-3);
+  margin-bottom: var(--space-3);
+}
+
+.preview-more {
+  color: var(--violet-400);
+  white-space: nowrap;
+}
+
+.message-inspector {
+  max-height: calc(100vh - 200px);
+}
+
+@media (max-width: 1279px) {
+  .messages-layout.with-inspector {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* Below 900px list and detail are sequential; the list keeps its position. */
+@media (max-width: 899px) {
+  .messages-layout.with-inspector > .messages-main {
+    display: none;
+  }
+
+  .message-inspector {
+    max-height: none;
+  }
+}
