@@ -2,7 +2,7 @@
 
 | Field | Value |
 | --- | --- |
-| Status | Backend implemented and tested; frontend specified, reviewed, not built |
+| Status | Implemented: backend and React console both shipped and verified |
 | Owner | `david` — Principal Software Development Engineer (Frontend) |
 | Tracked by | `UI-1`, `UI-2`, `UI-3`, `UI-5` |
 | Decisions | `FE-STACK-1` (React + Vite + TypeScript) |
