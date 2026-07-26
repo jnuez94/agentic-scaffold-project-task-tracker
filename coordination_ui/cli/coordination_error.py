@@ -22,15 +22,27 @@ class CoordinationError(Exception):
         message: str,
         details: Any = None,
         exit_code: int = 1,
+        http_status: int | None = None,
     ) -> None:
         super().__init__(message)
         self.code = code
         self.message = message
         self.details = details
         self.exit_code = exit_code
+        self._http_status = http_status
 
     @property
     def http_status(self) -> int:
+        """The HTTP status for this failure.
+
+        Normally derived from the CLI's exit code. The override exists for
+        failures the CLI has no concept of — a wrong HTTP verb is a routing
+        fact, not a coordination outcome, and deserves 405 rather than the 400
+        that its exit code would otherwise produce.
+        """
+
+        if self._http_status is not None:
+            return self._http_status
         return http_status_for(self.exit_code)
 
     def to_payload(self) -> dict[str, Any]:

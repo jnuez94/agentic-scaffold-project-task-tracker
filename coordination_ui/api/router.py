@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+from http import HTTPStatus
 from typing import Any, Callable, Mapping, Sequence
 
 from ..cli import CoordinationError
@@ -59,6 +60,7 @@ class Router:
                 f"{method} is not supported for {path}",
                 {"allowed": sorted(allowed)},
                 exit_code=2,
+                http_status=HTTPStatus.METHOD_NOT_ALLOWED,
             )
         raise CoordinationError(
             "not_found",
