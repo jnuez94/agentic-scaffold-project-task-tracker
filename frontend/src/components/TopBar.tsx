@@ -25,6 +25,9 @@ export interface TopBarProps {
   busy: boolean;
   /** The single explanation shown wherever a session is required. */
   sessionReason: string | null;
+  broadcastRef: React.RefObject<HTMLButtonElement | null>;
+  broadcastDisabledReason: string | null;
+  onBroadcast: () => void;
 }
 
 export function TopBar(props: TopBarProps) {
@@ -85,6 +88,23 @@ export function TopBar(props: TopBarProps) {
           {props.sessionReason ? (
             <p id="session-reason" className="small muted session-reason">
               {props.sessionReason}
+            </p>
+          ) : null}
+        </div>
+
+        <div className="topbar-broadcast">
+          <button
+            ref={props.broadcastRef}
+            className="primary"
+            disabled={Boolean(props.broadcastDisabledReason)}
+            aria-describedby={props.broadcastDisabledReason ? "broadcast-reason" : undefined}
+            onClick={props.onBroadcast}
+          >
+            Broadcast to team
+          </button>
+          {props.broadcastDisabledReason ? (
+            <p id="broadcast-reason" className="small muted broadcast-reason">
+              {props.broadcastDisabledReason}
             </p>
           ) : null}
         </div>

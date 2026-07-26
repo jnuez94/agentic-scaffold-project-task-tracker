@@ -8,12 +8,14 @@ import { ErrorBanner, LiveRegion } from "./components/Feedback.tsx";
 import { DatabaseIdentity } from "./components/DatabaseIdentity.tsx";
 import { NavSidebar } from "./components/NavSidebar.tsx";
 import { StartupBanner } from "./components/StartupBanner.tsx";
+import { BroadcastComposer } from "./views/BroadcastComposer.tsx";
 import { ResizeHandle } from "./components/ResizeHandle.tsx";
 import { TopBar } from "./components/TopBar.tsx";
 import { useApp } from "./state/AppContext.tsx";
 import { BOUNDS } from "./state/layoutStore.ts";
 import { useHashRoute } from "./state/useHashRoute.ts";
 import { useLayout } from "./state/useLayout.ts";
+import { useBroadcastLauncher } from "./state/useBroadcastLauncher.ts";
 import { useResource } from "./state/useResource.ts";
 import { AuditView } from "./views/AuditView.tsx";
 import { ExportView } from "./views/ExportView.tsx";
@@ -34,6 +36,7 @@ export function App() {
     bootstrap,
     retryBootstrap,
     session,
+    mutationsEnabled,
   } = useApp();
   const { route, navigate } = useHashRoute();
   // One instance only: a second useLayout would persist to the same key from
@@ -47,6 +50,7 @@ export function App() {
 
   const agentList = agents.data ?? [];
   const actor = agentList.find((agent) => agent.id === identity.actorId);
+  const broadcast = useBroadcastLauncher(actor, session.activeSessionId, mutationsEnabled);
 
   const refreshAll = () => {
     meta.refresh();
@@ -98,11 +102,14 @@ export function App() {
           onActor={setActor}
           onSession={setSession}
           onRefresh={refreshAll}
+          broadcastRef={broadcast.triggerRef}
+          broadcastDisabledReason={broadcast.disabledReason}
+          onBroadcast={broadcast.onOpen}
           lastUpdated={agents.lastUpdated}
           busy={agents.loading || session.loading}
         />
 
-        <main className="content" id="content">
+        <main className="content" id="content" inert={broadcast.open}>
           <StartupBanner phase={bootstrap} onRetry={retryBootstrap} />
 
           {meta.error ? <ErrorBanner error={meta.error} onRetry={meta.refresh} /> : null}
@@ -122,7 +129,7 @@ export function App() {
           {route.name === "export" ? <ExportView /> : null}
 
           {route.name === "messages" ? (
-            <MessagesView filter={filter} agents={agentList} layout={layout} />
+            <MessagesView filter={filter} layout={layout} reloadKey={broadcast.sentNonce} />
           ) : RECORD_CONFIGS[route.name] ? (
             <RecordsView route={route.name} filter={filter} />
           ) : null}
@@ -135,6 +142,19 @@ export function App() {
           </span>
         </footer>
       </div>
+
+      {broadcast.open && broadcast.readiness.kind === "ready" && session.activeSessionId ? (
+        <>
+          <div className="sheet-scrim" onClick={broadcast.onClose} aria-hidden="true" />
+          <BroadcastComposer
+            senderId={broadcast.readiness.senderId}
+            senderName={actor?.name ?? broadcast.readiness.senderId}
+            sessionId={session.activeSessionId}
+            onClose={broadcast.onClose}
+            onSent={broadcast.onSent}
+          />
+        </>
+      ) : null}
 
       <LiveRegion message={announcement} />
     </div>

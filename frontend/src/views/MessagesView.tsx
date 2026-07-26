@@ -1,55 +1,36 @@
 /**
- * The Messages screen: the record list plus the one broadcast entry point.
+ * The Messages screen: the record list and the read-only message inspector.
  *
- * Deliberately the only place a broadcast can be started. The task queue and
- * inspector gain no broadcast affordance (criterion 2).
+ * The broadcast trigger deliberately does not live here. It moved to the
+ * persistent toolbar in UI-12 so an operator can interject from any route, and
+ * keeping a copy here would give one action two entry points.
  */
 
 import { useRef, useState } from "react";
 import type { CSSProperties } from "react";
-import type { Agent, Message } from "../api/contract.ts";
-import { broadcastReadiness } from "../lib/broadcast.ts";
+import type { Message } from "../api/contract.ts";
 import { ResizeHandle } from "../components/ResizeHandle.tsx";
 import { BOUNDS } from "../state/layoutStore.ts";
 import type { Layout } from "../state/useLayout.ts";
-import { useApp } from "../state/AppContext.tsx";
-import { BroadcastComposer } from "./BroadcastComposer.tsx";
 import { MessageInspector } from "./MessageInspector.tsx";
 import { RecordsView } from "./RecordsView.tsx";
 
 export function MessagesView({
   filter,
-  agents,
   layout,
+  reloadKey,
 }: {
   filter: string;
-  agents: Agent[];
   layout: Layout;
+  /** Bumped by the global launcher after a successful broadcast. */
+  reloadKey: number;
 }) {
-  const { identity, mutationsEnabled, session } = useApp();
-  const [open, setOpen] = useState(false);
-  const [reloadKey, setReloadKey] = useState(0);
   const [selected, setSelected] = useState<Message | null>(null);
   // Restores focus to the row that opened the inspector.
   const lastRow = useRef<HTMLElement | null>(null);
-  const trigger = useRef<HTMLButtonElement>(null);
-
-  const actor = agents.find((agent) => agent.id === identity.actorId);
-  const readiness = broadcastReadiness({
-    actor,
-    sessionId: session.activeSessionId,
-    mutationsEnabled,
-  });
-  const blocked = readiness.kind === "blocked";
-
-  // Focus returns to the trigger when the composer closes.
-  const close = () => {
-    setOpen(false);
-    trigger.current?.focus();
-  };
 
   return (
-    <div className={open ? "messages-screen with-sheet" : "messages-screen"}>
+    <div className="messages-screen">
       <div
         className={selected ? "messages-layout with-inspector" : "messages-layout"}
         style={
@@ -57,19 +38,6 @@ export function MessagesView({
         }
       >
         <div className="messages-main">
-        <div className="broadcast-bar">
-          <button
-            ref={trigger}
-            className="primary"
-            disabled={blocked}
-            title={blocked ? readiness.reason : undefined}
-            onClick={() => setOpen(true)}
-          >
-            Broadcast to team
-          </button>
-          {blocked ? <p className="small muted">{readiness.reason}</p> : null}
-        </div>
-
           <RecordsView<Message>
             route="messages"
             filter={filter}
@@ -103,19 +71,6 @@ export function MessagesView({
           </>
         ) : null}
       </div>
-
-      {open && readiness.kind === "ready" && session.activeSessionId ? (
-        <>
-          <div className="sheet-scrim" onClick={close} aria-hidden="true" />
-          <BroadcastComposer
-            senderId={readiness.senderId}
-            senderName={actor?.name ?? readiness.senderId}
-            sessionId={session.activeSessionId}
-            onClose={close}
-            onSent={() => setReloadKey((value) => value + 1)}
-          />
-        </>
-      ) : null}
     </div>
   );
 }
