@@ -30,6 +30,10 @@ export function HealthView() {
   const findings = SECTIONS.map((section) => ({
     ...section,
     rows: (data[section.key] as unknown[]) ?? [],
+    // Sections are capped by the health limit. Rendering a capped length as an
+    // exact count would understate the finding, so truncated sections are
+    // marked rather than counted.
+    truncated: data.truncated_sections.includes(String(section.key)),
   })).filter((section) => section.rows.length > 0);
 
   return (
@@ -48,7 +52,9 @@ export function HealthView() {
         </span>
         <div>
           <p className="health-title">
-            {data.healthy ? "No findings" : `${findings.length} section${findings.length === 1 ? "" : "s"} need attention`}
+            {data.healthy
+              ? "No findings"
+              : `${findings.length} section${findings.length === 1 ? "" : "s"} need attention`}
           </p>
           <p className="small muted">
             {data.healthy
@@ -70,7 +76,11 @@ export function HealthView() {
         findings.map((section) => (
           <div className="health-section" key={String(section.key)}>
             <h2>
-              {section.title} <span className="count">{section.rows.length}</span>
+              {section.title}{" "}
+              <span className="count" title={section.truncated ? "More rows exist than are shown" : undefined}>
+                {section.rows.length}
+                {section.truncated ? "+" : ""}
+              </span>
             </h2>
             <p className="small muted">{section.hint}</p>
             <ul className="record-list">
