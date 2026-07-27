@@ -205,3 +205,77 @@ button.close {
     padding: var(--space-3);
   }
 }
+
+/* Change-assignees panel (UI-28).
+ *
+ * Inline in the inspector rather than a modal: the operator has to keep seeing
+ * the task while deciding who should hold it. It sits above the Overview
+ * fields so the answer and the thing being changed stay on screen together. */
+.assignee-editor {
+  margin-bottom: var(--space-4);
+  padding: var(--space-3);
+  border: 1px solid var(--line-700);
+  border-left: 3px solid var(--violet-400);
+  border-radius: var(--radius-input);
+  background: var(--surface-900);
+}
+
+.assignee-editor .sheet-header {
+  padding: 0 0 var(--space-2);
+  border-bottom: 1px solid var(--line-700);
+  margin-bottom: var(--space-3);
+}
+
+.assignee-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.assignee-list li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-2);
+}
+
+.assignee-name {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+/* Struck through rather than removed from the list: the operator should see
+   what they are about to do and be able to undo it before committing. */
+.staged-removal .assignee-name {
+  text-decoration: line-through;
+  color: var(--text-400);
+}
+
+.assignee-list li p {
+  flex: 1 1 100%;
+  margin: 0;
+}
+
+.assignees-value {
+  display: inline-flex;
+  align-items: baseline;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.assignment-result {
+  padding-top: var(--space-2);
+  border-top: 1px solid var(--line-700);
+}
+
+/* Stated, not blocked. Deliberately unassigning is legitimate; creating a
+   Health finding without saying so is not. */
+.unowned-warning {
+  margin: 0;
+  padding: var(--space-2);
+  border-left: 3px solid var(--amber-400, var(--violet-400));
+  background: var(--surface-850);
+}

@@ -13,6 +13,7 @@ import { absoluteTime, relativeTime } from "../lib/format.ts";
 import { useApp } from "../state/AppContext.tsx";
 import { useResource } from "../state/useResource.ts";
 import { TaskActions } from "./TaskActions.tsx";
+import { AssigneeEditor } from "./AssigneeEditor.tsx";
 import { Overview } from "./TaskOverview.tsx";
 import { TaskTabPanel, TASK_TABS, type TaskTab } from "./TaskTabs.tsx";
 
@@ -29,6 +30,9 @@ export function TaskInspector({
 }) {
   const { coordination } = useApp();
   const [tab, setTab] = useState<TaskTab>("overview");
+  const [editingAssignees, setEditingAssignees] = useState(false);
+  // Focus returns to the control that opened the panel, per spec section 8.
+  const assigneeTrigger = useRef<HTMLButtonElement | null>(null);
   const task = useResource(() => coordination.task(taskId), [taskId]);
   const panel = useRef<HTMLElement>(null);
 
@@ -65,7 +69,11 @@ export function TaskInspector({
           <span className="mono inspector-id">{taskId}</span>
           <h2 className="inspector-title">{detail?.title ?? "Loading…"}</h2>
         </div>
-        <button onClick={onClose} aria-label="Close inspector" className="close">
+        <button
+          onClick={onClose}
+          aria-label="Close inspector"
+          className="close"
+        >
           <Icon name="close" size={16} />
         </button>
       </div>
@@ -87,9 +95,18 @@ export function TaskInspector({
           <MetricRow
             items={[
               { label: "State", value: <StatusPill status={detail.status} /> },
-              { label: "Priority", value: <span className="mono">{detail.priority}</span> },
-              { label: "Revision", value: <span className="mono">{detail.revision}</span> },
-              { label: "Evidence", value: <span className="mono">{detail.evidence_count}</span> },
+              {
+                label: "Priority",
+                value: <span className="mono">{detail.priority}</span>,
+              },
+              {
+                label: "Revision",
+                value: <span className="mono">{detail.revision}</span>,
+              },
+              {
+                label: "Evidence",
+                value: <span className="mono">{detail.evidence_count}</span>,
+              },
               {
                 label: "Updated",
                 value: (
@@ -101,7 +118,11 @@ export function TaskInspector({
             ]}
           />
 
-          <div className="tabs" role="tablist" aria-label="Task detail sections">
+          <div
+            className="tabs"
+            role="tablist"
+            aria-label="Task detail sections"
+          >
             {TASK_TABS.map((entry) => (
               <button
                 key={entry.id}
@@ -115,7 +136,9 @@ export function TaskInspector({
                 onKeyDown={(event) => handleTabKeys(event, entry.id, setTab)}
               >
                 {entry.label}
-                {entry.count ? <span className="tab-count">{entry.count(detail)}</span> : null}
+                {entry.count ? (
+                  <span className="tab-count">{entry.count(detail)}</span>
+                ) : null}
               </button>
             ))}
           </div>
@@ -128,9 +151,38 @@ export function TaskInspector({
             tabIndex={0}
           >
             {tab === "overview" ? (
-              <Overview detail={detail} />
+              <>
+                {editingAssignees ? (
+                  <AssigneeEditor
+                    task={detail}
+                    agents={agents}
+                    onClose={() => {
+                      setEditingAssignees(false);
+                      assigneeTrigger.current?.focus();
+                    }}
+                    onSaved={() => {
+                      task.refresh();
+                      onChanged();
+                    }}
+                  />
+                ) : null}
+                <Overview
+                  detail={detail}
+                  onChangeAssignees={(event?: unknown) => {
+                    assigneeTrigger.current =
+                      (event as { currentTarget?: HTMLButtonElement })
+                        ?.currentTarget ?? null;
+                    setEditingAssignees(true);
+                  }}
+                />
+              </>
             ) : (
-              <TaskTabPanel tab={tab} detail={detail} onChanged={onChanged} refresh={task.refresh} />
+              <TaskTabPanel
+                tab={tab}
+                detail={detail}
+                onChanged={onChanged}
+                refresh={task.refresh}
+              />
             )}
           </div>
 
