@@ -196,8 +196,29 @@
   display: contents;
 }
 
+/* The two actions align to each other, not to their captions.
+ *
+ * Both groups carry a caption under the button — the broadcast reason, the
+ * freshness timestamp — and those captions are different heights and change
+ * with state. With the groups bottom-aligned in the toolbar row, the captions
+ * decided where the buttons landed, so the two button faces sat 23px apart and
+ * moved whenever a reason appeared or wrapped.
+ *
+ * Aligning the pair by its top edge instead makes the button faces the fixed
+ * reference and lets each caption hang beneath its own button. `align-self`
+ * keeps the pair sitting with the selects, so the toolbar row is unchanged.
+ * The compact toolbar below 600px re-declares this and is unaffected. */
 .topbar-actions {
-  display: contents;
+  display: flex;
+  align-items: flex-start;
+  align-self: flex-end;
+  gap: var(--space-3);
+}
+
+/* Peer actions in the same group, so one control height rather than the
+   default compact one. Existing token; no new value. */
+.topbar-refresh > button {
+  min-height: var(--control-height);
 }
 
 @media (max-height: 600px) {
