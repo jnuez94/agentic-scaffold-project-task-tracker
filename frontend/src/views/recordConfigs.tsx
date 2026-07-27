@@ -10,6 +10,7 @@ import { IdCell, Mono, Tags } from "../components/Fields.tsx";
 import { EnumPill } from "../components/Pill.tsx";
 import type { Coordination } from "../api/coordination.ts";
 import { preview, relativeTime } from "../lib/format.ts";
+import { isRecoverable } from "../lib/staleness.ts";
 import type { RouteName } from "../state/useHashRoute.ts";
 
 export interface RecordConfig {
@@ -24,6 +25,19 @@ export interface RecordConfig {
   defaultOrder: string;
   load: (coordination: Coordination, query: Record<string, string>) => Promise<unknown[]>;
   columns: Column<never>[];
+  /**
+   * An optional per-row action for this entity.
+   *
+   * Declared as data so RecordsView stays generic: it renders whatever the
+   * registry describes and knows nothing about sessions, while `applies` keeps
+   * the control off rows the underlying command would refuse.
+   */
+  rowAction?: {
+    label: string;
+    /** Column header for the action column. */
+    header: string;
+    applies: (row: Record<string, unknown>) => boolean;
+  };
 }
 
 const time = (value: string) => <span className="small">{relativeTime(value)}</span>;
@@ -80,6 +94,17 @@ export const RECORD_CONFIGS: Partial<Record<RouteName, RecordConfig>> = {
     statusOptions: { param: "status", label: "Status", values: ["active", "ended"] },
     defaultOrder: "the CLI order: started, then id",
     load: (c, q) => c.sessions(q),
+    // Offered only on rows the CLI would actually accept, so the console never
+    // presents an action that returns session_not_stale.
+    rowAction: {
+      label: "Recover…",
+      header: "Recovery",
+      applies: (row) =>
+        isRecoverable({
+          status: String(row["status"] ?? ""),
+          last_seen_at: String(row["last_seen_at"] ?? ""),
+        } as never),
+    },
     columns: columns<Record<string, string>>([
       { key: "id", header: "Session", priority: 1, render: (r) => <Mono>{r["id"]}</Mono>, sortValue: (r) => r["id"], },
       { key: "agent", header: "Agent", priority: 2, render: (r) => <Mono>{r["agent_id"]}</Mono>, sortValue: (r) => r["agent_id"], },

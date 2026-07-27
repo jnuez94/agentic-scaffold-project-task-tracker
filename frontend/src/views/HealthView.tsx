@@ -2,11 +2,13 @@
  * Coordination health: the checks that reveal quiet decay.
  */
 
-import type { Health } from "../api/contract.ts";
+import { useRef, useState } from "react";
+import type { Health, Session, TaskListRow } from "../api/contract.ts";
 import { EmptyState, ErrorBanner, SkeletonRows } from "../components/Feedback.tsx";
 import { relativeTime } from "../lib/format.ts";
 import { useApp } from "../state/AppContext.tsx";
 import { useResource } from "../state/useResource.ts";
+import { SessionRecovery } from "./SessionRecovery.tsx";
 
 const SECTIONS: { key: keyof Health; title: string; hint: string }[] = [
   { key: "unowned_tasks", title: "Unowned tasks", hint: "Assign an owner or close as invalid." },
@@ -20,8 +22,13 @@ const SECTIONS: { key: keyof Health; title: string; hint: string }[] = [
 ];
 
 export function HealthView() {
-  const { coordination } = useApp();
+  const { coordination, identity } = useApp();
   const health = useResource(() => coordination.health(), []);
+  // Loaded so the recovery dialog can name the tasks it will block rather than
+  // describing them in the abstract.
+  const tasks = useResource(() => coordination.tasks({ limit: 500 }), []);
+  const [recovering, setRecovering] = useState<Session | null>(null);
+  const launcher = useRef<HTMLButtonElement | null>(null);
 
   if (health.error) return <ErrorBanner error={health.error} onRetry={health.refresh} />;
   if (!health.data) return <SkeletonRows rows={6} columns={2} />;
@@ -88,14 +95,55 @@ export function HealthView() {
                 <li key={identify(row, index)}>
                   <span className="mono">{identify(row, index)}</span>
                   {describe(row) ? <span className="small"> — {describe(row)}</span> : null}
+                  {/* The hint on this section tells the operator to recover the
+                      session; until now the route offered no way to do it. */}
+                  {section.key === "stale_sessions" && asSession(row) ? (
+                    <button
+                      type="button"
+                      className="link-button"
+                      onClick={(event) => {
+                        launcher.current = event.currentTarget;
+                        setRecovering(asSession(row));
+                      }}
+                    >
+                      Recover…
+                    </button>
+                  ) : null}
                 </li>
               ))}
             </ul>
           </div>
         ))
       )}
+
+      {recovering ? (
+        <>
+          <div className="sheet-scrim" onClick={() => setRecovering(null)} aria-hidden="true" />
+          <SessionRecovery
+            session={recovering}
+            tasks={(tasks.data ?? []) as TaskListRow[]}
+            actorId={identity.actorId}
+            onClose={() => {
+              setRecovering(null);
+              launcher.current?.focus();
+            }}
+            onRecovered={() => {
+              health.refresh();
+              tasks.refresh();
+            }}
+          />
+        </>
+      ) : null}
     </section>
   );
+}
+
+/** A health row is only a session if it carries what recovery needs. */
+function asSession(row: unknown): Session | null {
+  if (!row || typeof row !== "object") return null;
+  const record = row as Record<string, unknown>;
+  if (typeof record["id"] !== "string" || typeof record["last_seen_at"] !== "string") return null;
+  return record as unknown as Session;
 }
 
 function identify(row: unknown, index: number): string {
