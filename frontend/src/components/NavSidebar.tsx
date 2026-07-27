@@ -72,8 +72,15 @@ export function NavSidebar({
 
       {GROUPS.map((group) => (
         <div className="nav-group" key={group.title}>
-          <h2 className="nav-group-title">{group.title}</h2>
-          <ul>
+          {/* A div, not an h2. These label navigation groups; they are not
+              document structure, and as headings they preceded the page's only
+              h1 in DOM order — an outline of h2, h2, h2, h2, h1. The grouping
+              semantics that actually matter are preserved by pointing each
+              list at its label with aria-labelledby. */}
+          <div className="nav-group-title" id={groupLabelId(group.title)}>
+            {group.title}
+          </div>
+          <ul aria-labelledby={groupLabelId(group.title)}>
             {group.items.map((item) => (
               <li key={item.route}>
                 <a
@@ -109,4 +116,9 @@ export function NavSidebar({
       </div>
     </nav>
   );
+}
+
+/** Stable id linking a nav group's list to its visible label. */
+function groupLabelId(title: string): string {
+  return `nav-group-${title.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`;
 }

@@ -9,6 +9,7 @@
 import { useState } from "react";
 import type { Agent, Session } from "../api/contract.ts";
 import { relativeTime } from "../lib/format.ts";
+import { agentOptionLabel, isSelectableActor } from "../lib/labels.ts";
 import { Icon } from "./icons.tsx";
 
 export interface TopBarProps {
@@ -35,6 +36,9 @@ export function TopBar(props: TopBarProps) {
   // Already filtered to active sessions owned by the selected actor.
   const sessionsForActor = props.sessions;
   const [panelOpen, setPanelOpen] = useState(false);
+
+  const selectable = props.agents.filter(isSelectableActor);
+  const retired = props.agents.filter((agent) => !isSelectableActor(agent));
 
   const actorName = props.agents.find(
     (agent) => agent.id === props.actorId,
@@ -92,11 +96,27 @@ export function TopBar(props: TopBarProps) {
               onChange={(event) => props.onActor(event.target.value || null)}
             >
               <option value="">No actor selected</option>
-              {props.agents.map((agent) => (
+              {/* Grouped, not filtered. The agent list is fetched with all=1 —
+                  bootstrap needs it that way to detect an incompatible
+                  local-operator record — so retired identities arrive here too.
+                  Hiding them would be the wrong fix; the problem was that
+                  nothing distinguished them. A retired actor cannot be the
+                  accountable actor for a mutation, so it is disabled rather
+                  than silently selectable. */}
+              {selectable.map((agent) => (
                 <option key={agent.id} value={agent.id}>
-                  {agent.name} · {agent.id}
+                  {agentOptionLabel(agent)}
                 </option>
               ))}
+              {retired.length ? (
+                <optgroup label="Retired — cannot act">
+                  {retired.map((agent) => (
+                    <option key={agent.id} value={agent.id} disabled>
+                      {agentOptionLabel(agent)}
+                    </option>
+                  ))}
+                </optgroup>
+              ) : null}
             </select>
           </div>
 

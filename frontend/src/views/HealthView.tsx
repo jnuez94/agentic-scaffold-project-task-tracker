@@ -7,18 +7,30 @@ import type { Health, Session, TaskListRow } from "../api/contract.ts";
 import { EmptyState, ErrorBanner, SkeletonRows } from "../components/Feedback.tsx";
 import { relativeTime } from "../lib/format.ts";
 import { useApp } from "../state/AppContext.tsx";
+import { buildHash } from "../state/useHashRoute.ts";
 import { useResource } from "../state/useResource.ts";
 import { SessionRecovery } from "./SessionRecovery.tsx";
 
-const SECTIONS: { key: keyof Health; title: string; hint: string }[] = [
-  { key: "unowned_tasks", title: "Unowned tasks", hint: "Assign an owner or close as invalid." },
-  { key: "stale_tasks", title: "Stale tasks", hint: "Ask the owner for status or reassign." },
-  { key: "stale_sessions", title: "Stale sessions", hint: "Recover the session to release its claims." },
-  { key: "unclaimed_in_progress_tasks", title: "In progress without a claim", hint: "An invariant violation; inspect with `coordination doctor`." },
-  { key: "invalid_active_claims", title: "Invalid active claims", hint: "The claim references an inactive session or actor." },
-  { key: "active_blockers", title: "Blocked tasks", hint: "Resolve the blocker or escalate." },
-  { key: "done_without_evidence", title: "Done without evidence", hint: "Reopen or attach evidence." },
-  { key: "open_escalations", title: "Open escalations", hint: "Route to the owner with the authority to decide." },
+/**
+ * Where a finding's record lives, so the id can be a link rather than a string
+ * the operator has to copy and hunt for on another route. `task` rows deep-link
+ * straight into the inspector; `session` rows can only reach the Sessions list,
+ * because sessions have no detail route.
+ */
+type FindingLink = "task" | "session" | null;
+
+const SECTIONS: { key: keyof Health; title: string; hint: string; link: FindingLink }[] = [
+  { key: "unowned_tasks", title: "Unowned tasks", hint: "Assign an owner or close as invalid.", link: "task" },
+  { key: "stale_tasks", title: "Stale tasks", hint: "Ask the owner for status or reassign.", link: "task" },
+  { key: "stale_sessions", title: "Stale sessions", hint: "Idle longer than the threshold. A session may still be in use — check when it was last seen before recovering it.", link: "session" },
+  { key: "unclaimed_in_progress_tasks", title: "In progress without a claim", hint: "An invariant violation; inspect with `coordination doctor`.", link: "task" },
+  { key: "invalid_active_claims", title: "Invalid active claims", hint: "The claim references an inactive session or actor.", link: "task" },
+  // "or escalate" was removed: the console has no way to raise an escalation,
+  // so instructing one sent the operator looking for a control that is not
+  // there. Restore it if addEscalation is ever surfaced.
+  { key: "active_blockers", title: "Blocked tasks", hint: "Open each task to see what is blocking it.", link: "task" },
+  { key: "done_without_evidence", title: "Done without evidence", hint: "Reopen or attach evidence.", link: "task" },
+  { key: "open_escalations", title: "Open escalations", hint: "Route to the owner with the authority to decide.", link: null },
 ];
 
 export function HealthView() {
@@ -93,7 +105,18 @@ export function HealthView() {
             <ul className="record-list">
               {section.rows.map((row, index) => (
                 <li key={identify(row, index)}>
-                  <span className="mono">{identify(row, index)}</span>
+                  {/* Health names the exact record that needs attention and
+                      used to render it as plain text, so the operator read an
+                      id off the screen and went hunting for it on another
+                      route. #/tasks/{id} already resolves and opens the
+                      inspector; this just points at it. */}
+                  {findingHref(section.link, identify(row, index)) ? (
+                    <a className="mono" href={findingHref(section.link, identify(row, index))!}>
+                      {identify(row, index)}
+                    </a>
+                  ) : (
+                    <span className="mono">{identify(row, index)}</span>
+                  )}
                   {describe(row) ? <span className="small"> — {describe(row)}</span> : null}
                   {/* The hint on this section tells the operator to recover the
                       session; until now the route offered no way to do it. */}
@@ -136,6 +159,20 @@ export function HealthView() {
       ) : null}
     </section>
   );
+}
+
+/**
+ * The hash a finding id should point at, or null when it has nowhere to go.
+ *
+ * Escalations are deliberately unlinked: the route lists them but there is no
+ * per-escalation view to land on, and a link that goes nowhere useful is worse
+ * than plain text.
+ */
+export function findingHref(link: FindingLink, id: string): string | null {
+  if (!id || id.startsWith("row-")) return null;
+  if (link === "task") return buildHash("tasks", id);
+  if (link === "session") return buildHash("sessions");
+  return null;
 }
 
 /** A health row is only a session if it carries what recovery needs. */

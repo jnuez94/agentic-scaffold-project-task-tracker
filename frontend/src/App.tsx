@@ -14,7 +14,7 @@ import { ResizeHandle } from "./components/ResizeHandle.tsx";
 import { TopBar } from "./components/TopBar.tsx";
 import { useApp } from "./state/AppContext.tsx";
 import { BOUNDS } from "./state/layoutStore.ts";
-import { useHashRoute } from "./state/useHashRoute.ts";
+import { ROUTE_ENTRY_SCROLL, useHashRoute } from "./state/useHashRoute.ts";
 import { useLayout } from "./state/useLayout.ts";
 import { useBroadcastLauncher } from "./state/useBroadcastLauncher.ts";
 import { useMeasuredHeight } from "./state/useMeasuredHeight.ts";
@@ -49,6 +49,17 @@ export function App() {
 
   const contentRef = useRef<HTMLDivElement>(null);
   const scrollportHeight = useMeasuredHeight(contentRef);
+
+  // Arriving on a route should show the top of it. `.content` is reused across
+  // routes, so without this its scrollTop simply carried over and was clamped
+  // to the new route's maximum — land on a shorter route after scrolling a long
+  // one and you arrived at its bottom, heading and column headers off-screen.
+  // Keyed on route.name, not the whole route: opening a task in the inspector
+  // changes route.detail and must not yank the queue back to the top.
+  useEffect(() => {
+    if (ROUTE_ENTRY_SCROLL[route.name] !== "top") return;
+    if (contentRef.current) contentRef.current.scrollTop = 0;
+  }, [route.name]);
 
   const meta = useResource(() => coordination.meta(), []);
   const agents = useResource(

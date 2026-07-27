@@ -6,7 +6,7 @@
  * carried by color alone, so every state also has a glyph and a text label.
  */
 
-import type { TaskStatus } from "../api/contract.ts";
+import type { Agent, TaskStatus } from "../api/contract.ts";
 
 export type Tone = "neutral" | "blue" | "amber" | "coral" | "mint" | "violet";
 
@@ -111,4 +111,25 @@ export function statusRank(status: string): number {
   const order = ["todo", "in_progress", "review", "blocked", "done"];
   const index = order.indexOf(status);
   return index === -1 ? order.length : index;
+}
+
+/** True when an agent record can still be used as an accountable actor. */
+export function isSelectableActor(agent: Pick<Agent, "status">): boolean {
+  return agent.status === "active";
+}
+
+/**
+ * Label an agent inside a `<select>`.
+ *
+ * The id is not decoration. Two distinct records share the display name
+ * "Toby" — `toby` is active, `codex-security` is retired — so a name-only
+ * option gave the operator two identical choices and no way to tell which one
+ * owns SEC-1. The id is what disambiguates them.
+ *
+ * "Retired" rather than "inactive": the operator picking an actor is asking who
+ * can still be held accountable, and retired answers that question directly.
+ */
+export function agentOptionLabel(agent: Pick<Agent, "id" | "name" | "status">): string {
+  const base = `${agent.name} · ${agent.id}`;
+  return isSelectableActor(agent) ? base : `${base} — retired`;
 }

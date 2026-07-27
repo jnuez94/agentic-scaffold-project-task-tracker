@@ -10,6 +10,7 @@ import { TASK_STATUSES } from "../api/contract.ts";
 import { ErrorBanner } from "../components/Feedback.tsx";
 import { ResizeHandle } from "../components/ResizeHandle.tsx";
 import { filterRows } from "../lib/filters.ts";
+import { agentOptionLabel } from "../lib/labels.ts";
 import { isTruncated } from "../lib/pagination.ts";
 import { useApp } from "../state/AppContext.tsx";
 import { BOUNDS } from "../state/layoutStore.ts";
@@ -72,12 +73,21 @@ export function TasksView({
       style={{ "--inspector-width": `${inspectorWidth}px` } as CSSProperties}
     >
       <section className="queue" aria-label="Task queue">
-        {/* Every other route announces itself with a heading; Tasks, which is
-            where the console opens, had none, so a screen reader landing here
-            was told nothing about where "here" is. Visually hidden rather than
-            drawn: the visible design of this route belongs to the UX spec, and
-            the gap being fixed is an announcement, not a layout. */}
-        <h1 className="visually-hidden">Tasks</h1>
+        {/* Tasks is where the console opens, and it was the only one of the
+            eleven routes with no visible heading: the h1 was here but clipped
+            to 1x1, so screen readers were told where "here" is and everyone
+            else landed on an untitled table. Now it uses the same .view-header
+            every other route uses. The description states the ordering, which
+            was previously only reachable as the table's accessible caption —
+            sighted operators should not have to infer why UI-1 sorts above
+            UX-12. */}
+        <div className="view-header">
+          <h1>Tasks</h1>
+          <p className="small muted">
+            Work items and their current state. Ordered by priority, then most
+            recently updated.
+          </p>
+        </div>
 
         <div className="queue-toolbar">
           <div className="control">
@@ -103,9 +113,16 @@ export function TasksView({
               onChange={(event) => setAssignee(event.target.value)}
             >
               <option value="">Anyone</option>
+              {/* Name alone is not an identity. Two distinct agent records
+                  share the display name "Toby" — one active, one retired — and
+                  rendering just the name gave the operator two identical
+                  options with no way to tell which one owns SEC-1. Retired
+                  agents stay selectable here: this is a lens over existing
+                  records, and historical assignments to retired identities
+                  must remain filterable. Only "Acting as" gates on status. */}
               {agents.map((agent) => (
                 <option key={agent.id} value={agent.id}>
-                  {agent.name}
+                  {agentOptionLabel(agent)}
                 </option>
               ))}
             </select>

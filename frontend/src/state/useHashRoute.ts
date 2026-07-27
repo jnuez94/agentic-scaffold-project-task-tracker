@@ -67,3 +67,34 @@ export function useHashRoute(): {
 
   return { route, navigate };
 }
+
+/**
+ * Where a route should be scrolled when the operator arrives on it.
+ *
+ * `.content` is the single route scroll owner (UI-15), and its `scrollTop`
+ * used to survive a route change: it persisted and was merely clamped to the
+ * new route's maximum. Scroll the task queue to the bottom and Decisions then
+ * opened at *its* bottom, with Artifacts and Reviews opening partway down —
+ * heading, filters, and table column headers all scrolled out of view.
+ *
+ * Messages is the one deliberate exception. It opens at its newest entry, and
+ * that costs the operator nothing because its heading, description, view
+ * toggle, loaded count, and "Jump to newest" are pinned above the transcript
+ * and stay visible. Declaring that intent here keeps it legible, and stops the
+ * next route inheriting it by accident.
+ */
+export type EntryScroll = "top" | "self-managed";
+
+export const ROUTE_ENTRY_SCROLL: Record<RouteName, EntryScroll> = {
+  tasks: "top",
+  reviews: "top",
+  messages: "self-managed",
+  agents: "top",
+  sessions: "top",
+  decisions: "top",
+  artifacts: "top",
+  escalations: "top",
+  health: "top",
+  audit: "top",
+  export: "top",
+};
