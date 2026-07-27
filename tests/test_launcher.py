@@ -9,6 +9,7 @@ from pathlib import Path
 
 from coordination_ui.arguments import build_parser, parse_options
 from coordination_ui.discovery import ProjectLocator
+from coordination_ui.compatibility import verify
 from coordination_ui.launcher import EXIT_FAILURE, EXIT_USAGE, LaunchOptions, Launcher
 
 from .support import TemporaryProject, cli_available, locator_for_tests
@@ -112,6 +113,60 @@ class PreflightTests(unittest.TestCase):
         self.assertIn(str(self.temp.database), output)
         self.assertIn("http://127.0.0.1:8787/", output)
         self.assertIn("no authentication", output)
+
+
+class CompatibilityGateTests(unittest.TestCase):
+    """The gate has to stop startup, not merely compute a verdict (UI-26)."""
+
+    def setUp(self) -> None:
+        self.temp = TemporaryProject().start()
+        self.addCleanup(self.temp.stop)
+        self.stderr = io.StringIO()
+
+    def launcher(self) -> Launcher:
+        return Launcher(
+            LaunchOptions(database=self.temp.database),
+            self.stderr,
+            ProjectLocator(locator_for_tests()),
+        )
+
+    def test_a_supported_installation_gets_past_the_gate(self) -> None:
+        launcher = self.launcher()
+        project = launcher.resolve_project()
+        self.assertIsNone(verify(*launcher.preflight(project).values()))
+
+    def test_an_incompatible_cli_stops_startup_before_binding(self) -> None:
+        launcher = self.launcher()
+        # Report a CLI from before the contract this console mirrors.
+        launcher.preflight = lambda project: {  # type: ignore[method-assign]
+            "version": {"cli_version": "1.1.0"},
+            "doctor": {"schema_version": 1},
+        }
+        code = launcher.run()
+        self.assertEqual(code, EXIT_FAILURE)
+        output = self.stderr.getvalue()
+        self.assertIn("1.1.0", output)
+        self.assertIn("COORDINATION_BIN", output)
+        # It must never have reached the point of serving.
+        self.assertNotIn("serving", output)
+
+    def test_an_unsupported_schema_stops_startup(self) -> None:
+        launcher = self.launcher()
+        launcher.preflight = lambda project: {  # type: ignore[method-assign]
+            "version": {"cli_version": "1.2.0"},
+            "doctor": {"schema_version": 2},
+        }
+        self.assertEqual(launcher.run(), EXIT_FAILURE)
+        self.assertIn("schema v2", self.stderr.getvalue())
+
+    def test_an_unreadable_version_stops_startup(self) -> None:
+        launcher = self.launcher()
+        launcher.preflight = lambda project: {  # type: ignore[method-assign]
+            "version": {"cli_version": None},
+            "doctor": {"schema_version": 1},
+        }
+        self.assertEqual(launcher.run(), EXIT_FAILURE)
+        self.assertIn("cannot read", self.stderr.getvalue())
 
 
 if __name__ == "__main__":

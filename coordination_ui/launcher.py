@@ -10,6 +10,7 @@ from typing import Any, TextIO
 
 from . import __version__
 from .cli import CoordinationCLI, CoordinationError
+from .compatibility import verify
 from .discovery import DiscoveryError, Project, ProjectLocator
 from .web import DEFAULT_HOST, DEFAULT_PORT, build_server, serve_forever
 
@@ -87,6 +88,14 @@ class Launcher:
             preflight = self.preflight(project)
         except CoordinationError as exc:
             return self.fail(f"{exc.code}: {exc.message}", EXIT_FAILURE)
+
+        # Preflight already asked for the versions; until now the answer was
+        # only printed. Refusing here means an incompatible CLI is one sentence
+        # at startup instead of unexplained behaviour on the operator's first
+        # click.
+        incompatible = verify(preflight["version"], preflight["doctor"])
+        if incompatible:
+            return self.fail(incompatible, EXIT_FAILURE)
 
         try:
             server = build_server(

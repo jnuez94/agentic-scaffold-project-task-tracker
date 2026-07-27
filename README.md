@@ -8,9 +8,28 @@ It shows what the coordination CLI shows — tasks, agents, sessions, evidence,
 dependencies, reviews, decisions, messages, artifacts, escalations, health, and
 the audit log — and lets an operator act on it from a browser.
 
-## Running it
+## Requirements
 
-Requires Python 3.10+. No third-party packages, no build step, no network.
+Two things, and the second is the one people miss:
+
+| | |
+| --- | --- |
+| Python | 3.10 or newer |
+| coordination CLI | `>=1.2.0,<2.0.0`, from [agentic-project-scaffold-lite](https://github.com/jnuez94/agentic-project-scaffold-lite) |
+
+This console is a **view onto a coordination database; it is not a coordination
+tool on its own.** Every read and every write is performed by the coordination
+CLI, so without one installed there is nothing here to run. It is looked for at
+`.agents/agentic-project-scaffold-lite/bin/coordination` inside the project, and
+`COORDINATION_BIN` overrides that with any other install.
+
+Startup checks the CLI and schema versions it finds and refuses to serve an
+installation it does not support, naming what it found and what it needs, so a
+mismatch is one line at launch rather than confusing behaviour later.
+
+No third-party Python packages, no build step, no network.
+
+## Running it
 
 ```bash
 python3 -m coordination_ui
