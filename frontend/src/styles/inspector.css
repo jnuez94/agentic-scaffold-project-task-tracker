@@ -88,10 +88,22 @@ button.close {
   color: var(--text-400);
 }
 
+/* The detail region gets a floor; the chrome around it yields.
+ *
+ * The panel already grows to the viewport, so the panel was never the problem.
+ * The problem was inside it: header, metrics, tabs, and a footer carrying a
+ * note field, the action row, a reason line per unavailable action, and the
+ * attribution came to 475px of a 719px panel, leaving 242px of scroll region
+ * for 1475px of content — 16% of a task visible at a time, on a full desktop.
+ *
+ * Same principle as the toolbar fix in UI-16: the content the operator came for
+ * gets a guaranteed share, and the chrome scrolls within its own bounds when it
+ * cannot fit. The footer stays pinned and its actions stay reachable. */
 .inspector-body {
   padding: var(--space-4);
   overflow-y: auto;
-  flex: 1;
+  flex: 1 1 auto;
+  min-height: 45%;
 }
 
 .field {
@@ -116,6 +128,12 @@ button.close {
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
+  /* Capped so it cannot starve the detail region, and it does not scroll as a
+     whole: the action row and attribution stay put while the region above them
+     yields. */
+  flex: 0 1 auto;
+  min-height: 0;
+  max-height: 45%;
 }
 
 .action-row {
@@ -130,4 +148,60 @@ button.close {
   flex-wrap: wrap;
   border-top: 1px solid var(--line-700);
   padding-top: var(--space-2);
+}
+
+
+/* The yielding part of the footer. The action row and attribution sit below it
+   and stay visible whatever this contains. */
+.inspector-footer-scroll {
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+/* The answer to "why is this blocked", placed where the question is asked. */
+.blocked-reason {
+  margin-bottom: var(--space-4);
+  padding: var(--space-3);
+  border: 1px solid var(--amber-600, var(--line-700));
+  border-left: 3px solid var(--amber-400, var(--violet-400));
+  border-radius: var(--radius-input);
+  background: var(--surface-900);
+}
+
+.blocked-reason .field-label {
+  display: block;
+  margin-bottom: var(--space-1);
+}
+
+/* Tighter chrome where vertical space is scarce.
+ *
+ * At 1280x800 the header, metric row, and tab strip came to 231px of a 443px
+ * panel — more than half the inspector spent on furniture, before a word of the
+ * task. The proportions that read well on a tall screen are the wrong ones
+ * here, so the fixed regions give back their generous padding and the detail
+ * region takes what they return. Nothing is hidden; everything is closer. */
+@media (max-height: 900px) {
+  .inspector-header,
+  .metric-row {
+    padding: var(--space-2) var(--space-4);
+  }
+
+  .metric-row {
+    gap: var(--space-3);
+  }
+
+  .tabs {
+    padding: 0 var(--space-2);
+  }
+
+  .tabs .tab {
+    min-height: var(--control-height-compact);
+  }
+
+  .inspector-body {
+    padding: var(--space-3);
+  }
 }

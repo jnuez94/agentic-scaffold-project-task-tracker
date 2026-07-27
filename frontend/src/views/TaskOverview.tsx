@@ -10,8 +10,30 @@ import { Field, Tags, TextBlock } from "../components/Fields.tsx";
 import { absoluteTime } from "../lib/format.ts";
 
 export function Overview({ detail }: { detail: TaskDetail }) {
+  // Why a task is blocked is the reason anyone opens a blocked task, and it sat
+  // sixth and seventh in a scroll region showing a fraction of its content: the
+  // operator saw a Blocked chip and had to go looking for the sentence that
+  // explains it. Promoted directly beneath the chip, and left in place below
+  // too — this is an answer offered early, not a field moved.
+  const blocked = detail.status === "blocked";
+  const reason = detail.blocked_claims?.trim() || detail.notes?.trim() || "";
+
   return (
     <>
+      {blocked ? (
+        <div className="blocked-reason" role="note">
+          <span className="field-label">Why this is blocked</span>
+          {reason ? (
+            <TextBlock text={reason} />
+          ) : (
+            <p className="small muted">
+              No blocking reason was recorded. The task's state says blocked; nothing on the
+              record says why.
+            </p>
+          )}
+        </div>
+      ) : null}
+
       <Field label="Description">
         <TextBlock text={detail.description} />
       </Field>

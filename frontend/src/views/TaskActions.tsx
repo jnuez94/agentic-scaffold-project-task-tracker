@@ -91,43 +91,53 @@ export function TaskActions({
         )
       ) : null}
 
-      {task.status === "done" ? (
-        <p className="small muted">This task is done. Done is terminal; there is no further status action.</p>
-      ) : (
-        <>
-          <div className="control">
-            <label htmlFor="transition-note">Transition note (optional)</label>
-            <textarea
-              id="transition-note"
-              value={note}
-              rows={2}
-              onChange={(event) => setNote(event.target.value)}
-              placeholder="Recorded in the task notes and the audit log."
-            />
-          </div>
+      {/* Everything that can yield lives here. A task with several unavailable
+          actions carries a reason line for each, and those lines were tall
+          enough to push the buttons they describe out of the panel. They scroll
+          now; the buttons below do not. */}
+      <div className="inspector-footer-scroll">
+        {task.status === "done" ? (
+          <p className="small muted">
+            This task is done. Done is terminal; there is no further status action.
+          </p>
+        ) : (
+          <>
+            <div className="control">
+              <label htmlFor="transition-note">Transition note (optional)</label>
+              <textarea
+                id="transition-note"
+                value={note}
+                rows={2}
+                onChange={(event) => setNote(event.target.value)}
+                placeholder="Recorded in the task notes and the audit log."
+              />
+            </div>
 
-          <div className="action-row">
-            {actions.map((action) => (
-              <button
-                key={action.target}
-                className={action.primary && !action.blockedReason ? "primary" : ""}
-                disabled={Boolean(action.blockedReason) || busy !== null}
-                title={action.blockedReason}
-                onClick={() => run(action)}
-              >
-                {busy === action.target ? "Working…" : action.label}
-              </button>
-            ))}
-          </div>
+            {actions
+              .filter((action) => action.blockedReason)
+              .map((action) => (
+                <p className="small muted" key={`${action.target}-reason`}>
+                  <strong>{action.label}:</strong> {action.blockedReason}
+                </p>
+              ))}
+          </>
+        )}
+      </div>
 
-          {actions
-            .filter((action) => action.blockedReason)
-            .map((action) => (
-              <p className="small muted" key={`${action.target}-reason`}>
-                <strong>{action.label}:</strong> {action.blockedReason}
-              </p>
-            ))}
-        </>
+      {task.status === "done" ? null : (
+        <div className="action-row">
+          {actions.map((action) => (
+            <button
+              key={action.target}
+              className={action.primary && !action.blockedReason ? "primary" : ""}
+              disabled={Boolean(action.blockedReason) || busy !== null}
+              title={action.blockedReason}
+              onClick={() => run(action)}
+            >
+              {busy === action.target ? "Working…" : action.label}
+            </button>
+          ))}
+        </div>
       )}
 
       <div className="attribution small muted">
