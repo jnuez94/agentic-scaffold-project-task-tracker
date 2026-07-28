@@ -94,8 +94,14 @@ export function RecordInspector({
           </Field>
         ))}
 
-        {actions ? <div className="inspector-actions">{actions}</div> : null}
       </div>
+
+      {/* Outside the scrolling body on purpose. These act on the record, and
+          inside the body they scrolled away with the fields — the same defect
+          that made the reassignment panel's Save button look absent. Pinned
+          between the body and the footer, they stay reachable however long the
+          record is. */}
+      {actions ? <div className="inspector-actions">{actions}</div> : null}
 
       <footer className="inspector-footer small muted">
         {config.footer.map((key) => (

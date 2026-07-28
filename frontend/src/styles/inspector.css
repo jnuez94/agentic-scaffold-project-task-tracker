@@ -330,10 +330,27 @@ button.close {
   border-top: 1px solid var(--line-700);
 }
 
+/* A pinned action bar, not a trailing block inside the scroll region.
+ *
+ * These were the last children of .inspector-body, so on any record longer
+ * than the scrollport they scrolled out of reach — the operator saw fields and
+ * no way to act on them. flex-shrink: 0 keeps the bar its own height while the
+ * body absorbs the remaining space. */
 .inspector-actions {
-  margin-top: var(--space-3);
-  padding-top: var(--space-3);
+  flex-shrink: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-3);
   border-top: 1px solid var(--line-700);
+  background: var(--surface-850);
+}
+
+/* The disabled reason travels with the control it explains, on its own row. */
+.inspector-actions p {
+  flex: 1 1 100%;
+  margin: 0;
 }
 
 .wrap-text {
