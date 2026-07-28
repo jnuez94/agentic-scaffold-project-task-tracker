@@ -366,9 +366,18 @@ button.close {
  * assignee's name and read as part of the value rather than as a control.
  * Operators reported not finding it.
  *
- * These change records, so they get a real button surface, a control-sized
- * target, and a leading glyph that says "this does something". Still secondary
- * to .primary, which stays reserved for the commit action inside a panel. */
+ * These change records, so they get a real button surface and a control-sized
+ * target. Still secondary to .primary, which stays reserved for the commit
+ * action inside a panel.
+ *
+ * No glyph, deliberately, having tried one. A ::before pencil read as "edit",
+ * which is honest for Change assignees and a false promise on Retire agent and
+ * Restore to active — those are state transitions, not edits. And generated
+ * content is announced by several screen readers, so the label became "pencil
+ * Retire agent"; aria-hidden cannot be applied to a pseudo-element, so the only
+ * reliable fix would have been a decorative span in every call site. The
+ * surface, border, 36px target, --text-50 and body-strong already carry the
+ * affordance without either problem. */
 .record-action {
   display: inline-flex;
   align-items: center;
@@ -381,12 +390,6 @@ button.close {
   color: var(--text-50);
   font: var(--body-strong);
   font-size: 13px;
-}
-
-.record-action::before {
-  /* Marks it as an action without depending on colour alone. */
-  content: "✎";
-  opacity: 0.75;
 }
 
 .record-action:hover:not(:disabled) {
