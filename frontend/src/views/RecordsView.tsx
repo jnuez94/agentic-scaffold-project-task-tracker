@@ -3,13 +3,13 @@
  */
 
 import { useMemo, useRef, useState } from "react";
-import type { TaskListRow } from "../api/contract.ts";
+import type { Session, TaskListRow } from "../api/contract.ts";
 import { DataTable } from "../components/DataTable.tsx";
 import { ErrorBanner } from "../components/Feedback.tsx";
 import { filterRows } from "../lib/filters.ts";
 import { isTruncated } from "../lib/pagination.ts";
 import { useApp } from "../state/AppContext.tsx";
-import { useResource } from "../state/useResource.ts";
+import { useRecordData } from "../state/useRecordData.ts";
 import type { RouteName } from "../state/useHashRoute.ts";
 import { RECORD_CONFIGS } from "./recordConfigs.tsx";
 import { withActionColumn } from "./recordActionColumn.tsx";
@@ -46,28 +46,12 @@ export function RecordsView<T = Record<string, unknown>>({
   const rowTrigger = useRef<HTMLElement | null>(null);
   const launcher = useRef<HTMLButtonElement | null>(null);
 
-  // Only fetched for routes that declare a row action needing it; the recovery
-  // dialog names the tasks it will block rather than describing them vaguely.
-  const claimable = useResource(
-    () =>
-      config?.rowAction
-        ? coordination.tasks({ limit: 500 })
-        : Promise.resolve([]),
-    [coordination, route],
-    { enabled: Boolean(config?.rowAction) },
-  );
-
-  const statusParam = config?.statusOptions?.param;
-  const query = useMemo(() => {
-    const built: Record<string, string> = { limit: String(REQUEST_LIMIT) };
-    if (statusParam && statusValue) built[statusParam] = statusValue;
-    return built;
-  }, [statusParam, statusValue]);
-
-  const records = useResource(
-    () => (config ? config.load(coordination, query) : Promise.resolve([])),
-    [route, query, reloadKey],
-    { enabled: Boolean(config) },
+  const { records, tasks, sessions } = useRecordData(
+    coordination,
+    route,
+    config,
+    statusValue,
+    reloadKey,
   );
 
   const tableColumns = useMemo(
@@ -176,7 +160,8 @@ export function RecordsView<T = Record<string, unknown>>({
         inspectorConfig={inspectorConfig}
         inspecting={inspecting}
         acting={acting}
-        tasks={(claimable.data ?? []) as TaskListRow[]}
+        tasks={(tasks.data ?? []) as TaskListRow[]}
+        sessions={(sessions.data ?? []) as Session[]}
         actorId={identity.actorId}
         onCloseInspector={() => {
           setInspecting(null);
@@ -189,7 +174,7 @@ export function RecordsView<T = Record<string, unknown>>({
         onAct={(row) => setActing(row)}
         onRecovered={() => {
           records.refresh();
-          claimable.refresh();
+          tasks.refresh();
         }}
       />
     </div>
