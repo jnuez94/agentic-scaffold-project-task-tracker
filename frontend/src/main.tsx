@@ -17,6 +17,8 @@ import "./styles/responsive.css";
 import "./styles/startup.css";
 import "./styles/messages.css";
 import "./styles/conversation.css";
+// Last: re-maps tokens and patches .pill rules that pills.css defines.
+import "./styles/themes.css";
 
 const container = document.getElementById("root");
 if (!container) throw new Error("#root is missing from the document");

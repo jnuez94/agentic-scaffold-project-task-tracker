@@ -5,6 +5,7 @@
 import type { Meta } from "../api/contract.ts";
 import { Icon, type IconName } from "./icons.tsx";
 import { buildHash, type RouteName } from "../state/useHashRoute.ts";
+import { THEMES, THEME_LABELS, type Theme } from "../state/themePreference.ts";
 
 interface Group {
   title: string;
@@ -50,11 +51,15 @@ export function NavSidebar({
   meta,
   actorLabel,
   sessionLabel,
+  theme,
+  onTheme,
 }: {
   active: RouteName;
   meta: Meta | undefined;
   actorLabel: string;
   sessionLabel: string;
+  theme: Theme;
+  onTheme: (theme: Theme) => void;
 }) {
   return (
     <nav className="nav" aria-label="Sections">
@@ -112,6 +117,27 @@ export function NavSidebar({
           <div className="nav-card-title">Operating as</div>
           <div className="nav-identity mono">{actorLabel}</div>
           <div className="small muted">{sessionLabel}</div>
+        </div>
+        {/* A display preference, not coordination state: it is stored locally,
+            never attributed to an actor, and never written to the database. It
+            sits beside "Local only" rather than in the top bar because the top
+            bar is where accountable identity lives, and a theme is not that. */}
+        <div className="nav-card">
+          <label className="nav-card-title" htmlFor="theme-select">
+            Theme
+          </label>
+          <select
+            id="theme-select"
+            className="nav-theme-select"
+            value={theme}
+            onChange={(event) => onTheme(event.target.value as Theme)}
+          >
+            {THEMES.map((value) => (
+              <option key={value} value={value}>
+                {THEME_LABELS[value]}
+              </option>
+            ))}
+          </select>
         </div>
       </div>
     </nav>

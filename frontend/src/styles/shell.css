@@ -179,3 +179,11 @@
 .shell-background {
   display: contents;
 }
+
+/* Theme picker in the nav footer. Full width so it reads as a setting rather
+   than a stray control, and it inherits the themed tokens like everything
+   else — switching theme restyles the switch itself. */
+.nav-theme-select {
+  width: 100%;
+  min-height: var(--control-height-compact);
+}

@@ -1,0 +1,190 @@
+/*
+ * Theme packages — Paper and Blueprint.
+ *
+ * Adapted from a supplied token-level theme archive. Both
+ * themes re-map Flowline tokens only, so every component picks them up with no
+ * component change — which is exactly how the archive intended them to work,
+ * and its token vocabulary matched this package almost exactly.
+ *
+ * THREE DELIBERATE DEVIATIONS FROM THE SUPPLIED FILES.
+ *
+ * 1. The webfont @import is gone. Both themes opened with
+ *    `@import url("https://fonts.googleapis.com/...")` for IBM Plex, JetBrains
+ *    Mono and Sora. The console serves `style-src 'self'` and `font-src 'self'`
+ *    (web/security_headers.py), so that import is blocked twice over, and
+ *    FE-STACK-1 plus the README's "no network" guarantee forbid it regardless.
+ *    The console also tells the operator "Nothing leaves this machine"; a
+ *    stylesheet that phones Google on every load would make that false. Each
+ *    theme therefore uses the fallback stacks the archive already declared.
+ *    Paper keeps a real serif signature through Georgia; Blueprint loses
+ *    Sora and rides on its colour and line work instead.
+ *
+ * 2. Paper `--text-400` is darkened from #7d7462 to #6b6353. The supplied
+ *    value measured 4.28:1 on the work surface, 3.79:1 on surface-800 and
+ *    3.92:1 on the nav — below WCAG AA on three of four surfaces. The archive
+ *    darkened the status hues for paper but missed the quiet-metadata token.
+ *    #6b6353 measures 4.87:1 worst case across all four.
+ *
+ * 3. Label sizes are raised to 12px. The archive set 11px (Paper) and
+ *    10.5px (Blueprint); the visual spec §4 states "Do not reduce functional
+ *    metadata below 12px". The uppercase/letterspaced treatment that carries
+ *    each theme's character is kept.
+ *
+ * Themes are applied with a `data-theme` attribute on <html> rather than a
+ * second stylesheet link, because this package ships one bundled stylesheet
+ * under a strict CSP. No attribute means stock Flowline.
+ */
+
+/* ── Paper ────────────────────────────────────────────────────────────────
+ * Warm paper light theme. The coordination record as a printed ledger. */
+:root[data-theme="paper"] {
+  /* Surfaces — inverted ramp: shell is the darkest paper, cards the whitest */
+  --shell-950: #f2ecdd;
+  --surface-900: #faf6ec;
+  --surface-850: #fffdf6;
+  --surface-800: #f0e8d6;
+  --line-700: #d9cfba;
+
+  /* Text — warm ink. text-400 darkened for AA; see note 2 above. */
+  --text-50: #26221a;
+  --text-200: #4c463a;
+  --text-400: #6b6353;
+
+  /* Accent — vermilion in the violet roles: 600 fill, 500 hover, 400 text */
+  --violet-600: #bc3f24;
+  --violet-500: #a83519;
+  --violet-400: #a83519;
+
+  /* Status hues — darkened for AA on paper */
+  --blue-400: #1f5fa8;
+  --mint-400: #1e7a4f;
+  --amber-400: #8f6210;
+  --coral-400: #a8332c;
+
+  /* Tints — 12-14% of the light-theme hues */
+  --tint-blue: rgba(31, 95, 168, 0.12);
+  --tint-mint: rgba(30, 122, 79, 0.12);
+  --tint-amber: rgba(143, 98, 16, 0.14);
+  --tint-coral: rgba(168, 51, 44, 0.12);
+  --tint-neutral: rgba(125, 116, 98, 0.14);
+  --tint-violet: rgba(188, 63, 36, 0.1);
+
+  /* Type — system serif headings over the system sans. No fetched webfont. */
+  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-serif: Georgia, "Times New Roman", "Nimbus Roman", serif;
+  --font-mono: ui-monospace, "SFMono-Regular", "Cascadia Mono", "Roboto Mono",
+    monospace;
+
+  --display-sm: 700 24px/32px var(--font-serif);
+  --heading-lg: 600 20px/28px var(--font-serif);
+  --heading-md: 600 16px/24px var(--font-serif);
+  --body: 400 15px/22px var(--font-sans);
+  --body-strong: 600 15px/22px var(--font-sans);
+  --body-sm: 400 13px/19px var(--font-sans);
+  --code-sm: 500 12px/18px var(--font-mono);
+
+  /* Radii — tighter, print-like */
+  --radius-tag: 2px;
+  --radius-input: 2px;
+  --radius-panel: 3px;
+
+  --focus-ring: 0 0 0 2px #faf6ec, 0 0 0 4px #bc3f24;
+  --overlay-shadow: 0 12px 32px rgba(60, 50, 30, 0.25);
+}
+
+/* Pill borders are hard-coded rgba tuned for dark surfaces; re-map per tone. */
+:root[data-theme="paper"] .pill-neutral {
+  border-color: rgba(125, 116, 98, 0.4);
+}
+:root[data-theme="paper"] .pill-blue {
+  border-color: rgba(31, 95, 168, 0.35);
+}
+:root[data-theme="paper"] .pill-mint {
+  border-color: rgba(30, 122, 79, 0.35);
+}
+:root[data-theme="paper"] .pill-amber {
+  border-color: rgba(143, 98, 16, 0.35);
+}
+:root[data-theme="paper"] .pill-coral {
+  border-color: rgba(168, 51, 44, 0.35);
+}
+:root[data-theme="paper"] .pill-violet {
+  border-color: rgba(188, 63, 36, 0.35);
+}
+
+/* Paper rule: uppercase form labels. 12px floor per spec §4. */
+:root[data-theme="paper"] label {
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  font-weight: 600;
+  font-size: 12px;
+}
+
+/* ── Blueprint ────────────────────────────────────────────────────────────
+ * Drafting-indigo dark theme. The coordination plan as an engineering drawing. */
+:root[data-theme="blueprint"] {
+  /* Surfaces — indigo drafting-table ramp */
+  --shell-950: #081120;
+  --surface-900: #0a1526;
+  --surface-850: #0f1d33;
+  --surface-800: #152641;
+  --line-700: #23405f;
+
+  /* Text — cool blue-white */
+  --text-50: #eaf2fb;
+  --text-200: #c3d5e8;
+  --text-400: #7d94ad;
+
+  /* Accent — cyan in the violet roles */
+  --violet-600: #0f6e96;
+  --violet-500: #1585b3;
+  --violet-400: #4cc9f0;
+
+  /* Status hues */
+  --blue-400: #57a5ff;
+  --mint-400: #42dfa4;
+  --amber-400: #f5c451;
+  --coral-400: #ff7285;
+
+  /* Tints */
+  --tint-blue: rgba(87, 165, 255, 0.14);
+  --tint-mint: rgba(66, 223, 164, 0.14);
+  --tint-amber: rgba(245, 196, 81, 0.14);
+  --tint-coral: rgba(255, 114, 133, 0.14);
+  --tint-neutral: rgba(125, 148, 173, 0.14);
+  --tint-violet: rgba(76, 201, 240, 0.14);
+
+  /* Type — system sans; Sora is not fetched. See note 1 above. */
+  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: ui-monospace, "SFMono-Regular", "Cascadia Mono", "Roboto Mono",
+    monospace;
+
+  --display-sm: 600 24px/32px var(--font-sans);
+  --heading-lg: 600 20px/28px var(--font-sans);
+  --heading-md: 600 16px/24px var(--font-sans);
+  --body: 400 14px/21px var(--font-sans);
+  --body-strong: 600 14px/21px var(--font-sans);
+  --body-sm: 400 13px/19px var(--font-sans);
+  --code-sm: 400 12px/18px var(--font-mono);
+
+  /* Radii — crisp technical corners */
+  --radius-tag: 3px;
+  --radius-input: 3px;
+  --radius-panel: 4px;
+
+  --focus-ring: 0 0 0 2px #0a1526, 0 0 0 4px #4cc9f0;
+  --overlay-shadow: 0 12px 32px rgba(0, 0, 0, 0.5);
+}
+
+/* Blueprint signature: outlined pills — line work over filled tints. */
+:root[data-theme="blueprint"] .pill {
+  background: transparent;
+  border-color: currentColor;
+}
+
+/* Mono technical labels. 12px floor per spec §4. */
+:root[data-theme="blueprint"] label {
+  font: 600 12px/16px var(--font-mono);
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}

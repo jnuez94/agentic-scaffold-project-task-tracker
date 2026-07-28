@@ -15,6 +15,11 @@ import { TopBar } from "./components/TopBar.tsx";
 import { useApp } from "./state/AppContext.tsx";
 import { BOUNDS } from "./state/layoutStore.ts";
 import { ROUTE_ENTRY_SCROLL, useHashRoute } from "./state/useHashRoute.ts";
+import {
+  applyTheme,
+  browserThemePreferenceStore,
+  type Theme,
+} from "./state/themePreference.ts";
 import { useLayout } from "./state/useLayout.ts";
 import { useBroadcastLauncher } from "./state/useBroadcastLauncher.ts";
 import { useMeasuredHeight } from "./state/useMeasuredHeight.ts";
@@ -49,6 +54,15 @@ export function App() {
 
   const contentRef = useRef<HTMLDivElement>(null);
   const scrollportHeight = useMeasuredHeight(contentRef);
+
+  // Theme is a local display preference, so it is read once from storage and
+  // reflected onto <html>. It never reaches the API and is never attributed.
+  const themeStore = useRef(browserThemePreferenceStore());
+  const [theme, setTheme] = useState<Theme>(() => themeStore.current.load());
+  useEffect(() => {
+    applyTheme(theme, document.documentElement);
+    themeStore.current.save(theme);
+  }, [theme]);
 
   // Arriving on a route should show the top of it. `.content` is reused across
   // routes, so without this its scrollTop simply carried over and was clamped
@@ -127,6 +141,8 @@ export function App() {
               ? `Session ${session.activeSessionId}`
               : "No active session"
           }
+          theme={theme}
+          onTheme={setTheme}
         />
 
         <ResizeHandle
