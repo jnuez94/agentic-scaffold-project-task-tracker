@@ -279,3 +279,43 @@ button.close {
   border-left: 3px solid var(--amber-400, var(--violet-400));
   background: var(--surface-850);
 }
+
+/* Entity record inspectors (UI-29).
+ *
+ * Reuses the task-inspector shell so nothing new is invented visually; only
+ * the kind label and the constraint block are additions. */
+.inspector-kind {
+  display: block;
+  text-transform: lowercase;
+  letter-spacing: 0.04em;
+}
+
+/* The field stating what a record does not authorise. Given a visible edge
+ * because it is the reason most of these records get opened, and it sat below
+ * the fold in the tables it replaces. */
+.constraint-field {
+  padding: var(--space-2) var(--space-3);
+  margin-bottom: var(--space-3);
+  border-left: 3px solid var(--violet-400);
+  background: var(--surface-850);
+  border-radius: var(--radius-input);
+}
+
+.inspector-footer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  border-top: 1px solid var(--line-700);
+}
+
+.inspector-actions {
+  margin-top: var(--space-3);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--line-700);
+}
+
+.wrap-text {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}

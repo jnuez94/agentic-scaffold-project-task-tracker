@@ -167,3 +167,43 @@
     padding-right: 0;
   }
 }
+
+/* Records beside their inspector (UI-29).
+ *
+ * Same shape as the queue and messages layouts so the six entity routes behave
+ * like the two that already had inspectors. `minmax(0, 1fr)` on the table
+ * column is load-bearing: a grid item defaults to min-width auto and would
+ * refuse to shrink below the table's min-content, pushing the inspector off
+ * screen instead of narrowing the table. */
+.records-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  min-width: 0;
+}
+
+.records-layout.with-inspector {
+  grid-template-columns: minmax(0, 1fr) var(--record-inspector-width, 460px);
+  gap: var(--space-4);
+  align-items: start;
+}
+
+.record-inspector {
+  /* Bounded by what is visible, not by the scrolling content: `100%` here
+     resolves against the full page height and would run past the fold. */
+  position: sticky;
+  top: 0;
+  max-height: var(--scrollport-height, 100%);
+  display: flex;
+  flex-direction: column;
+}
+
+@media (max-width: 1279px) {
+  .records-layout.with-inspector {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .record-inspector {
+    position: static;
+    max-height: none;
+  }
+}

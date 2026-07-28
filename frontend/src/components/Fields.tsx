@@ -14,15 +14,18 @@ export function Field({
   label,
   children,
   hideWhenEmpty = false,
+  className,
 }: {
   label: string;
   children: ReactNode;
   hideWhenEmpty?: boolean;
+  /** Used to mark a constraint field, which is styled to stand out. */
+  className?: string;
 }) {
   const empty = children === null || children === undefined || children === "";
   if (empty && hideWhenEmpty) return null;
   return (
-    <div className="field">
+    <div className={className ? `field ${className}` : "field"}>
       <div className="field-label">{label}</div>
       <div className="field-value">{empty ? <span className="muted">—</span> : children}</div>
     </div>

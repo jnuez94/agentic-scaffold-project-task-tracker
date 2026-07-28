@@ -3,7 +3,7 @@
  */
 
 import { useMemo, useRef, useState } from "react";
-import type { Session, TaskListRow } from "../api/contract.ts";
+import type { TaskListRow } from "../api/contract.ts";
 import { DataTable } from "../components/DataTable.tsx";
 import { ErrorBanner } from "../components/Feedback.tsx";
 import { filterRows } from "../lib/filters.ts";
@@ -12,7 +12,9 @@ import { useApp } from "../state/AppContext.tsx";
 import { useResource } from "../state/useResource.ts";
 import type { RouteName } from "../state/useHashRoute.ts";
 import { RECORD_CONFIGS } from "./recordConfigs.tsx";
-import { SessionRecovery } from "./SessionRecovery.tsx";
+import { withActionColumn } from "./recordActionColumn.tsx";
+import { INSPECTOR_CONFIGS } from "./inspectorConfigs.tsx";
+import { RecordPanels } from "./RecordPanels.tsx";
 
 const REQUEST_LIMIT = 500;
 
@@ -33,8 +35,15 @@ export function RecordsView<T = Record<string, unknown>>({
 }) {
   const { coordination, identity } = useApp();
   const config = RECORD_CONFIGS[route];
+  const inspectorConfig = INSPECTOR_CONFIGS[route];
   const [statusValue, setStatusValue] = useState("");
   const [acting, setActing] = useState<Record<string, unknown> | null>(null);
+  // Selection is view state only. These entities have no `show` command, so a
+  // deep-link route would promise a record the CLI cannot resolve on load.
+  const [inspecting, setInspecting] = useState<Record<string, unknown> | null>(
+    null,
+  );
+  const rowTrigger = useRef<HTMLElement | null>(null);
   const launcher = useRef<HTMLButtonElement | null>(null);
 
   // Only fetched for routes that declare a row action needing it; the recovery
@@ -61,34 +70,16 @@ export function RecordsView<T = Record<string, unknown>>({
     { enabled: Boolean(config) },
   );
 
-  const tableColumns = useMemo(() => {
-    if (!config?.rowAction) return config?.columns ?? [];
-    const action = config.rowAction;
-    return [
-      ...config.columns,
-      {
-        key: "__action",
-        header: action.header,
-        priority: 1,
-        render: (row: Record<string, unknown>) =>
-          action.applies(row) ? (
-            <button
-              type="button"
-              className="link-button"
-              onClick={(event) => {
-                event.stopPropagation();
-                launcher.current = event.currentTarget;
-                setActing(row);
-              }}
-            >
-              {action.label}
-            </button>
-          ) : (
-            <span className="small muted">—</span>
-          ),
-      } as never,
-    ];
-  }, [config]);
+  const tableColumns = useMemo(
+    () =>
+      config
+        ? withActionColumn(config, (row, trigger) => {
+            launcher.current = trigger;
+            setActing(row);
+          })
+        : [],
+    [config],
+  );
 
   const rows = useMemo(
     () =>
@@ -103,86 +94,104 @@ export function RecordsView<T = Record<string, unknown>>({
   if (!config) return null;
 
   return (
-    <section className="records" aria-label={config.title}>
-      <div className="view-header">
-        <h1>{config.title}</h1>
-        <p className="small muted">{config.description}</p>
-      </div>
+    <div
+      className={
+        inspecting ? "records-layout with-inspector" : "records-layout"
+      }
+    >
+      <section className="records" aria-label={config.title}>
+        <div className="view-header">
+          <h1>{config.title}</h1>
+          <p className="small muted">{config.description}</p>
+        </div>
 
-      <div className="queue-toolbar">
-        {config.statusOptions ? (
-          <div className="control">
-            <label htmlFor="record-status">{config.statusOptions.label}</label>
-            <select
-              id="record-status"
-              value={statusValue}
-              onChange={(event) => setStatusValue(event.target.value)}
-            >
-              <option value="">All</option>
-              {config.statusOptions.values.map((value) => (
-                <option key={value} value={value}>
-                  {value}
-                </option>
-              ))}
-            </select>
-          </div>
+        <div className="queue-toolbar">
+          {config.statusOptions ? (
+            <div className="control">
+              <label htmlFor="record-status">
+                {config.statusOptions.label}
+              </label>
+              <select
+                id="record-status"
+                value={statusValue}
+                onChange={(event) => setStatusValue(event.target.value)}
+              >
+                <option value="">All</option>
+                {config.statusOptions.values.map((value) => (
+                  <option key={value} value={value}>
+                    {value}
+                  </option>
+                ))}
+              </select>
+            </div>
+          ) : null}
+        </div>
+
+        {records.error ? (
+          <ErrorBanner error={records.error} onRetry={records.refresh} />
         ) : null}
-      </div>
 
-      {records.error ? (
-        <ErrorBanner error={records.error} onRetry={records.refresh} />
-      ) : null}
+        <DataTable
+          rows={rows as never[]}
+          columns={tableColumns as never[]}
+          rowKey={(row) => String((row as Record<string, unknown>)["id"])}
+          caption={config.title}
+          defaultOrder={config.defaultOrder}
+          idPrefix={route}
+          filtered={Boolean(filter)}
+          truncated={isTruncated(
+            ((records.data ?? []) as unknown[]).length,
+            REQUEST_LIMIT,
+          )}
+          loading={records.loading}
+          loaded={records.loaded}
+          selectedKey={
+            selectedKey ?? (inspecting ? String(inspecting["id"]) : null)
+          }
+          onSelect={
+            onSelect
+              ? (row) => onSelect(row as T)
+              : inspectorConfig
+                ? (row) => {
+                    rowTrigger.current = document.activeElement as HTMLElement;
+                    setInspecting(row as Record<string, unknown>);
+                  }
+                : undefined
+          }
+          emptyTitle={
+            filter
+              ? `No ${config.title.toLowerCase()} match this filter`
+              : config.emptyTitle
+          }
+          emptyHint={
+            filter
+              ? "Clear the filter to see everything loaded."
+              : config.emptyHint
+          }
+        />
+      </section>
 
-      <DataTable
-        rows={rows as never[]}
-        columns={tableColumns as never[]}
-        rowKey={(row) => String((row as Record<string, unknown>)["id"])}
-        caption={config.title}
-        defaultOrder={config.defaultOrder}
-        idPrefix={route}
-        filtered={Boolean(filter)}
-        truncated={isTruncated(
-          ((records.data ?? []) as unknown[]).length,
-          REQUEST_LIMIT,
-        )}
-        loading={records.loading}
-        loaded={records.loaded}
-        selectedKey={selectedKey ?? null}
-        onSelect={onSelect ? (row) => onSelect(row as T) : undefined}
-        emptyTitle={
-          filter
-            ? `No ${config.title.toLowerCase()} match this filter`
-            : config.emptyTitle
-        }
-        emptyHint={
-          filter
-            ? "Clear the filter to see everything loaded."
-            : config.emptyHint
-        }
+      <RecordPanels
+        config={config}
+        inspectorConfig={inspectorConfig}
+        inspecting={inspecting}
+        acting={acting}
+        tasks={(claimable.data ?? []) as TaskListRow[]}
+        actorId={identity.actorId}
+        onCloseInspector={() => {
+          setInspecting(null);
+          rowTrigger.current?.focus();
+        }}
+        onCloseAction={() => {
+          setActing(null);
+          launcher.current?.focus();
+        }}
+        onAct={(row) => setActing(row)}
+        onRecovered={() => {
+          records.refresh();
+          claimable.refresh();
+        }}
       />
-
-      {acting ? (
-        <>
-          <div
-            className="sheet-scrim"
-            onClick={() => setActing(null)}
-            aria-hidden="true"
-          />
-          <SessionRecovery
-            session={acting as unknown as Session}
-            tasks={(claimable.data ?? []) as TaskListRow[]}
-            actorId={identity.actorId}
-            onClose={() => {
-              setActing(null);
-              launcher.current?.focus();
-            }}
-            onRecovered={() => {
-              records.refresh();
-              claimable.refresh();
-            }}
-          />
-        </>
-      ) : null}
-    </section>
+    </div>
   );
 }
