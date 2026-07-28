@@ -18,8 +18,29 @@
  * Spec: .documents/ux-reassign-work-spec.md sections 5 and 6.
  */
 
-import type { Agent, TaskDetail } from "../api/contract.ts";
+import type { Agent, TaskDetail, TaskListRow } from "../api/contract.ts";
 import { isSelectableActor } from "./labels.ts";
+
+/**
+ * The parts of a task assignment actually needs.
+ *
+ * Narrowed deliberately rather than taking TaskDetail. The queue row and the
+ * inspector detail both carry these four fields, so typing against the subset
+ * is what lets one editor serve both entry points instead of two that drift.
+ * It also documents the real requirement: my own spec claimed the row lacked
+ * the revision and claim state and could not offer assignment, which was
+ * simply wrong.
+ */
+export type AssignableTask = Pick<
+  TaskDetail,
+  "id" | "assignees" | "claimed_by" | "revision"
+>;
+
+/** Both shapes satisfy it; this fails to compile if either stops doing so. */
+const _detailIsAssignable: (t: TaskDetail) => AssignableTask = (t) => t;
+const _rowIsAssignable: (t: TaskListRow) => AssignableTask = (t) => t;
+void _detailIsAssignable;
+void _rowIsAssignable;
 
 export interface AssignmentDraft {
   /** Agent ids staged for addition, in selection order. */
@@ -37,7 +58,7 @@ export const EMPTY_DRAFT: AssignmentDraft = { add: [], remove: [] };
  * validation: the CLI enforces it independently, and this exists so the
  * operator is not made to discover it by failing.
  */
-export function removalBlockedReason(task: TaskDetail, agentId: string): string | null {
+export function removalBlockedReason(task: AssignableTask, agentId: string): string | null {
   if (task.claimed_by && task.claimed_by === agentId) {
     return (
       `${agentId} holds the active claim on this task. Releasing or recovering ` +
@@ -59,7 +80,7 @@ export function removalBlockedReason(task: TaskDetail, agentId: string): string 
  */
 export function addCandidates(
   agents: readonly Agent[],
-  task: TaskDetail,
+  task: AssignableTask,
   draft: AssignmentDraft,
 ): { selectable: Agent[]; retired: Agent[] } {
   const already = new Set([...task.assignees, ...draft.add]);
@@ -71,7 +92,7 @@ export function addCandidates(
 }
 
 /** The assignee set that submitting this draft would produce, in id order. */
-export function resultingAssignees(task: TaskDetail, draft: AssignmentDraft): string[] {
+export function resultingAssignees(task: AssignableTask, draft: AssignmentDraft): string[] {
   const removing = new Set(draft.remove);
   const kept = task.assignees.filter((id) => !removing.has(id));
   return [...new Set([...kept, ...draft.add])].sort((a, b) => a.localeCompare(b));
@@ -89,13 +110,13 @@ export function hasPendingChange(draft: AssignmentDraft): boolean {
  * release tasks for an incoming agent to claim explicitly. But it creates a
  * Health finding, and the console should say what it is about to create.
  */
-export function wouldLeaveUnowned(task: TaskDetail, draft: AssignmentDraft): boolean {
+export function wouldLeaveUnowned(task: AssignableTask, draft: AssignmentDraft): boolean {
   return hasPendingChange(draft) && resultingAssignees(task, draft).length === 0;
 }
 
 /** The single request body; add and remove always travel together. */
 export function buildAssignRequest(
-  task: TaskDetail,
+  task: AssignableTask,
   draft: AssignmentDraft,
   actorId: string,
 ): Record<string, unknown> {

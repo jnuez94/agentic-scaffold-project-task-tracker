@@ -207,3 +207,14 @@
     max-height: none;
   }
 }
+
+/* The row-level assignment panel (UI-36).
+ *
+ * Sits beneath the queue rather than floating over a row. Absolute anchoring to
+ * a table row breaks the moment the table scrolls, sorts or re-pages under it,
+ * and a panel that detaches from its row is worse than one that is plainly
+ * below the list the operator just acted on. The row stays visible above it,
+ * which is the property that mattered. */
+.row-assign-anchor {
+  margin-top: var(--space-3);
+}

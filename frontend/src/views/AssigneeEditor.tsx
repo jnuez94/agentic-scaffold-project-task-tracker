@@ -14,7 +14,7 @@
  */
 
 import { useEffect, useRef, useState } from "react";
-import type { Agent, TaskDetail } from "../api/contract.ts";
+import type { Agent } from "../api/contract.ts";
 import { ApiError } from "../api/errors.ts";
 import { Icon } from "../components/icons.tsx";
 import {
@@ -26,6 +26,7 @@ import {
   removalBlockedReason,
   resultingAssignees,
   wouldLeaveUnowned,
+  type AssignableTask,
   type AssignmentDraft,
 } from "../lib/assignment.ts";
 import { agentOptionLabel, isSelectableActor } from "../lib/labels.ts";
@@ -37,7 +38,7 @@ export function AssigneeEditor({
   onClose,
   onSaved,
 }: {
-  task: TaskDetail;
+  task: AssignableTask;
   agents: Agent[];
   onClose: () => void;
   onSaved: () => void;
@@ -288,7 +289,7 @@ export function AssigneeEditor({
 }
 
 /** The agent an error is about, when the code identifies one. */
-function subjectOf(failure: ApiError, task: TaskDetail): string | undefined {
+function subjectOf(failure: ApiError, task: AssignableTask): string | undefined {
   if (failure.code === "task_claim_owner_mismatch")
     return task.claimed_by ?? undefined;
   return undefined;
