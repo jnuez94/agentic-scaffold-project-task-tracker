@@ -57,7 +57,7 @@ export function Overview({
           {onChangeAssignees ? (
             <button
               type="button"
-              className="link-button"
+              className="record-action"
               onClick={onChangeAssignees}
             >
               Change assignees

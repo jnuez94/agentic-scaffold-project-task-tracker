@@ -52,6 +52,12 @@ export function AssigneeEditor({
 
   useEffect(() => {
     heading.current?.focus();
+    // Opening a panel taller than the scrollport otherwise leaves most of it,
+    // including the result preview, below the fold with no cue it is there.
+    // Optional-called: this is a progressive enhancement, and jsdom has no
+    // implementation, so requiring it would fail every test of this component
+    // for a scroll that has no observable effect there anyway.
+    heading.current?.scrollIntoView?.({ block: "nearest" });
   }, []);
 
   const byId = new Map(agents.map((agent) => [agent.id, agent]));

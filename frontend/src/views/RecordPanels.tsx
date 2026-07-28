@@ -61,7 +61,7 @@ export function RecordPanels({
               {config.rowAction?.applies(inspecting) ? (
                 <button
                   type="button"
-                  className="link-button"
+                  className="record-action"
                   onClick={() => onAct(inspecting)}
                 >
                   {config.rowAction.label}
@@ -72,7 +72,7 @@ export function RecordPanels({
                 <>
                   <button
                     type="button"
-                    className="link-button"
+                    className="record-action"
                     disabled={Boolean(block)}
                     aria-describedby={block ? "retire-block" : undefined}
                     onClick={() => setRetiring(agentRow)}

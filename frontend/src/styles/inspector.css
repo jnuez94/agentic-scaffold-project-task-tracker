@@ -220,6 +220,27 @@ button.close {
   background: var(--surface-900);
 }
 
+/* The commit control stays reachable without hunting for it.
+ *
+ * The panel is routinely taller than the inspector's scroll region — 448px of
+ * panel in a 395px scrollport on a full desktop viewport — so "Save assignees"
+ * opened 44px below the fold with focus on the heading at the top and nothing
+ * indicating an action existed further down. The operator could stage a change
+ * and had no visible way to commit it, which reads as the feature being broken
+ * rather than as a scroll position.
+ *
+ * Sticky to the bottom of the scrollport rather than shrinking the panel: the
+ * current assignees and the result preview are the things worth reading, and
+ * they should not be compressed to make room for a button. */
+.assignee-editor .sheet-actions {
+  position: sticky;
+  bottom: 0;
+  margin: var(--space-3) calc(var(--space-3) * -1) calc(var(--space-3) * -1);
+  padding: var(--space-3);
+  background: var(--surface-900);
+  border-top: 1px solid var(--line-700);
+}
+
 .assignee-editor .sheet-header {
   padding: 0 0 var(--space-2);
   border-bottom: 1px solid var(--line-700);
@@ -318,4 +339,54 @@ button.close {
 .wrap-text {
   white-space: pre-wrap;
   overflow-wrap: anywhere;
+}
+
+/* Record-level mutations, told apart from tertiary utilities.
+ *
+ * "Change assignees" and "Retire agent…" were sharing .link-button with things
+ * like Reveal and Copy in the status bar. At that weight — transparent, 22px,
+ * small type — "Change assignees" rendered as faint text immediately after the
+ * assignee's name and read as part of the value rather than as a control.
+ * Operators reported not finding it.
+ *
+ * These change records, so they get a real button surface, a control-sized
+ * target, and a leading glyph that says "this does something". Still secondary
+ * to .primary, which stays reserved for the commit action inside a panel. */
+.record-action {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: var(--control-height-compact);
+  padding: 0 var(--space-3);
+  background: var(--surface-800);
+  border: 1px solid var(--line-700);
+  border-radius: var(--radius-input);
+  color: var(--text-50);
+  font: var(--body-strong);
+  font-size: 13px;
+}
+
+.record-action::before {
+  /* Marks it as an action without depending on colour alone. */
+  content: "✎";
+  opacity: 0.75;
+}
+
+.record-action:hover:not(:disabled) {
+  background: var(--surface-850);
+  border-color: var(--violet-400);
+}
+
+.record-action:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+/* Sits on its own line beneath the value it acts on, so it is never mistaken
+   for more of the value. */
+.assignees-value {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-2);
 }
