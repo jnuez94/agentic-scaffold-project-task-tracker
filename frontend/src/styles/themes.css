@@ -69,6 +69,15 @@
   --tint-neutral: rgba(125, 116, 98, 0.14);
   --tint-violet: rgba(188, 63, 36, 0.1);
 
+  /* Attention row. The wash is held at 0.14 because on a light surface it
+   * cannot carry the cue at any usable strength: reaching the luminance
+   * separation the dark themes get would need roughly 0.70, which drops
+   * text-400 to 1.94:1 — far below AA. So on Paper the leading rule is the
+   * cue, not the wash, and it is darkened here to 5.28:1 against the washed
+   * row to earn that job. See UI-45. */
+  --attention-wash: rgba(143, 98, 16, 0.14);
+  --attention-rule: #7a5310;
+
   /* Type — system serif headings over the system sans. No fetched webfont. */
   --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
   --font-serif: Georgia, "Times New Roman", "Nimbus Roman", serif;
@@ -153,6 +162,13 @@
   --tint-coral: rgba(255, 114, 133, 0.14);
   --tint-neutral: rgba(125, 148, 173, 0.14);
   --tint-violet: rgba(76, 201, 240, 0.14);
+
+  /* Attention row, 0.12 rather than the shared 0.14. At 0.14 this theme's
+   * quiet metadata measured 4.41:1 on a marked row — below AA — because
+   * Blueprint's surface is the darkest of the three, so the same wash lifts it
+   * furthest toward the text. 0.12 restores it to 4.63:1 and still leaves the
+   * row reading at 3.03x the luminance of an unmarked one. See UI-45. */
+  --attention-wash: rgba(245, 196, 81, 0.12);
 
   /* Type — system sans; Sora is not fetched. See note 1 above. */
   --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;

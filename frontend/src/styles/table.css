@@ -109,21 +109,26 @@
  * "everything not done" would have highlighted, the eye stops distinguishing
  * and the treatment becomes noise. */
 .data-table tbody tr.needs-attention {
-  background: var(--tint-amber);
-  box-shadow: inset 3px 0 0 0 var(--amber-400);
+  background: var(--attention-wash);
+  /* 5px, not 3px. The wash is theme-dependent and on a light surface it cannot
+   * carry the cue at all without breaking text contrast, so the rule is the
+   * part that has to work everywhere. Widening it costs no contrast anywhere,
+   * because it sits beside the text rather than behind it, and it clears the
+   * 3:1 non-text threshold in all three themes with margin. */
+  box-shadow: inset 5px 0 0 0 var(--attention-rule);
 }
 
 /* Selection wins outright: it is the row the operator just acted on, and two
  * competing leading rules on one row read as neither. */
 .data-table tbody tr.needs-attention.selected {
   background: var(--tint-violet);
-  box-shadow: inset 3px 0 0 0 var(--violet-400);
+  box-shadow: inset 5px 0 0 0 var(--violet-400);
 }
 
 @media (forced-colors: active) {
   /* Tints are dropped by forced-colors, so the rule has to carry it alone. */
   .data-table tbody tr.needs-attention {
-    box-shadow: inset 3px 0 0 0 Highlight;
+    box-shadow: inset 5px 0 0 0 Highlight;
   }
 }
 

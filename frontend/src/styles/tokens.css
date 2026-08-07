@@ -38,6 +38,17 @@
   --tint-neutral: rgba(143, 161, 178, 0.16);
   --tint-violet: rgba(124, 58, 237, 0.18);
 
+  /* Attention row (UI-45). Its own tokens rather than reusing --tint-amber,
+   * because the constraint is different: a pill's tint sits behind a few words
+   * on a controlled background, while this sits behind a whole table row and
+   * has to keep every cell's quiet metadata above 4.5:1. Blueprint failed AA
+   * on the shared value, and correcting it there must not restyle the health
+   * banner, which legitimately uses --tint-amber. Re-measure all three themes
+   * on any change: raising the wash improves how the row reads and lowers the
+   * text contrast, and the two criteria pull in opposite directions. */
+  --attention-wash: rgba(242, 184, 75, 0.16);
+  --attention-rule: var(--amber-400);
+
   /* Spacing — 4px base */
   --space-1: 4px;
   --space-2: 8px;
