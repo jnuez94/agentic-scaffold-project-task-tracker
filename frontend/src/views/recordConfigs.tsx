@@ -10,6 +10,7 @@ import { IdCell, Mono, Tags } from "../components/Fields.tsx";
 import { EnumPill } from "../components/Pill.tsx";
 import type { Coordination } from "../api/coordination.ts";
 import { preview, relativeTime } from "../lib/format.ts";
+import { list, text } from "../lib/rowValue.ts";
 import { isRecoverable } from "../lib/staleness.ts";
 import type { RouteName } from "../state/useHashRoute.ts";
 
@@ -42,26 +43,9 @@ export interface RecordConfig {
 
 const time = (value: string) => <span className="small">{relativeTime(value)}</span>;
 
-/**
- * Read a list-valued field without assuming it is there.
- *
- * The casts in this registry describe the entity a column *belongs* to, and the
- * compiler cannot check that the row it receives is that entity. When the two
- * disagreed — Decision rows reaching the Artifacts columns during a route
- * change — a bare `(row[key] as string[]).join()` threw and took the whole
- * console down with it.
- *
- * The route key in App.tsx is what stops the mismatch happening. This is the
- * belt to that pair of braces: a column should degrade to an em dash rather
- * than unmount the application, whatever row it is handed.
- */
-function list(value: unknown): string[] {
-  return Array.isArray(value) ? (value as string[]) : [];
-}
-
 // Cast helper: DataTable is generic, the registry is heterogeneous.
 function columns<T>(list: Column<T>[]): Column<never>[] {
-  return list as unknown as Column<never>[];
+  return list;
 }
 
 export const RECORD_CONFIGS: Partial<Record<RouteName, RecordConfig>> = {
@@ -101,8 +85,8 @@ export const RECORD_CONFIGS: Partial<Record<RouteName, RecordConfig>> = {
       header: "Recovery",
       applies: (row) =>
         isRecoverable({
-          status: String(row["status"] ?? ""),
-          last_seen_at: String(row["last_seen_at"] ?? ""),
+          status: text(row["status"]),
+          last_seen_at: text(row["last_seen_at"]),
         } as never),
     },
     columns: columns<Record<string, string>>([

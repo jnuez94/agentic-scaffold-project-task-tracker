@@ -19,6 +19,7 @@ import { useEffect, useRef, type ReactNode } from "react";
 import { Field, MetricRow, Tags } from "../components/Fields.tsx";
 import { Icon } from "../components/icons.tsx";
 import { absoluteTime, relativeTime } from "../lib/format.ts";
+import { text } from "../lib/rowValue.ts";
 import {
   isEmptyValue,
   visibleFields,
@@ -40,7 +41,7 @@ export function RecordInspector({
   actions?: ReactNode;
 }) {
   const heading = useRef<HTMLHeadingElement>(null);
-  const id = String(row["id"] ?? "");
+  const id = text(row["id"]);
 
   useEffect(() => {
     heading.current?.focus();
@@ -54,7 +55,7 @@ export function RecordInspector({
     return () => document.removeEventListener("keydown", onKey);
   }, [onClose]);
 
-  const title = config.titleKey ? String(row[config.titleKey] ?? "") : "";
+  const title = config.titleKey ? text(row[config.titleKey]) : "";
 
   return (
     <aside className="inspector record-inspector" aria-label={`${config.kind} ${id}`}>
@@ -83,7 +84,16 @@ export function RecordInspector({
         }))}
       />
 
-      <div className="inspector-body" tabIndex={0}>
+      {/* Focusable so a keyboard user can scroll it, which a plain div is not.
+          Given focus, it must also say what it is: a bare tabbable div announces
+          nothing on arrival. role plus a name makes it a real region rather than
+          a focus stop with no explanation. */}
+      <div
+        className="inspector-body"
+        tabIndex={0}
+        role="region"
+        aria-label={`${config.kind} details`}
+      >
         {visibleFields(config.fields, row).map((field) => (
           <Field
             key={field.key}

@@ -146,7 +146,7 @@ export function AssigneeEditor({
         </button>
       </div>
 
-      <form onSubmit={submit}>
+      <form onSubmit={(event) => void submit(event)}>
         {error ? (
           <AssignmentError
             text={error.text}

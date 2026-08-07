@@ -44,6 +44,6 @@ export function withActionColumn(
         ) : (
           <span className="small muted">—</span>
         ),
-    } as never,
+    },
   ];
 }

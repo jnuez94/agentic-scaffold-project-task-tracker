@@ -49,7 +49,7 @@ export function AddEvidenceForm({
   };
 
   return (
-    <form className="inline-form" onSubmit={submit}>
+    <form className="inline-form" onSubmit={(event) => void submit(event)}>
       <h3>Add evidence</h3>
       {error ? <ErrorBanner error={error} onDismiss={() => setError(undefined)} /> : null}
       <div className="control">

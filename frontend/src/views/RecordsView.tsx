@@ -3,7 +3,6 @@
  */
 
 import { useMemo, useRef, useState } from "react";
-import type { Session, TaskListRow } from "../api/contract.ts";
 import { DataTable } from "../components/DataTable.tsx";
 import { ErrorBanner } from "../components/Feedback.tsx";
 import { filterRows } from "../lib/filters.ts";
@@ -118,14 +117,14 @@ export function RecordsView<T = Record<string, unknown>>({
 
         <DataTable
           rows={rows as never[]}
-          columns={tableColumns as never[]}
+          columns={tableColumns}
           rowKey={(row) => String((row as Record<string, unknown>)["id"])}
           caption={config.title}
           defaultOrder={config.defaultOrder}
           idPrefix={route}
           filtered={Boolean(filter)}
           truncated={isTruncated(
-            ((records.data ?? []) as unknown[]).length,
+            ((records.data ?? [])).length,
             REQUEST_LIMIT,
           )}
           loading={records.loading}
@@ -135,11 +134,11 @@ export function RecordsView<T = Record<string, unknown>>({
           }
           onSelect={
             onSelect
-              ? (row) => onSelect(row as T)
+              ? (row) => onSelect(row)
               : inspectorConfig
                 ? (row) => {
                     rowTrigger.current = document.activeElement as HTMLElement;
-                    setInspecting(row as Record<string, unknown>);
+                    setInspecting(row);
                   }
                 : undefined
           }
@@ -161,8 +160,8 @@ export function RecordsView<T = Record<string, unknown>>({
         inspectorConfig={inspectorConfig}
         inspecting={inspecting}
         acting={acting}
-        tasks={(tasks.data ?? []) as TaskListRow[]}
-        sessions={(sessions.data ?? []) as Session[]}
+        tasks={(tasks.data ?? [])}
+        sessions={(sessions.data ?? [])}
         actorId={identity.actorId}
         onCloseInspector={() => {
           setInspecting(null);

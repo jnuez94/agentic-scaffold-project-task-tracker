@@ -39,7 +39,7 @@ export function ExportView() {
         <button onClick={report.refresh} disabled={report.loading}>
           {report.loading ? "Regenerating…" : "Regenerate"}
         </button>
-        <button className="primary" onClick={copy} disabled={!report.data}>
+        <button className="primary" onClick={() => void copy()} disabled={!report.data}>
           Copy to clipboard
         </button>
         <p className="small muted">

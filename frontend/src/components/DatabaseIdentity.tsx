@@ -51,7 +51,7 @@ export function DatabaseIdentity({
       >
         {revealed ? "Hide" : "Reveal"}
       </button>
-      <button className="link-button" onClick={copy}>
+      <button className="link-button" onClick={() => void copy()}>
         Copy
       </button>
     </span>

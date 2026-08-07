@@ -47,7 +47,7 @@ export class ApiError extends Error {
   get actualRevision(): number | undefined {
     const details = this.details;
     if (details && typeof details === "object" && "actual_revision" in details) {
-      const value = (details as { actual_revision: unknown }).actual_revision;
+      const value = (details).actual_revision;
       return typeof value === "number" ? value : undefined;
     }
     return undefined;
@@ -57,7 +57,7 @@ export class ApiError extends Error {
   get allowed(): string[] | undefined {
     const details = this.details;
     if (details && typeof details === "object" && "allowed" in details) {
-      const value = (details as { allowed: unknown }).allowed;
+      const value = (details).allowed;
       return Array.isArray(value) ? value.map(String) : undefined;
     }
     return undefined;

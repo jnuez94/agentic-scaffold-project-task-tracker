@@ -3,7 +3,7 @@
  */
 
 import { useRef, useState } from "react";
-import type { Health, Session, TaskListRow } from "../api/contract.ts";
+import type { Health, Session } from "../api/contract.ts";
 import { EmptyState, ErrorBanner, SkeletonRows } from "../components/Feedback.tsx";
 import { relativeTime } from "../lib/format.ts";
 import { useApp } from "../state/AppContext.tsx";
@@ -148,7 +148,7 @@ export function HealthView() {
           <div className="sheet-scrim" onClick={() => setRecovering(null)} aria-hidden="true" />
           <SessionRecovery
             session={recovering}
-            tasks={(tasks.data ?? []) as TaskListRow[]}
+            tasks={(tasks.data ?? [])}
             actorId={identity.actorId}
             onClose={() => {
               setRecovering(null);
@@ -191,7 +191,7 @@ function identify(row: unknown, index: number): string {
   if (row && typeof row === "object") {
     const record = row as Record<string, unknown>;
     for (const key of ["id", "task_id", "session_id"]) {
-      if (typeof record[key] === "string") return record[key] as string;
+      if (typeof record[key] === "string") return record[key];
     }
   }
   return `row-${index}`;

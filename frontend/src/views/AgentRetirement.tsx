@@ -171,7 +171,7 @@ export function AgentRetirement({
             className="primary"
             disabled={pending || !identity.actorId}
             aria-label={confirmLabel}
-            onClick={submit}
+            onClick={() => void submit()}
           >
             {pending ? "Working…" : retiring ? "Retire agent" : "Restore to active"}
           </button>

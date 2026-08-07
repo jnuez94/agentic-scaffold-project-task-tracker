@@ -119,7 +119,7 @@ export function SessionRecovery({
         </button>
       </div>
 
-      <form className="sheet-body" onSubmit={submit}>
+      <form className="sheet-body" onSubmit={(event) => void submit(event)}>
         {error ? <ErrorBanner error={error} onDismiss={() => setError(undefined)} /> : null}
 
         {recovered ? (

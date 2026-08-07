@@ -132,7 +132,7 @@ export function BroadcastComposer({
         </button>
       </div>
 
-      <form className="sheet-body" onSubmit={submit}>
+      <form className="sheet-body" onSubmit={(event) => void submit(event)}>
         {error ? <ErrorBanner error={error} onDismiss={() => setError(undefined)} /> : null}
         {sent ? (
           <div className="sent-receipt" role="status">

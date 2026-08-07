@@ -95,7 +95,7 @@ export function MessageInspector({
           <div className="message-body">{message.body}</div>
         </div>
 
-        <button onClick={copyBody}>Copy message body</button>
+        <button onClick={() => void copyBody()}>Copy message body</button>
       </div>
     </aside>
   );

@@ -162,7 +162,7 @@ export function MessagesView({
               selectedKey={selected?.id ?? null}
               onSelect={(row) => {
                 lastTrigger.current = document.activeElement as HTMLElement;
-                setSelected(row as unknown as Message);
+                setSelected(row);
               }}
               emptyTitle={filter ? NO_MESSAGES_MATCH : config.emptyTitle}
               emptyHint={filter ? CLEAR_FILTER_HINT : config.emptyHint}

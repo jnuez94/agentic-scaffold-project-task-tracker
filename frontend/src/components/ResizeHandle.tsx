@@ -108,6 +108,11 @@ export function ResizeHandle({
   );
 
   return (
+    // A focusable separator is a window splitter and a widget in ARIA, which is
+    // why it carries aria-valuenow/min/max below. Keyboard resizing is required
+    // of that widget, so onKeyDown here is the accessible behaviour rather than
+    // a violation — the rule has no way to express "separator, but focusable".
+    // eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions
     <div
       className="resize-handle"
       role="separator"

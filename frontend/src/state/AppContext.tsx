@@ -2,7 +2,7 @@
  * Application-wide collaborators: the API client, identity, and announcements.
  */
 
-import { createContext, useCallback, useContext, useMemo, useState } from "react";
+import { createContext, useCallback, useContext, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { ApiClient } from "../api/client.ts";
 import { Coordination } from "../api/coordination.ts";
@@ -57,9 +57,15 @@ export function AppProvider({ children, store, client }: AppProviderProps) {
   const [identity, setIdentity] = useState<Identity>(() => identityStore.load());
   const [announcement, setAnnouncement] = useState("");
 
-  // The client reads the session through a ref-like closure so a session change
-  // never leaves a stale header on an in-flight request.
-  const identityRef = useMemo(() => ({ current: identity }), []);
+  // The client reads the session through a ref so a session change never leaves
+  // a stale header on an in-flight request.
+  //
+  // A real useRef, not useMemo with empty deps. That was a hand-rolled ref, and
+  // useMemo is documented as a hint React may discard: relying on it to keep an
+  // object identity stable is unsound, and it was also the codebase's one
+  // unexplained exhaustive-deps violation. useRef is the tool for a stable
+  // mutable box and needs no suppression.
+  const identityRef = useRef(identity);
   identityRef.current = identity;
 
   const api = useMemo(

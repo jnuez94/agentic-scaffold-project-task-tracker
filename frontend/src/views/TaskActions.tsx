@@ -132,7 +132,7 @@ export function TaskActions({
               className={action.primary && !action.blockedReason ? "primary" : ""}
               disabled={Boolean(action.blockedReason) || busy !== null}
               title={action.blockedReason}
-              onClick={() => run(action)}
+              onClick={() => void run(action)}
             >
               {busy === action.target ? "Working…" : action.label}
             </button>
