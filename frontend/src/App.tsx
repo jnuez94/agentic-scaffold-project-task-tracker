@@ -2,34 +2,26 @@
  * The application shell: navigation, identity, and the routed view.
  */
 
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import type { CSSProperties } from "react";
 import { ErrorBanner, LiveRegion } from "./components/Feedback.tsx";
 import { DatabaseIdentity } from "./components/DatabaseIdentity.tsx";
 import { NavSidebar } from "./components/NavSidebar.tsx";
-import { RouteErrorBoundary } from "./components/RouteErrorBoundary.tsx";
 import { StartupBanner } from "./components/StartupBanner.tsx";
 import { BroadcastComposer } from "./views/BroadcastComposer.tsx";
 import { ResizeHandle } from "./components/ResizeHandle.tsx";
 import { TopBar } from "./components/TopBar.tsx";
 import { useApp } from "./state/AppContext.tsx";
 import { BOUNDS } from "./state/layoutStore.ts";
-import { ROUTE_ENTRY_SCROLL, useHashRoute } from "./state/useHashRoute.ts";
-import {
-  applyTheme,
-  browserThemePreferenceStore,
-  type Theme,
-} from "./state/themePreference.ts";
+import { useHashRoute } from "./state/useHashRoute.ts";
+import { RoutedView } from "./views/RoutedView.tsx";
+import { useThemePreference } from "./state/useThemePreference.ts";
+import { useRouteEntryScroll } from "./state/useRouteEntryScroll.ts";
+import { useAgentsAfterBootstrap } from "./state/useAgentsAfterBootstrap.ts";
 import { useLayout } from "./state/useLayout.ts";
 import { useBroadcastLauncher } from "./state/useBroadcastLauncher.ts";
 import { useMeasuredHeight } from "./state/useMeasuredHeight.ts";
 import { useResource } from "./state/useResource.ts";
-import { AuditView } from "./views/AuditView.tsx";
-import { ExportView } from "./views/ExportView.tsx";
-import { HealthView } from "./views/HealthView.tsx";
-import { MessagesView } from "./views/MessagesView.tsx";
-import { RecordsView } from "./views/RecordsView.tsx";
-import { TasksView } from "./views/TasksView.tsx";
 import { RECORD_CONFIGS } from "./views/recordConfigs.tsx";
 
 export function App() {
@@ -55,25 +47,8 @@ export function App() {
   const contentRef = useRef<HTMLDivElement>(null);
   const scrollportHeight = useMeasuredHeight(contentRef);
 
-  // Theme is a local display preference, so it is read once from storage and
-  // reflected onto <html>. It never reaches the API and is never attributed.
-  const themeStore = useRef(browserThemePreferenceStore());
-  const [theme, setTheme] = useState<Theme>(() => themeStore.current.load());
-  useEffect(() => {
-    applyTheme(theme, document.documentElement);
-    themeStore.current.save(theme);
-  }, [theme]);
-
-  // Arriving on a route should show the top of it. `.content` is reused across
-  // routes, so without this its scrollTop simply carried over and was clamped
-  // to the new route's maximum — land on a shorter route after scrolling a long
-  // one and you arrived at its bottom, heading and column headers off-screen.
-  // Keyed on route.name, not the whole route: opening a task in the inspector
-  // changes route.detail and must not yank the queue back to the top.
-  useEffect(() => {
-    if (ROUTE_ENTRY_SCROLL[route.name] !== "top") return;
-    if (contentRef.current) contentRef.current.scrollTop = 0;
-  }, [route.name]);
+  const [theme, setTheme] = useThemePreference();
+  useRouteEntryScroll(contentRef, route.name);
 
   const meta = useResource(() => coordination.meta(), []);
   const agents = useResource(
@@ -81,18 +56,7 @@ export function App() {
     [],
   );
 
-  // Bootstrap creates the operator *after* this list is fetched, so on a clean
-  // launch the list cannot contain it. Left stale, the actor selector rendered
-  // with no options at all and Broadcast told the operator to "select an actor
-  // in the header" — from a list with nothing in it. Refetched once when
-  // bootstrap settles, never in a loop.
-  const bootstrapSettled = useRef(false);
-  const refreshAgents = agents.refresh;
-  useEffect(() => {
-    if (bootstrap.kind !== "ready" || bootstrapSettled.current) return;
-    bootstrapSettled.current = true;
-    refreshAgents();
-  }, [bootstrap.kind, refreshAgents]);
+  useAgentsAfterBootstrap(bootstrap.kind, agents.refresh);
 
   const agentList = agents.data ?? [];
   const actor = agentList.find((agent) => agent.id === identity.actorId);
@@ -189,51 +153,14 @@ export function App() {
               <ErrorBanner error={meta.error} onRetry={meta.refresh} />
             ) : null}
 
-            {/* Scoped to the routed surface only, so a view that fails to render
-              costs the operator that view and not the navigation, the identity
-              controls, or their bearings. Navigating away clears it. */}
-            <RouteErrorBoundary resetKey={route.name}>
-              {route.name === "tasks" ? (
-                <TasksView
-                  filter={filter}
-                  agents={agentList}
-                  selectedId={route.detail}
-                  onSelect={(id) => navigate("tasks", id)}
-                  layout={layout}
-                />
-              ) : null}
-
-              {route.name === "health" ? <HealthView /> : null}
-              {route.name === "audit" ? <AuditView filter={filter} /> : null}
-              {route.name === "export" ? <ExportView /> : null}
-
-              {route.name === "messages" ? (
-                <MessagesView
-                  filter={filter}
-                  agents={agentList}
-                  layout={layout}
-                  reloadKey={broadcast.sentNonce}
-                />
-              ) : RECORD_CONFIGS[route.name] ? (
-                /* Keyed by route, and that key is the whole fix for a stop-ship
-               crash. Every generic entity shares this one component position,
-               so React reused the instance across routes: useResource keeps the
-               previous rows while the next request is in flight, which is right
-               for a refresh of the same resource and badly wrong across a route
-               change. Decision rows reached the Artifacts columns, which read a
-               field decisions do not have, and the whole console unmounted.
-
-               The key makes the route part of the component's identity, so a
-               different route is a different component: fresh resource, and
-               with it fresh status filter, sort, pagination, and selection.
-               None of those belong to the route the operator just left. */
-                <RecordsView
-                  key={route.name}
-                  route={route.name}
-                  filter={filter}
-                />
-              ) : null}
-            </RouteErrorBoundary>
+            <RoutedView
+              route={route}
+              navigate={navigate}
+              filter={filter}
+              agents={agentList}
+              layout={layout}
+              broadcastNonce={broadcast.sentNonce}
+            />
           </main>
 
           <footer className="statusbar small">
