@@ -6,6 +6,7 @@
  */
 
 import type { Column } from "../components/DataTable.tsx";
+import { PathSummary } from "../components/PathList.tsx";
 import { IdCell, Mono, Tags } from "../components/Fields.tsx";
 import { EnumPill } from "../components/Pill.tsx";
 import type { Coordination } from "../api/coordination.ts";
@@ -185,7 +186,7 @@ export const RECORD_CONFIGS: Partial<Record<RouteName, RecordConfig>> = {
     columns: columns<Record<string, string | string[]>>([
       { key: "id", header: "Artifact", priority: 1, render: (r) => <IdCell id={String(r["id"])} title={String(r["type"])} />, sortValue: (r) => String(r["id"]), },
       { key: "status", header: "Status", priority: 2, render: (r) => <EnumPill value={String(r["status"])} />, sortValue: (r) => String(r["status"]), },
-      { key: "uri", header: "URI", priority: 3, render: (r) => <span className="small mono">{String(r["uri"])}</span>, sortValue: (r) => String(r["uri"]), },
+      { key: "uri", header: "Paths", priority: 3, render: (r) => <PathSummary uri={r["uri"]} />, sortValue: (r) => String(r["uri"]), },
       { key: "owner", header: "Owner", priority: 4, render: (r) => <Mono>{String(r["owner_id"])}</Mono>, sortValue: (r) => String(r["owner_id"]), },
       { key: "tasks", header: "Tasks", priority: 6, render: (r) => <Mono>{list(r["related_tasks"]).join(", ") || "—"}</Mono>, sortValue: (r) => list(r["related_tasks"]).length, },
     ]),

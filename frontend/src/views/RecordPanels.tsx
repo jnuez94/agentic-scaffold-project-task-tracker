@@ -12,6 +12,7 @@ import type { Agent, Session, TaskListRow } from "../api/contract.ts";
 import { retirementBlock } from "../lib/retirement.ts";
 import { AgentRetirement } from "./AgentRetirement.tsx";
 import { RecordInspector } from "./RecordInspector.tsx";
+import { useApp } from "../state/AppContext.tsx";
 import type { InspectorConfig, Row } from "./inspectorConfigs.tsx";
 import type { RecordConfig } from "./recordConfigs.tsx";
 import { SessionRecovery } from "./SessionRecovery.tsx";
@@ -43,6 +44,7 @@ export function RecordPanels({
   onRecovered: () => void;
 }) {
   const [retiring, setRetiring] = useState<Agent | null>(null);
+  const { announce } = useApp();
   const agentRow =
     inspectorConfig?.kind === "agent" ? (inspecting as Agent | null) : null;
   const block = agentRow ? retirementBlock(agentRow, actorId, sessions) : null;
@@ -54,6 +56,7 @@ export function RecordPanels({
           config={inspectorConfig}
           row={inspecting}
           onClose={onCloseInspector}
+          onCopied={announce}
           actions={
             <>
               {/* Reuses the row action's own predicate, so the control appears

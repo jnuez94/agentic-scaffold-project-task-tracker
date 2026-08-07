@@ -40,7 +40,7 @@ function renderForm(over: { fetchImpl?: typeof fetch; onAdded?: () => void } = {
 describe("DependencyForm", () => {
   it("offers the four relationship types the CLI accepts", () => {
     renderForm();
-    const select = screen.getByLabelText("Relationship") as HTMLSelectElement;
+    const select = screen.getByLabelText<HTMLSelectElement>("Relationship");
     expect(select.options).toHaveLength(4);
   });
 
@@ -71,10 +71,10 @@ describe("DependencyForm", () => {
     // Retyping after a refusal is how an operator gives up on a form.
     const user = userEvent.setup();
     renderForm();
-    const input = screen.getByLabelText(/waits on/);
+    const input = screen.getByLabelText<HTMLInputElement>(/waits on/);
     await user.type(input, "UI-1");
     await user.click(screen.getByRole("button", { name: /Record dependency/ }));
-    expect((input as HTMLInputElement).value).toBe("UI-1");
+    expect(input.value).toBe("UI-1");
   });
 
   it("clears the target after a successful record but keeps the relationship", async () => {
@@ -84,8 +84,8 @@ describe("DependencyForm", () => {
     await user.type(screen.getByLabelText(/waits on/), "UI-2");
     await user.click(screen.getByRole("button", { name: /Record dependency/ }));
     expect(onAdded).toHaveBeenCalled();
-    expect((screen.getByLabelText(/waits on/) as HTMLInputElement).value).toBe("");
-    expect((screen.getByLabelText("Relationship") as HTMLSelectElement).value).toBe("blocks");
+    expect(screen.getByLabelText<HTMLInputElement>(/waits on/).value).toBe("");
+    expect(screen.getByLabelText<HTMLSelectElement>("Relationship").value).toBe("blocks");
   });
 
   it("surfaces a CLI refusal instead of silently failing", async () => {

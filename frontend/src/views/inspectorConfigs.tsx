@@ -29,7 +29,7 @@ export interface FieldSpec {
   key: string;
   label: string;
   /** How to render the value; defaults to wrapped text. */
-  kind?: "text" | "mono" | "tags" | "time" | "taskLinks" | "agentLink" | "taskLink";
+  kind?: "text" | "mono" | "tags" | "time" | "taskLinks" | "agentLink" | "taskLink" | "paths";
   /**
    * Constraint fields state an authority boundary. They render first and show
    * "None recorded" when empty instead of disappearing.
@@ -171,8 +171,10 @@ export const INSPECTOR_CONFIGS: Partial<Record<RouteName, InspectorConfig>> = {
         constraint: true,
         emptyText: CONSTRAINT_EMPTY,
       },
-      // Text, never a link: a repository path is not a resolvable URL.
-      { key: "uri", label: "URI", kind: "mono" },
+      // Never a link — a repository path is not a resolvable URL — and never
+      // one string: the field holds several comma-separated paths on 3 of the
+      // 15 artifacts here, so "mono" was wrong for a fifth of them (UI-57).
+      { key: "uri", label: "Paths", kind: "paths" },
       { key: "related_tasks", label: "Related tasks", kind: "taskLinks" },
       { key: "reviewers", label: "Reviewers", kind: "tags" },
     ],

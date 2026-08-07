@@ -18,6 +18,7 @@
 import { useEffect, useRef, type ReactNode } from "react";
 import { Field, MetricRow, Tags } from "../components/Fields.tsx";
 import { Icon } from "../components/icons.tsx";
+import { PathList } from "../components/PathList.tsx";
 import { absoluteTime, relativeTime } from "../lib/format.ts";
 import { text } from "../lib/rowValue.ts";
 import {
@@ -33,12 +34,18 @@ export function RecordInspector({
   row,
   onClose,
   actions,
+  onCopied,
 }: {
   config: InspectorConfig;
   row: Row;
   onClose: () => void;
   /** State transitions the CLI supports, supplied by the route. */
   actions?: ReactNode;
+  /**
+   * Announces a copy outcome. Passed in rather than read from context so this
+   * stays a presentational component its tests can render standalone.
+   */
+  onCopied?: (message: string) => void;
 }) {
   const heading = useRef<HTMLHeadingElement>(null);
   const id = text(row["id"]);
@@ -100,7 +107,7 @@ export function RecordInspector({
             label={field.label}
             className={field.constraint ? "constraint-field" : undefined}
           >
-            {renderField(field, row[field.key])}
+            {renderField(field, row[field.key], onCopied)}
           </Field>
         ))}
 
@@ -124,16 +131,24 @@ export function RecordInspector({
   );
 }
 
-function renderField(field: FieldSpec, value: unknown): ReactNode {
+function renderField(
+  field: FieldSpec,
+  value: unknown,
+  onCopied?: (message: string) => void,
+): ReactNode {
   if (isEmptyValue(value)) {
     // Only constraint fields reach here; visibleFields drops empty descriptive
     // ones. "None recorded" is a statement, not a placeholder.
     return <span className="muted">{field.emptyText ?? "None recorded"}</span>;
   }
-  return renderValue(value, field.kind);
+  return renderValue(value, field.kind, onCopied);
 }
 
-function renderValue(value: unknown, kind: FieldSpec["kind"]): ReactNode {
+function renderValue(
+  value: unknown,
+  kind: FieldSpec["kind"],
+  onCopied?: (message: string) => void,
+): ReactNode {
   if (isEmptyValue(value)) return null;
 
   switch (kind) {
@@ -145,6 +160,8 @@ function renderValue(value: unknown, kind: FieldSpec["kind"]): ReactNode {
       // Deliberately not a link. An artifact URI is a repository path, and
       // making it clickable would promise navigation that cannot resolve.
       return <span className="mono">{String(value)}</span>;
+    case "paths":
+      return <PathList uri={value} onCopied={onCopied} />;
     case "tags":
       return <Tags value={String(value)} />;
     case "agentLink":
