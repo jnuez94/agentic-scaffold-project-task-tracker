@@ -2,8 +2,8 @@
 
 | Field | Value |
 | --- | --- |
-| Status | Selected direction; ready for implementation review |
-| Owner | `mikhail-ux` — UX Designer |
+| Status | Implemented — this is the shipped visual system |
+| Owner | UX Designer (authored by `mikhail-ux`, maintained by `michael-ux`) |
 | Tracked by | `UX-1`; implementation in `UI-2`; startup identity in `UI-4` |
 | Selected direction | Coordination Ledger layout + Flowline visual system |
 | Visual target | `assets/coordination-console-ledger-flowline-selected.png` |
@@ -130,12 +130,14 @@ Header:
 Tabs:
 
 ```text
-Overview | Evidence | Dependencies | Reviews | Messages | Activity
+Overview | Evidence | Dependencies | Reviews | Activity
 ```
 
 Overview includes description, assignees and claim, acceptance criteria, next
 steps, blocked claims, and notes. Other tabs use the exact data shapes in the
-companion specification.
+companion specification. Messages remain available as a global Work
+destination; schema v1 and the CLI do not provide a truthful per-task message
+query.
 
 The inspector footer contains:
 
@@ -152,8 +154,6 @@ Primary stack:
 
 ```css
 font-family:
-  "Atkinson Hyperlegible Next",
-  "Atkinson Hyperlegible",
   ui-sans-serif,
   system-ui,
   -apple-system,
@@ -161,9 +161,9 @@ font-family:
   sans-serif;
 ```
 
-The implementation may bundle Atkinson Hyperlegible locally. If adding the font
-would violate the no-third-party/no-network constraint, use the system stack
-without changing layout metrics materially.
+Use the system stack. Do not fetch or bundle Atkinson Hyperlegible: the
+no-third-party/no-network constraint and FE-STACK-1 do not authorize an
+additional font asset.
 
 Monospace stack, limited to identifiers, revisions, timestamps, session IDs,
 and command-like values:
@@ -206,7 +206,8 @@ design targets, not untested compliance claims.
 | `text-50` | `#F4F7FA` | Primary text |
 | `text-200` | `#C8D2DC` | Secondary text |
 | `text-400` | `#8FA1B2` | Quiet metadata |
-| `violet-500` | `#8B5CF6` | Primary action and active navigation |
+| `violet-600` | `#7C3AED` | Primary filled action and active navigation |
+| `violet-500` | `#8B5CF6` | Selection accents and non-text decoration |
 | `violet-400` | `#A78BFA` | Focus/hover highlight |
 | `blue-400` | `#4DA3FF` | Informational and in-progress |
 | `mint-400` | `#3DDC97` | Healthy and done |
@@ -215,6 +216,9 @@ design targets, not untested compliance claims.
 
 Rules:
 
+- Use `violet-600` for filled primary actions with white text; use
+  `violet-400` for violet text on dark surfaces. White on `violet-500` does not
+  meet the 4.5:1 target for normal 15px labels.
 - Use violet for primary selection/action, not for every accent.
 - Use mint only for positive state, not decoration.
 - Use coral sparingly and never for neutral dismissal.
@@ -243,7 +247,8 @@ Rules:
 2. Load project metadata and all agents.
 3. Ensure `local-operator` exists as the active human actor through the
    CLI-backed API.
-4. Start or select a matching active application session.
+4. Reuse a matching active application session when one exists; otherwise
+   start one new session.
 5. Show the resolved `Local Operator` and session in the shell.
 6. Load queue and health data.
 7. Enable mutation controls.
@@ -251,10 +256,18 @@ Rules:
 If identity bootstrap fails, reads may remain available, but mutation controls
 stay disabled with a persistent setup recovery action.
 
+On orderly application shutdown, end the application-created session only when
+it owns no active task claims. If the browser closes without a reliable shutdown
+callback, reuse the still-active matching session on the next launch rather than
+creating another. Stale-session recovery remains an explicit operator action.
+
 ### 5.2 Triage and inspect
 
 1. Land on Tasks ordered by the contract's default priority/update ordering.
-2. Filter by state, priority, assignee, blocked state, or tags.
+2. Filter the server result by state or assignee. The text field is labelled
+   `Filter loaded rows` and may narrow only the rows already loaded; it must not
+   imply a server-wide search. Priority, tag, and blocked-state filters are not
+   shown without a truthful backend affordance.
 3. Select a row to open its inspector without losing list context.
 4. Review description, ownership, claim, acceptance, evidence, dependencies,
    reviews, and recent activity.
@@ -353,6 +366,16 @@ Empty states state what is absent and the next relevant action:
 - Use text/skeleton rows that do not resemble real records.
 - Refresh individual entities after mutations; avoid blanking the whole app.
 - Show last successful refresh and retry for CLI/busy failures.
+- Never state a total the API cannot support. Task-list responses carry no
+  exact count, so an unqualified total or `Page X of Y` would be a claim about
+  records the console has not seen.
+- Counts and paging must therefore be scoped to what is loaded, in the wording
+  itself and not only in intent. The shipped queue loads the full result set and
+  paginates it client-side, so `Showing 1–10 of 42 loaded` and
+  `Page 1 of 5 of loaded rows` are both true and both explicitly bounded. That
+  satisfies this rule; a bare `of 42` or `Page 1 of 5` would not.
+- Previous/next paging may be offered using page length and offset. The audit
+  view may show its real total, because that endpoint computes one.
 
 ## 7. Responsive behavior
 
@@ -424,4 +447,3 @@ The mock image is not authoritative for:
 
 UX acceptance requires comparison against the selected target at the same
 desktop viewport, plus keyboard, contrast, zoom, state, and data-shape checks.
-

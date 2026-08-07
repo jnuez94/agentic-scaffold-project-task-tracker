@@ -2,8 +2,8 @@
 
 | Field | Value |
 | --- | --- |
-| Status | Draft; visual direction awaiting user selection |
-| Owner | `mikhail-ux` — UX Designer |
+| Status | Implemented — the shipped console conforms to this contract |
+| Owner | UX Designer (authored by `mikhail-ux`, maintained by `michael-ux`) |
 | Tracked by | `UX-1`; informs `UI-2` |
 | Contract of record | `.agents/agentic-project-scaffold-lite/docs/cli-contract.md` v1.2.0 |
 | Schema of record | `.agents/agentic-project-scaffold-lite/sqlite/schema.sql` v1 |
@@ -109,8 +109,9 @@ Startup behavior:
 4. If the ID exists with a different actor type, or exists as inactive and
    cannot safely be reactivated, stop mutation setup and show a resolvable
    identity conflict. Do not silently rewrite authority-bearing identity data.
-5. Select the actor as the default local operator. Start or select a matching
-   active application session before enabling claim/release actions.
+5. Select the actor as the default local operator. Reuse a matching active
+   application session when one exists; otherwise start one new session before
+   enabling claim/release actions.
 6. Keep the actor and session visible in the application shell and beside every
    consequential mutation.
 
@@ -122,6 +123,12 @@ the profile.
 The startup flow needs loading, created, existing, conflict, CLI unavailable,
 and retry states. The main work queue must not flash enabled mutation controls
 before identity bootstrap is resolved.
+
+An orderly application shutdown ends its session only when the session owns no
+active task claims. Because browser shutdown is not always reliable, the next
+launch reuses a matching active session instead of creating one per launch.
+Stale-session recovery remains explicit. These rules prevent unbounded
+`agent_sessions` growth without silently disrupting claimed work.
 
 ## 3. Entity inventory and presentation requirements
 
@@ -292,9 +299,36 @@ id, sender_id, recipient, task_id?, body, tags, created_at
 Required views and actions:
 
 - Inbox/all-messages view and task-linked messages.
+- The CLI filters messages by recipient only. Do not expose a task-specific
+  Messages tab or claim a complete task thread unless a future read-only
+  backend affordance provides that query.
 - Send message with sender, recipient, optional task, body, and tags.
 - Recipient is text, not necessarily an agent ID; literal `team` is meaningful.
 - Preserve chronological metadata and do not present messages as ephemeral chat.
+
+#### Human operator team broadcast
+
+The message composer must offer a dedicated `Broadcast to team` entry point when
+the active actor has `actor_type: human`.
+
+- Set `recipient` to the literal `team` and render it as a visible, locked field.
+  Do not expand a broadcast into one message per agent.
+- Require an accountable active actor and session before enabling send.
+- Use the selected human actor as `sender`; never send as an AI agent merely
+  because that agent owns the selected task.
+- Allow an optional related task and optional tags. These create one normal
+  message record with `task_id` and `tags`; they do not create a task thread.
+- Preview the record before send: sender, recipient, related task, tags, and
+  message body. Generate or resolve a unique message ID at submission time.
+- After success, show the created message ID and timestamp. State that the
+  broadcast will appear when recipients list their messages because recipient
+  filtering includes the literal `team`.
+- Do not claim delivery, acknowledgement, unread state, or read receipts; none
+  of those fields exist in schema v1.
+- Preserve the draft on validation, session, or CLI failure. Never retry a send
+  automatically because that could create an unintended duplicate broadcast.
+- The broadcast does not authorize decisions, task transitions, reviews,
+  release, or direct database writes.
 
 ### 3.9 Artifacts
 
@@ -427,7 +461,6 @@ Work
       Evidence
       Dependencies
       Reviews
-      Messages
       Activity
   Reviews
   Messages
@@ -496,6 +529,8 @@ Whichever direction is selected must:
     non-destructive setup conflict.
 15. Claim/release controls remain unavailable until a matching active operator
     session exists.
+16. Startup reuses a matching active application session and does not create a
+    new session on every launch; orderly shutdown ends only unclaimed sessions.
 
 ## 8. Authority boundaries
 
