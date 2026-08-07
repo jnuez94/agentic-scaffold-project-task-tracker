@@ -12,9 +12,19 @@ import { ResizeHandle } from "../components/ResizeHandle.tsx";
 import { filterRows } from "../lib/filters.ts";
 import { agentOptionLabel } from "../lib/labels.ts";
 import { isTruncated } from "../lib/pagination.ts";
+import { queueEmptyState } from "../lib/queueEmpty.ts";
 import { useApp } from "../state/AppContext.tsx";
 import { BOUNDS } from "../state/layoutStore.ts";
 import type { Layout } from "../state/useLayout.ts";
+import { useQueueScope } from "../state/useQueueScope.ts";
+import {
+  ALL_SCOPE,
+  OPEN_SCOPE,
+  requestStatus,
+  SCOPE_LABELS,
+  scopeRows,
+  type QueueScope,
+} from "../state/queueScopeStore.ts";
 import { useResource } from "../state/useResource.ts";
 import { TaskInspector } from "./TaskInspector.tsx";
 import { TASK_DEFAULT_ORDER, taskColumns } from "./taskColumns.tsx";
@@ -38,22 +48,33 @@ export function TasksView({
 }) {
   const inspectorWidth = layout.widths.inspector;
   const { coordination, identity, session } = useApp();
-  const [status, setStatus] = useState("");
+  const [scope, setScope] = useQueueScope();
   const [assignee, setAssignee] = useState("");
 
   const tasks = useResource(
     () => coordination.tasks({
-        status: status || undefined,
+        status: requestStatus(scope),
         assignee: assignee || undefined,
         limit: REQUEST_LIMIT,
       }),
-    [status, assignee],
+    [scope, assignee],
   );
 
+  // "Open work" is narrowed here rather than in the request: `task list` takes
+  // one status at a time and cannot express everything-not-done. Narrowing the
+  // loaded window is the same contract the filter box already works under, and
+  // the truncation notice below still reports when that window was capped.
   const rows = useMemo(
-    () => filterRows(tasks.data ?? [], FILTER_FIELDS, filter),
-    [tasks.data, filter],
+    () => filterRows(scopeRows(tasks.data ?? [], scope), FILTER_FIELDS, filter),
+    [tasks.data, scope, filter],
   );
+
+  const empty = queueEmptyState({
+    scope,
+    filtered: Boolean(filter),
+    byAssignee: Boolean(assignee),
+    loadedCount: (tasks.data ?? []).length,
+  });
 
   const nameFor = useMemo(() => {
     const byId = new Map(agents.map((agent) => [agent.id, agent.name]));
@@ -98,14 +119,19 @@ export function TasksView({
         </div>
 
         <div className="queue-toolbar">
+          {/* One control, not a scope toggle beside a status filter: two of
+              them can contradict each other, and this one is on screen
+              whenever the queue is, so a remembered choice can never look
+              like a task that vanished. */}
           <div className="control">
             <label htmlFor="status-filter">State</label>
             <select
               id="status-filter"
-              value={status}
-              onChange={(event) => setStatus(event.target.value)}
+              value={scope}
+              onChange={(event) => setScope(event.target.value as QueueScope)}
             >
-              <option value="">All states</option>
+              <option value={OPEN_SCOPE}>{SCOPE_LABELS[OPEN_SCOPE]}</option>
+              <option value={ALL_SCOPE}>{SCOPE_LABELS[ALL_SCOPE]}</option>
               {TASK_STATUSES.map((value) => (
                 <option key={value} value={value}>
                   {value}
@@ -152,12 +178,8 @@ export function TasksView({
           loaded={tasks.loaded}
           selectedKey={selectedId}
           onSelect={(task) => onSelect(task.id)}
-          emptyTitle={filter || status || assignee ? "No tasks match these filters" : "No tasks yet"}
-          emptyHint={
-            filter || status || assignee
-              ? "Clear the filters to see the full queue."
-              : "Create one with the coordination CLI, then refresh."
-          }
+          emptyTitle={empty.title}
+          emptyHint={empty.hint}
         />
       </section>
 
