@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import dataclasses
 import unittest
 from pathlib import Path
 from typing import Any
@@ -163,10 +164,10 @@ class TextResponseTests(unittest.TestCase):
         self.assertEqual(TextResponse("hi").content_type, "text/plain; charset=utf-8")
 
     def test_encodes_as_utf8(self) -> None:
-        self.assertEqual(TextResponse("é").encode(), "é".encode("utf-8"))
+        self.assertEqual(TextResponse("é").encode(), "é".encode())
 
     def test_is_frozen(self) -> None:
-        with self.assertRaises(Exception):
+        with self.assertRaises(dataclasses.FrozenInstanceError):
             TextResponse("a").body = "b"  # type: ignore[misc]
 
 

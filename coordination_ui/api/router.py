@@ -3,8 +3,9 @@
 from __future__ import annotations
 
 import re
+from collections.abc import Callable, Mapping, Sequence
 from http import HTTPStatus
-from typing import Any, Callable, Mapping, Sequence
+from typing import Any
 
 from ..cli import CoordinationError
 from .context import ApiContext

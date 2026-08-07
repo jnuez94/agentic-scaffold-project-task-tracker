@@ -92,12 +92,16 @@ class AuditQuery:
         where, params = self.build_where(filters, search)
         columns = ", ".join(AUDIT_COLUMNS)
 
+        # `where` is assembled in build_where from FILTERABLE_COLUMNS alone and
+        # carries only `?` placeholders; `columns` is a join of AUDIT_COLUMNS.
+        # Every caller-supplied value travels in `params`.
         with self.connection.open() as connection:
             total = connection.execute(
-                f"SELECT COUNT(*) FROM audit_log{where}", params
+                f"SELECT COUNT(*) FROM audit_log{where}",  # noqa: S608
+                params,
             ).fetchone()[0]
             rows = connection.execute(
-                f"SELECT {columns} FROM audit_log{where}"
+                f"SELECT {columns} FROM audit_log{where}"  # noqa: S608
                 " ORDER BY created_at DESC, id DESC LIMIT ? OFFSET ?",
                 [*params, limit, offset],
             ).fetchall()
@@ -120,7 +124,8 @@ class AuditQuery:
             raise ValueError(f"{column} is not an audit column")
         return [
             row[0]
+            # Guarded against AUDIT_COLUMNS immediately above.
             for row in connection.execute(
-                f"SELECT DISTINCT {column} FROM audit_log ORDER BY {column}"
+                f"SELECT DISTINCT {column} FROM audit_log ORDER BY {column}"  # noqa: S608
             )
         ]

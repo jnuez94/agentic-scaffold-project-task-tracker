@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from typing import Any, Iterable, Mapping
+from collections.abc import Iterable, Mapping
+from typing import Any
 
 from .argument_error import ArgumentError
 from .identifier import validate_identifier
@@ -32,18 +33,18 @@ class ArgumentBuilder:
 
         return len(self._args) - self._options_start
 
-    def positional(self, value: str) -> "ArgumentBuilder":
+    def positional(self, value: str) -> ArgumentBuilder:
         """Append a positional argument and move the option boundary past it."""
 
         self._args.append(value)
         self._options_start = len(self._args)
         return self
 
-    def flag(self, name: str) -> "ArgumentBuilder":
+    def flag(self, name: str) -> ArgumentBuilder:
         self._args.append(name)
         return self
 
-    def option(self, flag: str, value: str) -> "ArgumentBuilder":
+    def option(self, flag: str, value: str) -> ArgumentBuilder:
         self._args.append(f"{flag}={value}")
         return self
 
@@ -56,7 +57,7 @@ class ArgumentBuilder:
         flag: str,
         *,
         required: bool = False,
-    ) -> "ArgumentBuilder":
+    ) -> ArgumentBuilder:
         """Append a text option when ``key`` is present in ``body``.
 
         Presence decides, not truthiness: an explicit empty string is how the
@@ -81,7 +82,7 @@ class ArgumentBuilder:
         flag: str,
         *,
         required: bool = False,
-    ) -> "ArgumentBuilder":
+    ) -> ArgumentBuilder:
         if key not in body or body[key] in (None, ""):
             if required:
                 raise ArgumentError(f"missing required field {key!r}")
@@ -95,7 +96,7 @@ class ArgumentBuilder:
         flag: str,
         *,
         required: bool = False,
-    ) -> "ArgumentBuilder":
+    ) -> ArgumentBuilder:
         if key not in body or body[key] is None or body[key] == "":
             if required:
                 raise ArgumentError(f"missing required field {key!r}")
@@ -117,7 +118,7 @@ class ArgumentBuilder:
         allowed: Iterable[str],
         *,
         required: bool = False,
-    ) -> "ArgumentBuilder":
+    ) -> ArgumentBuilder:
         if key not in body or body[key] in (None, ""):
             if required:
                 raise ArgumentError(f"missing required field {key!r}")

@@ -19,7 +19,8 @@ an operator on every CLI release for no reason.
 from __future__ import annotations
 
 import re
-from typing import Any, Mapping
+from collections.abc import Mapping
+from typing import Any
 
 from . import SUPPORTED_CLI_VERSION, SUPPORTED_SCHEMA_VERSION
 

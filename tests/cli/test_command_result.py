@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import dataclasses
 import unittest
 
 from coordination_ui.cli import CommandResult
@@ -16,7 +17,7 @@ class CommandResultTests(unittest.TestCase):
 
     def test_is_frozen(self) -> None:
         result = CommandResult(["version"], 0, "", "")
-        with self.assertRaises(Exception):
+        with self.assertRaises(dataclasses.FrozenInstanceError):
             result.exit_code = 1  # type: ignore[misc]
 
     def test_retains_streams_and_args(self) -> None:

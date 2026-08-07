@@ -3,14 +3,15 @@
 from __future__ import annotations
 
 import contextlib
+import dataclasses
 import io
 import unittest
 from pathlib import Path
 
 from coordination_ui.arguments import build_parser, parse_options
-from coordination_ui.discovery import ProjectLocator
 from coordination_ui.compatibility import verify
-from coordination_ui.launcher import EXIT_FAILURE, EXIT_USAGE, LaunchOptions, Launcher
+from coordination_ui.discovery import ProjectLocator
+from coordination_ui.launcher import EXIT_FAILURE, EXIT_USAGE, Launcher, LaunchOptions
 
 from .support import TemporaryProject, cli_available, locator_for_tests
 
@@ -37,9 +38,8 @@ class ArgumentParsingTests(unittest.TestCase):
         self.assertTrue(parse_options(["--open"]).open_browser)
 
     def test_rejects_a_non_numeric_port(self) -> None:
-        with contextlib.redirect_stderr(io.StringIO()):
-            with self.assertRaises(SystemExit):
-                parse_options(["--port", "abc"])
+        with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
+            parse_options(["--port", "abc"])
 
     def test_help_mentions_the_cli_delegation(self) -> None:
         self.assertIn("coordination CLI", build_parser().description or "")
@@ -47,7 +47,7 @@ class ArgumentParsingTests(unittest.TestCase):
 
 class LaunchOptionsTests(unittest.TestCase):
     def test_is_frozen(self) -> None:
-        with self.assertRaises(Exception):
+        with self.assertRaises(dataclasses.FrozenInstanceError):
             LaunchOptions().port = 1  # type: ignore[misc]
 
 

@@ -23,7 +23,10 @@ class MissingDatabaseTests(unittest.TestCase):
         missing = Path("/tmp/coordination-ui-absent-db.sqlite3")
         if missing.exists():  # pragma: no cover - defensive
             missing.unlink()
-        with self.assertRaises(CoordinationError) as caught:
+        # Kept nested: the claim is that *entering* the connection raises, and
+        # flattening these puts the failing context on the same line as the
+        # assertion about it.
+        with self.assertRaises(CoordinationError) as caught:  # noqa: SIM117
             with ReadOnlyConnection(missing).open():
                 pass
         self.assertEqual(caught.exception.code, "database_error")
@@ -55,15 +58,15 @@ class OpenTests(unittest.TestCase):
             self.assertEqual(connection.execute("PRAGMA query_only").fetchone()[0], 1)
 
     def test_writes_are_refused(self) -> None:
-        with self.assertRaises(CoordinationError) as caught:
+        # Nested deliberately: the write is what must raise, not the open.
+        with self.assertRaises(CoordinationError) as caught:  # noqa: SIM117
             with self.connection.open() as connection:
                 connection.execute("INSERT INTO metadata VALUES ('x', 'y')")
         self.assertEqual(caught.exception.code, "database_error")
 
     def test_schema_changes_are_refused(self) -> None:
-        with self.assertRaises(CoordinationError):
-            with self.connection.open() as connection:
-                connection.execute("DROP TABLE tasks")
+        with self.assertRaises(CoordinationError), self.connection.open() as connection:
+            connection.execute("DROP TABLE tasks")
 
     def test_connection_is_closed_after_the_block(self) -> None:
         with self.connection.open() as connection:
@@ -73,10 +76,9 @@ class OpenTests(unittest.TestCase):
 
     def test_connection_is_closed_even_when_the_body_raises(self) -> None:
         captured: list[sqlite3.Connection] = []
-        with self.assertRaises(ValueError):
-            with self.connection.open() as connection:
-                captured.append(connection)
-                raise ValueError("boom")
+        with self.assertRaises(ValueError), self.connection.open() as connection:
+            captured.append(connection)
+            raise ValueError("boom")
         with self.assertRaises(sqlite3.ProgrammingError):
             captured[0].execute("SELECT 1")
 

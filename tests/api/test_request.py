@@ -3,8 +3,9 @@
 from __future__ import annotations
 
 import unittest
+from collections.abc import Sequence
 from pathlib import Path
-from typing import Any, Sequence
+from typing import Any
 
 from coordination_ui.api import Request
 from coordination_ui.api.context import ApiContext

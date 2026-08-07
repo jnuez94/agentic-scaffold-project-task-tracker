@@ -40,13 +40,13 @@ class CoordinationUIHandler(RequestHandlerMixin, BaseHTTPRequestHandler):
     def host_policy(self) -> HostPolicy:
         return self.server.host_policy  # type: ignore[attr-defined]
 
-    def do_GET(self) -> None:  # noqa: N802
+    def do_GET(self) -> None:
         self.handle_request("GET")
 
-    def do_HEAD(self) -> None:  # noqa: N802
+    def do_HEAD(self) -> None:
         self.handle_request("GET")
 
-    def do_POST(self) -> None:  # noqa: N802
+    def do_POST(self) -> None:
         self.handle_request("POST")
 
     def log_message(self, format: str, *args: Any) -> None:  # noqa: A002

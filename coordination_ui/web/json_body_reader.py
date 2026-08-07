@@ -3,7 +3,8 @@
 from __future__ import annotations
 
 import json
-from typing import Any, BinaryIO, Mapping
+from collections.abc import Mapping
+from typing import Any, BinaryIO
 
 from ..cli import CoordinationError
 

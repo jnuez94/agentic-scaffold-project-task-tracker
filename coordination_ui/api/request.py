@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Any, Mapping, Sequence
+from typing import TYPE_CHECKING, Any
 
 from ..cli import ArgumentError, CoordinationCLI, validate_identifier
 from .enums import MAX_LIST_LIMIT, MIN_LIST_LIMIT
@@ -17,7 +18,7 @@ if TYPE_CHECKING:  # pragma: no cover - typing only
 class Request:
     """Everything a route handler needs, with typed query accessors."""
 
-    context: "ApiContext"
+    context: ApiContext
     params: Mapping[str, str] = field(default_factory=dict)
     query: Mapping[str, Sequence[str]] = field(default_factory=dict)
     body: Mapping[str, Any] = field(default_factory=dict)
@@ -30,7 +31,7 @@ class Request:
         return self.context.cli
 
     @property
-    def readonly(self) -> "ReadOnlyDatabase":
+    def readonly(self) -> ReadOnlyDatabase:
         return self.context.readonly
 
     # -- path ---------------------------------------------------------------

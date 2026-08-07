@@ -26,6 +26,12 @@ COUNTED_TABLES = (
     "audit_log",
 )
 
+# The only columns any histogram groups by. `table` was already checked against
+# COUNTED_TABLES while `column` was interpolated unchecked — safe in practice,
+# since every caller passes a literal, but the docstring claimed a guard that
+# only half existed. Both halves are enforced now.
+HISTOGRAM_COLUMNS = ("status", "priority")
+
 RECENT_AUDIT_LIMIT = 12
 
 WORKLOAD_SQL = """
@@ -86,8 +92,10 @@ class SummaryQuery:
     @staticmethod
     def _totals(connection: sqlite3.Connection) -> dict[str, int]:
         return {
+            # `table` is bound by the comprehension to COUNTED_TABLES itself; a
+            # table name can only ever be one of the literals above.
             table: int(
-                connection.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0]
+                connection.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0]  # noqa: S608
             )
             for table in COUNTED_TABLES
         }
@@ -102,13 +110,18 @@ class SummaryQuery:
     ) -> dict[str, int]:
         """Group-by count over a fixed table/column pair.
 
-        Both names come from module constants, never from a request.
+        Both names come from module constants, never from a request, and both
+        are checked against their allowlist before reaching the SQL string.
         """
 
         if table not in COUNTED_TABLES:  # pragma: no cover - guarded by callers
             raise ValueError(f"{table} is not a counted table")
+        if column not in HISTOGRAM_COLUMNS:  # pragma: no cover - guarded by callers
+            raise ValueError(f"{column} is not a histogram column")
         rows = connection.execute(
-            f"SELECT {column} AS bucket, COUNT(*) AS count"
+            # Both names are allowlisted immediately above, so nothing
+            # caller-supplied can reach the statement.
+            f"SELECT {column} AS bucket, COUNT(*) AS count"  # noqa: S608
             f"  FROM {table} GROUP BY {column}"
         )
         return {

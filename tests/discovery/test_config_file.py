@@ -60,9 +60,8 @@ class ValidateTests(unittest.TestCase):
 
     def test_requires_version_one(self) -> None:
         for text in ("backend: sqlite\ndatabase: d\n", "version: 2\nbackend: sqlite\ndatabase: d\n"):
-            with self.subTest(text=text):
-                with self.assertRaises(DiscoveryError):
-                    parse(text).validate()
+            with self.subTest(text=text), self.assertRaises(DiscoveryError):
+                parse(text).validate()
 
     def test_requires_sqlite_backend(self) -> None:
         with self.assertRaises(DiscoveryError):
@@ -118,9 +117,8 @@ class LoadTests(unittest.TestCase):
             self.assertEqual(ConfigFile.load(path).values["backend"], "sqlite")
 
     def test_rejects_a_missing_file(self) -> None:
-        with tempfile.TemporaryDirectory() as directory:
-            with self.assertRaises(DiscoveryError):
-                ConfigFile.load(Path(directory) / "absent.yml")
+        with tempfile.TemporaryDirectory() as directory, self.assertRaises(DiscoveryError):
+            ConfigFile.load(Path(directory) / "absent.yml")
 
     def test_rejects_a_symlink(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
@@ -133,9 +131,8 @@ class LoadTests(unittest.TestCase):
                 ConfigFile.load(link)
 
     def test_rejects_a_directory(self) -> None:
-        with tempfile.TemporaryDirectory() as directory:
-            with self.assertRaises(DiscoveryError):
-                ConfigFile.load(Path(directory))
+        with tempfile.TemporaryDirectory() as directory, self.assertRaises(DiscoveryError):
+            ConfigFile.load(Path(directory))
 
 
 if __name__ == "__main__":

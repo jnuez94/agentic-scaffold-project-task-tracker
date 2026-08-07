@@ -106,9 +106,8 @@ class IntegerOptionTests(unittest.TestCase):
 
     def test_rejects_non_numeric(self) -> None:
         for value in ("abc", "1.5", [], {}):
-            with self.subTest(value=value):
-                with self.assertRaises(ArgumentError):
-                    ArgumentBuilder("x").integer({"p": value}, "p", "--p")
+            with self.subTest(value=value), self.assertRaises(ArgumentError):
+                ArgumentBuilder("x").integer({"p": value}, "p", "--p")
 
     def test_required_missing_raises(self) -> None:
         with self.assertRaises(ArgumentError):
@@ -171,9 +170,8 @@ class RequireHelpersTests(unittest.TestCase):
 
     def test_require_str_rejects_blank_and_non_string(self) -> None:
         for body in ({}, {"t": ""}, {"t": "   "}, {"t": 5}, {"t": None}):
-            with self.subTest(body=body):
-                with self.assertRaises(ArgumentError):
-                    require_str(body, "t")
+            with self.subTest(body=body), self.assertRaises(ArgumentError):
+                require_str(body, "t")
 
 
 if __name__ == "__main__":

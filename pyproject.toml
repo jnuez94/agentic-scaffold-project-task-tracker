@@ -1,0 +1,106 @@
+# Development tooling configuration.
+#
+# Deliberately no `[project]` table. This file configures ruff and mypy and
+# nothing else: it does not declare a distribution, a name, or a dependency,
+# so it does not preempt the packaging decisions UI-27 still owns. The
+# shipped product remains stdlib-only — ruff and mypy are developer tools
+# that never appear in an installed copy.
+
+[tool.ruff]
+target-version = "py310"
+# 96 because that is the width this code was already written to, measured
+# rather than guessed: reformatting the tree costs 183 changed lines at 96,
+# against 233 at 100, 311 at 88, and 1073 at 79. Picking the minimum keeps the
+# one-time reformat honest — it reflows what was inconsistent instead of
+# imposing a new house style on code that already had one.
+line-length = 96
+# `.agents/` is the vendored upstream Coordination CLI. It is a dependency we
+# ship alongside, not source we own, and AGENTS.md forbids editing it — linting
+# it would only produce findings nobody here is allowed to act on.
+extend-exclude = [".venv", ".agents", "frontend", "node_modules"]
+
+[tool.ruff.lint]
+select = [
+    "F",    # pyflakes: real errors — undefined names, unused imports
+    "E",    # pycodestyle errors
+    "W",    # pycodestyle warnings
+    "I",    # import sorting (replaces isort)
+    "N",    # pep8-naming
+    "UP",   # pyupgrade: 3.10+ idioms
+    "B",    # bugbear: likely bugs
+    "A",    # shadowed builtins
+    "C4",   # comprehension clarity
+    "S",    # flake8-bandit: the security rules, and the reason for the S603
+            # suppression that already sits in cli/client.py
+    "SIM",  # simplification
+    "RUF",  # ruff's own rules — including RUF100, which is what catches a
+            # suppression left behind for a rule that no longer fires
+]
+ignore = [
+    # Formatter's business, not the linter's.
+    "E501",
+    # `assert` is how unittest-adjacent helpers signal invariants, and this
+    # code never runs under -O.
+    "S101",
+]
+
+# Rulesets considered and deliberately left out, so the next person does not
+# have to re-derive the reasoning:
+#
+# - TID252 (ban parent-relative imports): `coordination_ui` uses `from ..x`
+#   consistently — 42 sites, zero absolute imports. Enabling it would rewrite
+#   every module to satisfy a style preference and would find no defect.
+# - PTH (force pathlib over os.path): the `os` calls left are chmod/replace on
+#   paths that are already `Path` objects at the call site; churn, not risk.
+# - RET (return-flow rewrites): its suggestions here traded explicit early
+#   returns for implicit ones in exactly the error paths that most want to be
+#   obvious.
+
+[tool.ruff.lint.per-file-ignores]
+# Tests legitimately do things application code must not: bind to a port,
+# poke at privates, and hardcode the fixture values that make a failure
+# readable. Silencing these per-directory keeps the signal in the real code.
+"tests/**" = [
+    "S104",  # binding to 0.0.0.0 in a fixture server
+    "S105",  # "hardcoded password" false positives on fixture tokens
+    "S106",
+    "S108",  # hardcoded /tmp paths in fixtures
+    "S311",  # non-cryptographic random in fixtures
+    "S603",  # subprocess in fixtures
+    "S607",
+]
+
+[tool.ruff.lint.flake8-tidy-imports]
+ban-relative-imports = "parents"
+
+[tool.ruff.lint.isort]
+known-first-party = ["coordination_ui", "tests"]
+
+[tool.mypy]
+python_version = "3.10"
+files = ["coordination_ui", "tests"]
+exclude = "^\\.venv/"
+
+# The point of turning this on is the 43 fully-annotated files that nothing
+# was checking. Strict-adjacent, but not `strict = true`: the two settings
+# below are left off deliberately and noted so the gap is a decision rather
+# than an oversight.
+warn_unused_configs = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_return_any = true
+warn_unreachable = true
+no_implicit_optional = true
+strict_equality = true
+check_untyped_defs = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+disallow_untyped_decorators = true
+extra_checks = true
+
+# Off, and why:
+# - disallow_any_generics: http.server's handler API is generic-free and
+#   leaks bare `Any` across the boundary we subclass.
+# - disallow_subclassing_any: same boundary — BaseHTTPRequestHandler.
+disallow_any_generics = false
+disallow_subclassing_any = false

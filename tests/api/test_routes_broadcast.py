@@ -1,6 +1,7 @@
 """Team broadcast behaviour against a real throwaway database.
 
-Criterion 29 of .documents/human-operator-team-broadcast-task.md: one broadcast
+The "Human operator team broadcast" contract in
+docs/ux-data-shape-and-workflow-spec.md: one broadcast
 creates exactly one Message row, and listing messages for two different
 recipients returns that same ``team`` message.
 """

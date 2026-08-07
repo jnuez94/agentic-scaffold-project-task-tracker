@@ -11,3 +11,12 @@ __pycache__/
 
 # Frontend toolchain
 frontend/node_modules/
+node_modules/
+
+# Design workbench. Everything here is working material — audits, QA captures,
+# research, superseded directions, coordination notes. Finished, downloader-facing
+# documentation lives in docs/ and is tracked normally, so this needs no allowlist.
+.documents/
+
+# Local dev toolchain (ruff, mypy); never part of the package.
+.venv/

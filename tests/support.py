@@ -53,7 +53,7 @@ class TemporaryProject:
 
     # -- lifecycle ----------------------------------------------------------
 
-    def start(self) -> "TemporaryProject":
+    def start(self) -> TemporaryProject:
         self._directory = tempfile.TemporaryDirectory(prefix="coordination-ui-test-")
         self.root = Path(self._directory.name).resolve()
         (self.root / ".coordination").mkdir(parents=True, exist_ok=True)
@@ -68,7 +68,7 @@ class TemporaryProject:
             self._directory.cleanup()
             self._directory = None
 
-    def __enter__(self) -> "TemporaryProject":
+    def __enter__(self) -> TemporaryProject:
         return self.start()
 
     def __exit__(self, *exc_info: object) -> None:

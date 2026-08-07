@@ -25,7 +25,7 @@ class ConfigFile:
     # -- construction -------------------------------------------------------
 
     @classmethod
-    def parse(cls, text: str, path: Path) -> "ConfigFile":
+    def parse(cls, text: str, path: Path) -> ConfigFile:
         """Parse the contract's restricted config grammar.
 
         Blank lines, comments, or unique ``key: value`` scalar lines. Leading
@@ -47,7 +47,7 @@ class ConfigFile:
         return cls(path, values)
 
     @classmethod
-    def load(cls, path: Path) -> "ConfigFile":
+    def load(cls, path: Path) -> ConfigFile:
         path = Path(path)
         if not path.is_file() or path.is_symlink():
             raise DiscoveryError(f"{path} is missing or not a regular file")
@@ -55,7 +55,7 @@ class ConfigFile:
 
     # -- validation ---------------------------------------------------------
 
-    def validate(self) -> "ConfigFile":
+    def validate(self) -> ConfigFile:
         if self.values.get("version") != "1":
             raise DiscoveryError(f"{self.path}: requires 'version: 1'")
         if self.values.get("backend") != "sqlite":

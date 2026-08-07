@@ -67,9 +67,8 @@ class SecurityTests(LiveServerTestCase):
 
     def test_non_loopback_bind_is_refused(self) -> None:
         for host in ("0.0.0.0", "192.168.1.10"):
-            with self.subTest(host=host):
-                with self.assertRaises(ValueError):
-                    build_server(self.temp.project(), host, 0)
+            with self.subTest(host=host), self.assertRaises(ValueError):
+                build_server(self.temp.project(), host, 0)
 
 
 class MutationTests(LiveServerTestCase):

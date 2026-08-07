@@ -7,7 +7,7 @@ from ..discovery import Project
 from . import enums
 from .context import ApiContext
 from .request import Request
-from .router import Handler, RouteSpec, Router
+from .router import Handler, Router, RouteSpec
 from .routes import ROUTES
 from .text_response import TextResponse
 

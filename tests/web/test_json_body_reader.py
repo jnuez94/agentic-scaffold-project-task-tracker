@@ -75,9 +75,8 @@ class ParseTests(unittest.TestCase):
 
     def test_rejects_a_non_object_top_level(self) -> None:
         for raw in (b"[1, 2]", b'"text"', b"5", b"null"):
-            with self.subTest(raw=raw):
-                with self.assertRaises(CoordinationError):
-                    JsonBodyReader.parse(raw)
+            with self.subTest(raw=raw), self.assertRaises(CoordinationError):
+                JsonBodyReader.parse(raw)
 
     def test_preserves_unicode(self) -> None:
         raw = json.dumps({"note": "é 🙂"}).encode("utf-8")

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import dataclasses
 import tempfile
 import unittest
 from pathlib import Path
@@ -38,7 +39,7 @@ class ProjectTests(unittest.TestCase):
             self.assertIsInstance(value, str)
 
     def test_is_frozen(self) -> None:
-        with self.assertRaises(Exception):
+        with self.assertRaises(dataclasses.FrozenInstanceError):
             self.project.root = Path("/other")  # type: ignore[misc]
 
 
@@ -57,7 +58,9 @@ class ExecutableLocatorTests(unittest.TestCase):
         self.assertEqual(ExecutableLocator({}).locate(repo_root), CLI_PATH.resolve())
 
     def test_reports_the_expected_path_when_absent(self) -> None:
-        with tempfile.TemporaryDirectory() as directory:
+        # The temp directory is scaffolding; the assertion is the test. Keeping
+        # them on separate lines keeps that distinction visible.
+        with tempfile.TemporaryDirectory() as directory:  # noqa: SIM117
             with self.assertRaises(DiscoveryError) as caught:
                 ExecutableLocator({}).locate(Path(directory))
         self.assertIn("COORDINATION_BIN", str(caught.exception))
@@ -81,7 +84,7 @@ class FindTests(unittest.TestCase):
         self.assertEqual(self.locator.find(nested).root, self.temp.root)
 
     def test_raises_when_no_project_exists(self) -> None:
-        with tempfile.TemporaryDirectory(dir="/tmp") as directory:
+        with tempfile.TemporaryDirectory(dir="/tmp") as directory:  # noqa: SIM117
             with self.assertRaises(DiscoveryError):
                 self.locator.find(Path(directory) / "deep")
 
