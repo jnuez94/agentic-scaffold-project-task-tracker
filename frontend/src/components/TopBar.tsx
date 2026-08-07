@@ -36,6 +36,7 @@ export function TopBar(props: TopBarProps) {
   // Already filtered to active sessions owned by the selected actor.
   const sessionsForActor = props.sessions;
   const [panelOpen, setPanelOpen] = useState(false);
+  const [identityOpen, setIdentityOpen] = useState(false);
 
   const selectable = props.agents.filter(isSelectableActor);
   const retired = props.agents.filter((agent) => !isSelectableActor(agent));
@@ -48,7 +49,7 @@ export function TopBar(props: TopBarProps) {
   const identitySummary = `${actorName ?? "No actor"} · ${props.sessionId ?? "no session"}`;
 
   return (
-    <header className="topbar">
+    <header className={identityOpen ? "topbar identity-open" : "topbar"}>
       {/* Only rendered as a control at constrained heights, where the toolbar
           would otherwise wrap to several times its height, scroll, and slice
           its own selects in half. Above that it is display:none and the panel
@@ -87,7 +88,36 @@ export function TopBar(props: TopBarProps) {
           />
         </div>
 
-        <div className="topbar-identity">
+        {/* Identity as a readout that expands (UI-43).
+         *
+         * The two selects held 836px, 68% of a bar that is 16% of the viewport
+         * permanently, for a value set once. Attribution stays in the header —
+         * the session travels in X-Coordination-Session, so the header is what
+         * no form can disagree with — but visible and occupying two-thirds of
+         * the chrome are different requirements.
+         *
+         * Hidden below 600px tall, where UI-16's disclosure already collapses
+         * the whole toolbar and the selects render inline inside it. Two
+         * mechanisms for one job at different sizes have to agree rather than
+         * both fire, so exactly one of them is a control at any given size. */}
+        <button
+          type="button"
+          className="topbar-identity-readout"
+          aria-expanded={identityOpen}
+          aria-controls="topbar-identity"
+          onClick={() => setIdentityOpen((open) => !open)}
+        >
+          <span className="small muted">Acting as</span>
+          <span className="topbar-identity-value">{identitySummary}</span>
+          <span className="topbar-identity-caret" aria-hidden="true">
+            {identityOpen ? "▴" : "▾"}
+          </span>
+        </button>
+
+        <div
+          id="topbar-identity"
+          className={identityOpen ? "topbar-identity open" : "topbar-identity"}
+        >
           <div className="control">
             <label htmlFor="actor-select">Acting as</label>
             <select
@@ -151,7 +181,6 @@ export function TopBar(props: TopBarProps) {
         <div className="topbar-broadcast">
           <button
             ref={props.broadcastRef}
-            className="primary"
             disabled={Boolean(props.broadcastDisabledReason)}
             aria-describedby={
               props.broadcastDisabledReason ? "broadcast-reason" : undefined

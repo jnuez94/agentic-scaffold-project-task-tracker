@@ -1,5 +1,8 @@
 /**
- * Left navigation: destinations, connection posture, and current identity.
+ * Left navigation: destinations, connection posture, and display preference.
+ *
+ * Identity is deliberately absent. It lived here as a second copy of the top
+ * bar's and was removed under UI-43.
  */
 
 import type { Meta } from "../api/contract.ts";
@@ -49,15 +52,11 @@ const GROUPS: Group[] = [
 export function NavSidebar({
   active,
   meta,
-  actorLabel,
-  sessionLabel,
   theme,
   onTheme,
 }: {
   active: RouteName;
   meta: Meta | undefined;
-  actorLabel: string;
-  sessionLabel: string;
   theme: Theme;
   onTheme: (theme: Theme) => void;
 }) {
@@ -113,11 +112,12 @@ export function NavSidebar({
             SQLite via the coordination CLI. Nothing leaves this machine.
           </p>
         </div>
-        <div className="nav-card">
-          <div className="nav-card-title">Operating as</div>
-          <div className="nav-identity mono">{actorLabel}</div>
-          <div className="small muted">{sessionLabel}</div>
-        </div>
+        {/* The "Operating as" card was here. Removed under UI-43: it repeated
+            the actor and the session id verbatim from the top bar, and it
+            measured zero width below 900px, so it was the weaker of the two
+            surfaces rather than the fuller one. Identity now has one home, in
+            the header, which is also where the session that travels in
+            X-Coordination-Session actually lives. */}
         {/* A display preference, not coordination state: it is stored locally,
             never attributed to an actor, and never written to the database. It
             sits beside "Local only" rather than in the top bar because the top

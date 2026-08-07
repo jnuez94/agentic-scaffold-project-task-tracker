@@ -1,6 +1,7 @@
 /* Top bar, content area, and status bar. */
 
 .topbar {
+  position: relative;
   min-width: 0;
   display: flex;
   align-items: flex-end;
@@ -34,10 +35,66 @@
   color: var(--text-400);
 }
 
+.topbar-identity-readout {
+  display: inline-flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  min-height: var(--control-height, 34px);
+  padding: 0 var(--space-3);
+  border: 1px solid var(--line-700);
+  border-radius: var(--radius-tag);
+  background: var(--surface-900);
+  color: var(--text-100);
+  font: var(--body-sm);
+  cursor: pointer;
+  max-width: 340px;
+}
+
+.topbar-identity-readout:hover {
+  background: var(--surface-850);
+}
+
+.topbar-identity-value {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 600;
+}
+
+.topbar-identity-caret {
+  font-size: 9px;
+  color: var(--text-400);
+}
+
+/* The selects, revealed by the readout. Absolutely positioned so opening them
+ * does not change the bar's height — the whole point of UI-43 is that this
+ * stops costing permanent chrome. */
 .topbar-identity {
-  display: flex;
+  display: none;
+  position: absolute;
+  top: 100%;
+  right: var(--space-4);
+  z-index: 20;
+  padding: var(--space-3);
+  background: var(--shell-950);
+  border: 1px solid var(--line-700);
+  border-radius: var(--radius-panel);
+  box-shadow: var(--overlay-shadow);
   gap: var(--space-3);
   align-items: flex-end;
+}
+
+/* The bar clips its own children by default — `overflow-y: auto` is a
+ * deliberate guard so that squeezing .main crops nothing. An absolutely
+ * positioned popover hanging below the bar is clipped by exactly that rule, so
+ * the guard is lifted only while the popover is open. UI-16 does the same
+ * thing at its breakpoint for the same reason. */
+.topbar.identity-open {
+  overflow: visible;
+}
+
+.topbar-identity.open {
+  display: flex;
   flex-wrap: wrap;
 }
 
@@ -283,7 +340,20 @@
     overflow-y: auto;
   }
 
+  /* UI-16's disclosure already collapses everything here, so the UI-43
+   * readout stands down rather than adding a second toggle for the same job.
+   * Exactly one mechanism is a control at any given size. */
+  .topbar-identity-readout {
+    display: none;
+  }
+
   .topbar-panel.open .topbar-identity {
+    display: flex;
+    position: static;
+    padding: 0;
+    background: none;
+    border: none;
+    box-shadow: none;
     flex-direction: column;
     align-items: stretch;
     gap: var(--space-3);

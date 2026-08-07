@@ -133,14 +133,6 @@ export function App() {
         <NavSidebar
           active={route.name}
           meta={meta.data}
-          actorLabel={
-            actor ? `${actor.name} · ${actor.id}` : "No actor selected"
-          }
-          sessionLabel={
-            session.activeSessionId
-              ? `Session ${session.activeSessionId}`
-              : "No active session"
-          }
           theme={theme}
           onTheme={setTheme}
         />
