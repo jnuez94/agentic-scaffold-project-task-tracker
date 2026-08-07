@@ -7,6 +7,7 @@
  */
 
 import { TEAM_RECIPIENT } from "../lib/broadcast.ts";
+import { FormField } from "../components/FormField.tsx";
 
 export interface BroadcastFieldsProps {
   senderId: string;
@@ -36,48 +37,50 @@ export function BroadcastFields(props: BroadcastFieldsProps) {
           </p>
         </div>
 
-        <div className="control">
-          <label htmlFor="bc-body">Message</label>
-          <textarea
-            id="bc-body"
-            value={body}
-            rows={5}
-            required
-            aria-describedby="bc-body-hint"
-            aria-invalid={bodyError ? true : undefined}
-            aria-errormessage={bodyError ? "bc-body-error" : undefined}
-            onChange={(event) => props.onBody(event.target.value)}
-          />
-          {bodyError ? (
-            <p id="bc-body-error" className="field-error" role="alert">
-              {bodyError}
-            </p>
-          ) : null}
-          <p id="bc-body-hint" className="small muted">
-            Team messages appear when recipients check their inbox.
-          </p>
-        </div>
+        {/* The error used to reach the reader only through aria-errormessage:
+            aria-describedby was hardcoded to the hint and never chained the
+            error id, so a screen reader without errormessage support announced
+            nothing. FormField chains both. */}
+        <FormField
+          id="bc-body"
+          className="control"
+          label="Message"
+          hint="Team messages appear when recipients check their inbox."
+          error={bodyError}
+        >
+          {(control) => (
+            <textarea
+              {...control}
+              value={body}
+              rows={5}
+              required
+              onChange={(event) => props.onBody(event.target.value)}
+            />
+          )}
+        </FormField>
 
         <details className="optional-fields">
           <summary>Optional details</summary>
-          <div className="control">
-            <label htmlFor="bc-task">Related task</label>
-            <input
-              id="bc-task"
-              value={task}
-              placeholder="TASK-1"
-              onChange={(event) => props.onTask(event.target.value)}
-            />
-          </div>
-          <div className="control">
-            <label htmlFor="bc-tags">Tags</label>
-            <input
-              id="bc-tags"
-              value={tags}
-              placeholder="handoff,status"
-              onChange={(event) => props.onTags(event.target.value)}
-            />
-          </div>
+          <FormField id="bc-task" className="control" label="Related task">
+            {(control) => (
+              <input
+                {...control}
+                value={task}
+                placeholder="TASK-1"
+                onChange={(event) => props.onTask(event.target.value)}
+              />
+            )}
+          </FormField>
+          <FormField id="bc-tags" className="control" label="Tags">
+            {(control) => (
+              <input
+                {...control}
+                value={tags}
+                placeholder="handoff,status"
+                onChange={(event) => props.onTags(event.target.value)}
+              />
+            )}
+          </FormField>
         </details>
 
     </>

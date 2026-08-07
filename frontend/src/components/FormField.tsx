@@ -6,12 +6,21 @@
  * name while being different things, which is part of why this abstraction was
  * never noticed as missing.
  *
- * It was missing. Four surfaces hand-rolled the same label/hint/error markup —
- * AssigneeFields, DependencyForm, SessionRecovery and BroadcastFields — and
- * the duplication did not stay identical: `aria-invalid` was wired on two of
- * them and absent on the other two, both of which validate. Assistive
- * technology was told a control was invalid on some forms and not others, for
- * the same class of refusal.
+ * It was missing. Four surfaces hand-rolled the same label/hint/error markup:
+ * AssigneeFields, DependencyForm, SessionRecovery and BroadcastFields.
+ *
+ * A correction to what an earlier version of this comment claimed. I read the
+ * uneven `aria-invalid` across those four as drift; it is not. AssigneeFields
+ * reports refusals as a banner about the whole operation, SessionRecovery
+ * prevents submission with a disabled button rather than refusing with a
+ * message, and neither has a field-level error to mark. Omitting the attribute
+ * is right in both. The case for this component is consistency and reuse, and
+ * removing the chance of future drift — not a live defect.
+ *
+ * BroadcastFields was the most careful of the four and set the bar here: it
+ * pairs `aria-invalid` with `aria-errormessage`. This emits both that and
+ * `aria-describedby`, because `aria-errormessage` is the precise attribute
+ * while `aria-describedby` is the one every screen reader actually honours.
  *
  * The control is a render prop rather than a child node because the wiring has
  * to reach the element itself: an id the label points at, `aria-describedby`
@@ -26,17 +35,26 @@ export interface ControlProps {
   id: string;
   "aria-describedby": string | undefined;
   "aria-invalid": true | undefined;
+  /** Precise, but unevenly supported — hence the describedby above as well. */
+  "aria-errormessage": string | undefined;
 }
 
 export function FormField({
   id,
   label,
+  className = "field",
   hint,
   error,
   children,
 }: {
   id: string;
   label: string;
+  /**
+   * Wrapper class. Defaults to `field`; the broadcast sheet lays its controls
+   * out with `control`, and preserving that is what lets it adopt this without
+   * being restyled.
+   */
+  className?: string;
   /** Standing guidance, shown whether or not the field is in error. */
   hint?: ReactNode;
   /** A refusal to fix. Announced, and marks the control invalid. */
@@ -50,8 +68,8 @@ export function FormField({
   const describedBy = [hintId, errorId].filter(Boolean).join(" ") || undefined;
 
   return (
-    <div className="field">
-      <label className="field-label" htmlFor={id}>
+    <div className={className}>
+      <label className={className === "field" ? "field-label" : undefined} htmlFor={id}>
         {label}
       </label>
 
@@ -59,6 +77,7 @@ export function FormField({
         id,
         "aria-describedby": describedBy,
         "aria-invalid": error ? true : undefined,
+        "aria-errormessage": errorId,
       })}
 
       {hint ? (

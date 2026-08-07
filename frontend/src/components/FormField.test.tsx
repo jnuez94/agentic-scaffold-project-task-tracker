@@ -95,3 +95,30 @@ describe("FormField", () => {
     expect(screen.getByLabelText("Relationship").getAttribute("aria-invalid")).toBe("true");
   });
 });
+
+describe("FormField error attributes", () => {
+  it("pairs aria-errormessage with aria-invalid, as BroadcastFields did", () => {
+    render(
+      <FormField id="body" label="Message" error="Say something">
+        {(control) => <textarea {...control} />}
+      </FormField>,
+    );
+    const control = screen.getByLabelText("Message");
+    expect(control.getAttribute("aria-invalid")).toBe("true");
+    expect(control.getAttribute("aria-errormessage")).toBe("body-error");
+    // And describedby too: errormessage is precise, describedby is the one
+    // every screen reader actually honours.
+    expect(control.getAttribute("aria-describedby")).toContain("body-error");
+  });
+
+  it("sets no error attributes when there is no error", () => {
+    render(
+      <FormField id="body" label="Message">
+        {(control) => <textarea {...control} />}
+      </FormField>,
+    );
+    const control = screen.getByLabelText("Message");
+    expect(control.getAttribute("aria-errormessage")).toBeNull();
+    expect(control.getAttribute("aria-invalid")).toBeNull();
+  });
+});

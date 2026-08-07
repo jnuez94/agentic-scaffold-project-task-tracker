@@ -22,6 +22,7 @@ import { absoluteTime } from "../lib/format.ts";
 import { describeAge, recoveryCaution, secondsSinceSeen, tasksClaimedBy } from "../lib/staleness.ts";
 import { useApp } from "../state/AppContext.tsx";
 import { useFocusTrap } from "../state/useFocusTrap.ts";
+import { FormField } from "../components/FormField.tsx";
 
 interface Recovered {
   id: string;
@@ -191,21 +192,20 @@ export function SessionRecovery({
               )}
             </div>
 
-            <label className="field" htmlFor="recover-reason">
-              <span className="field-label">Reason</span>
-              <textarea
-                id="recover-reason"
-                rows={3}
-                value={reason}
-                onChange={(event) => setReason(event.target.value)}
-                placeholder="Why this session is being recovered"
-                aria-describedby="recover-reason-hint"
-              />
-              <span id="recover-reason-hint" className="small muted">
-                Required. Appended to every blocked task, so write it for whoever finds one
-                tomorrow.
-              </span>
-            </label>
+            <FormField
+              id="recover-reason"
+              label="Reason"
+              hint="Required. Appended to every blocked task, so write it for whoever finds one tomorrow."
+            >
+              {(control) => (
+                <textarea
+                  {...control}
+                  rows={3}
+                  value={reason}
+                  onChange={(event) => setReason(event.target.value)}
+                />
+              )}
+            </FormField>
 
             {!actorId ? (
               <p className="small muted" id="recover-actor-hint">

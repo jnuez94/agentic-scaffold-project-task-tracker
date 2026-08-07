@@ -14,6 +14,7 @@ import {
   type AssignmentDraft,
 } from "../lib/assignment.ts";
 import { agentOptionLabel, isSelectableActor } from "../lib/labels.ts";
+import { FormField } from "../components/FormField.tsx";
 
 /** Who holds the task now, with what may be staged for removal. */
 export function CurrentAssignees({
@@ -91,12 +92,14 @@ export function AddAssignee({
   onAdd: (id: string) => void;
 }) {
   return (
-    <div className="field">
-      <label className="field-label" htmlFor="assignee-add">
-        Add someone
-      </label>
+    <FormField
+      id="assignee-add"
+      label="Add someone"
+      hint={staged.length ? `Adding: ${staged.join(", ")}` : undefined}
+    >
+      {(control) => (
       <select
-        id="assignee-add"
+        {...control}
         value=""
         disabled={pending}
         onChange={(event) => {
@@ -122,12 +125,8 @@ export function AddAssignee({
           </optgroup>
         ) : null}
       </select>
-      {staged.length ? (
-        <p className="small">
-          Adding: <span className="mono">{staged.join(", ")}</span>
-        </p>
-      ) : null}
-    </div>
+      )}
+    </FormField>
   );
 }
 
