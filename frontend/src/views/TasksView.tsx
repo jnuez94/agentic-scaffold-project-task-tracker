@@ -2,9 +2,9 @@
  * The task queue — the console's hero surface.
  */
 
-import { useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import type { CSSProperties } from "react";
-import type { Agent, TaskListRow } from "../api/contract.ts";
+import type { Agent } from "../api/contract.ts";
 import { DataTable } from "../components/DataTable.tsx";
 import { TASK_STATUSES } from "../api/contract.ts";
 import { ErrorBanner } from "../components/Feedback.tsx";
@@ -18,8 +18,6 @@ import type { Layout } from "../state/useLayout.ts";
 import { useResource } from "../state/useResource.ts";
 import { TaskInspector } from "./TaskInspector.tsx";
 import { TASK_DEFAULT_ORDER, taskColumns } from "./taskColumns.tsx";
-import { withAssignColumn } from "./taskAssignColumn.tsx";
-import { AssigneeEditor } from "./AssigneeEditor.tsx";
 
 const REQUEST_LIMIT = 500;
 
@@ -62,24 +60,18 @@ export function TasksView({
     return (id: string) => byId.get(id) ?? id;
   }, [agents]);
 
-  // Assignment from the row, opening the same editor the inspector opens.
-  const [assigning, setAssigning] = useState<TaskListRow | null>(null);
-  const assignTrigger = useRef<HTMLButtonElement | null>(null);
-
+  // Reassignment is not offered here. UX-ROW-ACTION-1: it lives in the
+  // inspector, which is where the operator can already see who holds the claim
+  // and what the task is blocked on — and offering it in both places produced
+  // three names for one action across two surfaces.
   const columns = useMemo(
     // Resolved session, so the Next action column cannot offer Claim on the
     // strength of a session that has ended.
     () =>
-      withAssignColumn(
-        taskColumns(nameFor, {
-          actorId: identity.actorId,
-          sessionId: session.activeSessionId,
-        }),
-        (row, trigger) => {
-          assignTrigger.current = trigger;
-          setAssigning(row);
-        },
-      ),
+      taskColumns(nameFor, {
+        actorId: identity.actorId,
+        sessionId: session.activeSessionId,
+      }),
     [nameFor, identity.actorId, session.activeSessionId],
   );
 
@@ -167,27 +159,6 @@ export function TasksView({
               : "Create one with the coordination CLI, then refresh."
           }
         />
-
-        {/* Anchored to the queue rather than the inspector: the operator acted
-            from a row and the row stays on screen behind it. Same component the
-            inspector uses, so the retired-agent grouping, the Name and id
-            labelling and the single add-and-remove call cannot drift apart. */}
-        {assigning ? (
-          <div className="row-assign-anchor">
-            <AssigneeEditor
-              task={assigning}
-              agents={agents}
-              onClose={() => {
-                setAssigning(null);
-                assignTrigger.current?.focus();
-              }}
-              onSaved={() => {
-                tasks.refresh();
-                setAssigning(null);
-              }}
-            />
-          </div>
-        ) : null}
       </section>
 
       {selectedId ? (
