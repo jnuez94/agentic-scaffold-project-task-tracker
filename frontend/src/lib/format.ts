@@ -16,21 +16,30 @@ export function parseTimestamp(value: string | null | undefined): Date | null {
   return Number.isNaN(parsed.getTime()) ? null : parsed;
 }
 
-/** "14m ago", "3h ago", "2d ago" — or an absolute date beyond a week. */
+/**
+ * "14m ago", "3h ago", "11d ago" — relative at every age, with no fallback.
+ *
+ * There was a seven-day cutoff here that returned an absolute date beyond it.
+ * Measured against the live board it fired for 66 of 80 records, so 82% of
+ * rows rendered "Jul 25, 2026" — which wraps to two lines in a 92px column and
+ * makes every row read the same on a board where everything happened within
+ * days of everything else (UI-46).
+ *
+ * "11d ago" is both shorter and more informative than the date it replaced.
+ * A cutoff may earn its place at months, once there is a board old enough to
+ * measure one against; it should not be assumed before then. Absolute time
+ * stays on the cell's title attribute and in the inspectors.
+ */
 export function relativeTime(value: string | null | undefined, now: Date = new Date()): string {
   const parsed = parseTimestamp(value);
   if (!parsed) return "—";
   const seconds = Math.round((now.getTime() - parsed.getTime()) / 1000);
-  if (seconds < 0) return "just now";
+  // A clock skew between the CLI's host and the browser can date a record in
+  // the future; "just now" is the honest reading, not a negative age.
   if (seconds < MINUTE) return "just now";
   if (seconds < HOUR) return `${Math.floor(seconds / MINUTE)}m ago`;
   if (seconds < DAY) return `${Math.floor(seconds / HOUR)}h ago`;
-  if (seconds < 7 * DAY) return `${Math.floor(seconds / DAY)}d ago`;
-  return parsed.toLocaleDateString(undefined, {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-  });
+  return `${Math.floor(seconds / DAY)}d ago`;
 }
 
 /** Local date and time, for cells where the exact moment matters. */
