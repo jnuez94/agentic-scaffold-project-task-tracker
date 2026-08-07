@@ -11,6 +11,7 @@ import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import type { TaskListRow } from "../api/contract.ts";
 import { DataTable } from "../components/DataTable.tsx";
+import { needsAttention } from "../lib/attention.ts";
 import { TASK_DEFAULT_ORDER, taskColumns } from "./taskColumns.tsx";
 
 const task = (overrides: Partial<TaskListRow> = {}): TaskListRow => ({
@@ -115,5 +116,46 @@ describe("task queue columns", () => {
   it("keeps the exact stored timestamp reachable on the cell", () => {
     renderQueue([task({ updated_at: "2026-08-01T00:00:00Z" })]);
     expect(screen.getByTitle("2026-08-01T00:00:00Z")).toBeTruthy();
+  });
+});
+
+describe("rows that need attention (UI-45)", () => {
+  const withAttention = (rows: TaskListRow[]) =>
+    render(
+      <DataTable
+        rows={rows}
+        columns={taskColumns((id) => id, CONTEXT)}
+        rowKey={(row) => row.id}
+        caption="Coordination tasks"
+        idPrefix="tasks"
+        rowClass={(row) => (needsAttention(row) ? "needs-attention" : undefined)}
+      />,
+    );
+
+  const marked = () =>
+    [...document.querySelectorAll("tbody tr")]
+      .filter((row) => row.classList.contains("needs-attention"))
+      .map((row) => row.querySelector(".id-value")?.textContent);
+
+  it("marks blocked, unowned and in-review rows", () => {
+    withAttention([
+      task({ id: "A", status: "blocked" }),
+      task({ id: "B", assignees: [] }),
+      task({ id: "C", status: "review" }),
+      task({ id: "D", status: "in_progress" }),
+      task({ id: "E", status: "done" }),
+    ]);
+    expect(marked()).toEqual(["A", "B", "C"]);
+  });
+
+  it("leaves the majority of a mature board unmarked", () => {
+    // At the 41% "everything not done" would have marked, the eye stops
+    // distinguishing and the treatment stops being a signal.
+    const rows = [
+      ...Array.from({ length: 8 }, (_, i) => task({ id: `done-${i}`, status: "done" as const })),
+      task({ id: "blocked-1", status: "blocked" }),
+    ];
+    withAttention(rows);
+    expect(marked()).toEqual(["blocked-1"]);
   });
 });

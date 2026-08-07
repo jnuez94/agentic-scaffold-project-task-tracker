@@ -95,6 +95,38 @@
   box-shadow: inset 3px 0 0 0 var(--violet-400);
 }
 
+/* Rows that are actionable now, by anyone (UI-45).
+ *
+ * The complaint this answers is an accessibility one, not a polish one: state
+ * already pairs colour with a glyph and a label, but *importance* was carried
+ * by hue alone, so an operator who cannot separate the status colours got no
+ * signal at all about what needed them. This uses the same two-cue pattern as
+ * .selected — a tint for colour-capable readers and a leading rule that
+ * survives grayscale and forced-colors — so the shape of the list is legible
+ * without reading any cell.
+ *
+ * Deliberately quiet. The set is ~13% of the board; at the 41% that
+ * "everything not done" would have highlighted, the eye stops distinguishing
+ * and the treatment becomes noise. */
+.data-table tbody tr.needs-attention {
+  background: var(--tint-amber);
+  box-shadow: inset 3px 0 0 0 var(--amber-400);
+}
+
+/* Selection wins outright: it is the row the operator just acted on, and two
+ * competing leading rules on one row read as neither. */
+.data-table tbody tr.needs-attention.selected {
+  background: var(--tint-violet);
+  box-shadow: inset 3px 0 0 0 var(--violet-400);
+}
+
+@media (forced-colors: active) {
+  /* Tints are dropped by forced-colors, so the rule has to carry it alone. */
+  .data-table tbody tr.needs-attention {
+    box-shadow: inset 3px 0 0 0 Highlight;
+  }
+}
+
 .align-end {
   text-align: right;
 }

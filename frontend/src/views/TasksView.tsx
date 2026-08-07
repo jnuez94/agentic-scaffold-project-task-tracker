@@ -9,10 +9,12 @@ import { DataTable } from "../components/DataTable.tsx";
 import { TASK_STATUSES } from "../api/contract.ts";
 import { ErrorBanner } from "../components/Feedback.tsx";
 import { ResizeHandle } from "../components/ResizeHandle.tsx";
+import { needsAttention } from "../lib/attention.ts";
 import { filterRows } from "../lib/filters.ts";
 import { agentOptionLabel } from "../lib/labels.ts";
 import { isTruncated } from "../lib/pagination.ts";
 import { queueEmptyState } from "../lib/queueEmpty.ts";
+import { isRecoverable } from "../lib/staleness.ts";
 import { useApp } from "../state/AppContext.tsx";
 import { BOUNDS } from "../state/layoutStore.ts";
 import type { Layout } from "../state/useLayout.ts";
@@ -68,6 +70,17 @@ export function TasksView({
     () => filterRows(scopeRows(tasks.data ?? [], scope), FILTER_FIELDS, filter),
     [tasks.data, scope, filter],
   );
+
+  // Sessions, only so the stale-claim clause of needsAttention can fire. Kept
+  // separate from the task load so a sessions failure quiets the highlight
+  // rather than emptying the queue.
+  const sessions = useResource(() => coordination.sessions({ status: "active" }), []);
+  const staleSessionIds = useMemo(() => {
+    const now = new Date();
+    return new Set(
+      (sessions.data ?? []).filter((entry) => isRecoverable(entry, now)).map((entry) => entry.id),
+    );
+  }, [sessions.data]);
 
   const empty = queueEmptyState({
     scope,
@@ -180,6 +193,12 @@ export function TasksView({
           onSelect={(task) => onSelect(task.id)}
           emptyTitle={empty.title}
           emptyHint={empty.hint}
+          // UI-45: structure, not just a coloured pill. The shared definition
+          // lives in lib/attention.ts so the queue and the home view cannot
+          // disagree about what needs someone.
+          rowClass={(task) =>
+            needsAttention(task, { staleSessionIds }) ? "needs-attention" : undefined
+          }
         />
       </section>
 

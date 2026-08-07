@@ -49,6 +49,13 @@ export interface DataTableProps<T> {
   filtered?: boolean;
   /** Disambiguates pager control ids when tables share a document. */
   idPrefix?: string;
+  /**
+   * Extra class for one row, for structural emphasis (UI-45).
+   *
+   * A hook rather than a built-in rule: what deserves weight is a property of
+   * the records, not of the table.
+   */
+  rowClass?: (row: T) => string | undefined;
 }
 
 export function DataTable<T>({
@@ -67,6 +74,7 @@ export function DataTable<T>({
   truncated = false,
   filtered = false,
   idPrefix = "table",
+  rowClass,
 }: DataTableProps<T>) {
   const [sort, setSort] = useState<SortState | null>(null);
   const [page, setPage] = useState(1);
@@ -119,10 +127,11 @@ export function DataTable<T>({
           {visible.map((row) => {
             const key = rowKey(row);
             const selected = selectedKey === key;
+            const emphasis = rowClass?.(row);
             return (
               <tr
                 key={key}
-                className={selected ? "selected" : undefined}
+                className={[selected ? "selected" : null, emphasis].filter(Boolean).join(" ") || undefined}
                 aria-selected={onSelect ? selected : undefined}
                 onClick={onSelect ? () => onSelect(row) : undefined}
                 onKeyDown={
