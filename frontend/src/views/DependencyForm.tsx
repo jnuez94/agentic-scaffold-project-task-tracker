@@ -10,6 +10,7 @@ import { useState } from "react";
 import type { Dependency } from "../api/contract.ts";
 import { ApiError } from "../api/errors.ts";
 import { ErrorBanner } from "../components/Feedback.tsx";
+import { FormField } from "../components/FormField.tsx";
 import {
   buildDependencyRequest,
   checkDependency,
@@ -82,50 +83,52 @@ export function DependencyForm({
     <form className="dependency-form" onSubmit={(event) => void submit(event)}>
       {error ? <ErrorBanner error={error} onDismiss={() => setError(undefined)} /> : null}
 
-      <label className="field" htmlFor="dependency-target">
-        <span className="field-label">This task waits on</span>
-        <input
-          id="dependency-target"
-          value={draft.dependsOn}
-          onChange={(event) => setDraft({ ...draft, dependsOn: event.target.value })}
-          placeholder="Task id, for example UI-12"
-          aria-describedby={problem ? "dependency-problem" : undefined}
-          aria-invalid={problem ? true : undefined}
-        />
-      </label>
+      <FormField
+        id="dependency-target"
+        label="This task waits on"
+        hint="Task id, for example UI-12"
+        error={problem}
+      >
+        {(control) => (
+          <input
+            {...control}
+            value={draft.dependsOn}
+            onChange={(event) => setDraft({ ...draft, dependsOn: event.target.value })}
+          />
+        )}
+      </FormField>
 
-      <label className="field" htmlFor="dependency-type">
-        <span className="field-label">Relationship</span>
-        <select
-          id="dependency-type"
-          value={draft.type}
-          onChange={(event) =>
-            setDraft({ ...draft, type: event.target.value as DependencyDraft["type"] })
-          }
-        >
-          {DEPENDENCY_TYPES.map((value) => (
-            <option key={value} value={value}>
-              {DEPENDENCY_LABELS[value]}
-            </option>
-          ))}
-        </select>
-      </label>
+      <FormField id="dependency-type" label="Relationship">
+        {(control) => (
+          <select
+            {...control}
+            value={draft.type}
+            onChange={(event) =>
+              setDraft({ ...draft, type: event.target.value as DependencyDraft["type"] })
+            }
+          >
+            {DEPENDENCY_TYPES.map((value) => (
+              <option key={value} value={value}>
+                {DEPENDENCY_LABELS[value]}
+              </option>
+            ))}
+          </select>
+        )}
+      </FormField>
 
-      <label className="field" htmlFor="dependency-rationale">
-        <span className="field-label">Why (optional)</span>
-        <input
-          id="dependency-rationale"
-          value={draft.rationale}
-          onChange={(event) => setDraft({ ...draft, rationale: event.target.value })}
-          placeholder="What about that task this one needs"
-        />
-      </label>
-
-      {problem ? (
-        <p className="small field-problem" id="dependency-problem" role="alert">
-          {problem}
-        </p>
-      ) : null}
+      <FormField
+        id="dependency-rationale"
+        label="Why (optional)"
+        hint="What about that task this one needs"
+      >
+        {(control) => (
+          <input
+            {...control}
+            value={draft.rationale}
+            onChange={(event) => setDraft({ ...draft, rationale: event.target.value })}
+          />
+        )}
+      </FormField>
 
       <div className="field-actions">
         <button type="submit" disabled={pending || !mutationsEnabled}>
