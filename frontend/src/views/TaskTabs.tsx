@@ -9,12 +9,14 @@
 import { useState } from "react";
 import type { TaskDetail } from "../api/contract.ts";
 import { EmptyState, ErrorBanner } from "../components/Feedback.tsx";
+import { orderDependencies } from "../lib/dependency.ts";
 import { EnumPill } from "../components/Pill.tsx";
 import { absoluteTime, relativeTime } from "../lib/format.ts";
 import { humanize } from "../lib/labels.ts";
 import { useApp } from "../state/AppContext.tsx";
 import { useResource } from "../state/useResource.ts";
 import { AddEvidenceForm } from "./AddEvidenceForm.tsx";
+import { DependencyForm } from "./DependencyForm.tsx";
 
 export type TaskTab = "overview" | "evidence" | "dependencies" | "reviews" | "activity";
 
@@ -44,7 +46,11 @@ export function TaskTabPanel({
   if (tab === "evidence") {
     return <EvidencePanel detail={detail} onAdded={() => { refresh(); onChanged(); }} />;
   }
-  if (tab === "dependencies") return <DependenciesPanel detail={detail} />;
+  if (tab === "dependencies") {
+    return (
+      <DependenciesPanel detail={detail} onChanged={() => { refresh(); onChanged(); }} />
+    );
+  }
   if (tab === "reviews") return <ReviewsPanel detail={detail} />;
   return <ActivityPanel taskId={detail.id} />;
 }
@@ -91,13 +97,37 @@ function EvidencePanel({ detail, onAdded }: { detail: TaskDetail; onAdded: () =>
   );
 }
 
-function DependenciesPanel({ detail }: { detail: TaskDetail }) {
+function DependenciesPanel({ detail, onChanged }: { detail: TaskDetail; onChanged: () => void }) {
+  // The form is always present, including on the empty state: "record none"
+  // was the defect (UI-50), so the tab should never be a dead end.
+  const form = (
+    <DependencyForm
+      // Keyed by the task, so switching tasks remounts the form with empty
+      // state. Without this the draft and — worse — its validation error
+      // survive the switch: "A task cannot depend on itself" followed UI-48
+      // onto UI-55, where that id is a perfectly valid dependency, so the form
+      // was asserting something false about the task now in front of you.
+      key={detail.id}
+      taskId={detail.id}
+      existing={detail.dependencies}
+      onAdded={onChanged}
+    />
+  );
   if (detail.dependencies.length === 0) {
-    return <EmptyState title="No dependencies" hint="This task does not wait on any other task." />;
+    // A one-line note rather than the full EmptyState panel. The panel and the
+    // form say the same thing twice, and its height pushed the submit button
+    // below the fold — the UI-28 defect, reintroduced by stacking them.
+    return (
+      <>
+        <p className="small muted">This task does not wait on any other task.</p>
+        {form}
+      </>
+    );
   }
   return (
+    <>
     <ul className="record-list">
-      {detail.dependencies.map((dependency) => (
+      {orderDependencies(detail.dependencies).map((dependency) => (
         <li key={`${dependency.depends_on_task_id}-${dependency.dependency_type}`}>
           <div className="record-head">
             <span className="mono">{dependency.depends_on_task_id}</span>
@@ -108,6 +138,8 @@ function DependenciesPanel({ detail }: { detail: TaskDetail }) {
         </li>
       ))}
     </ul>
+    {form}
+    </>
   );
 }
 

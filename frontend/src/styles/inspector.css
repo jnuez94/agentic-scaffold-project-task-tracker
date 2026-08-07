@@ -410,3 +410,27 @@ button.close {
   align-items: flex-start;
   gap: var(--space-2);
 }
+
+/* Recording a dependency, inside the tab that lists them (UI-50).
+ *
+ * Separated from the list by a rule rather than a heading: it is one form of
+ * three fields, and a heading would make the tab read as two sections when it
+ * is one subject. */
+.dependency-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin-top: var(--space-4);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--line-700);
+}
+
+.field-problem {
+  color: var(--coral-400);
+  margin: 0;
+}
+
+.field-actions {
+  display: flex;
+  gap: var(--space-2);
+}
