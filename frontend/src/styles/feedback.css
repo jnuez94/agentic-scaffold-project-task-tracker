@@ -183,3 +183,86 @@
   font: var(--code-sm);
   color: var(--text-200);
 }
+
+/* The attention strip above the task queue (UI-42).
+ *
+ * Reuses the health banner's shape on purpose: this is the same information
+ * the Health route reports, so it should not arrive looking like a different
+ * kind of object. What it must never become is a dashboard — UX-SCOPE-2
+ * rejected an Attention workspace, and the way that gets reversed by accident
+ * is a strip that grows tiles, then trends, then a route of its own. One row,
+ * counts only, wrapping rather than scrolling. */
+.attention-bar {
+  display: flex;
+  gap: var(--space-3);
+  align-items: center;
+  flex-wrap: wrap;
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-panel);
+  margin-bottom: var(--space-3);
+  background: var(--tint-amber);
+  border: 1px solid rgba(242, 184, 75, 0.4);
+}
+
+/* A clear board is an answer, not an absence, so it is stated rather than
+ * left as empty space — blank reads as "not loaded" just as easily. */
+.attention-bar.clear {
+  background: var(--tint-mint);
+  border-color: rgba(61, 220, 151, 0.4);
+}
+
+.attention-glyph {
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.attention-lead {
+  font: var(--body-strong);
+  margin: 0;
+}
+
+.attention-groups {
+  display: flex;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.attention-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 28px;
+  padding: 2px var(--space-3);
+  border-radius: var(--radius-tag);
+  border: 1px solid var(--line-700);
+  background: var(--surface-900);
+  color: var(--text-100);
+  font: var(--body-sm);
+  cursor: pointer;
+}
+
+.attention-chip:hover {
+  background: var(--surface-850);
+}
+
+/* aria-pressed carries this for assistive technology; the border weight and
+ * fill carry it for everyone else, so the active chip is not colour alone. */
+.attention-chip.active {
+  border-color: var(--amber-400);
+  background: var(--surface-800);
+  font-weight: 600;
+}
+
+.attention-count {
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+}
+
+.attention-clear {
+  min-height: 28px;
+  font: var(--body-sm);
+}
+
+.attention-scope {
+  margin-inline-start: auto;
+}

@@ -6,12 +6,11 @@ import { useMemo, useState } from "react";
 import type { CSSProperties } from "react";
 import type { Agent } from "../api/contract.ts";
 import { DataTable } from "../components/DataTable.tsx";
-import { TASK_STATUSES } from "../api/contract.ts";
 import { ErrorBanner } from "../components/Feedback.tsx";
 import { ResizeHandle } from "../components/ResizeHandle.tsx";
-import { needsAttention } from "../lib/attention.ts";
+import { attentionReason, needsAttention, type AttentionReason } from "../lib/attention.ts";
+import { attentionTotal, summariseAttention } from "../lib/attentionSummary.ts";
 import { filterRows } from "../lib/filters.ts";
-import { agentOptionLabel } from "../lib/labels.ts";
 import { isTruncated } from "../lib/pagination.ts";
 import { queueEmptyState } from "../lib/queueEmpty.ts";
 import { isRecoverable } from "../lib/staleness.ts";
@@ -19,17 +18,12 @@ import { useApp } from "../state/AppContext.tsx";
 import { BOUNDS } from "../state/layoutStore.ts";
 import type { Layout } from "../state/useLayout.ts";
 import { useQueueScope } from "../state/useQueueScope.ts";
-import {
-  ALL_SCOPE,
-  OPEN_SCOPE,
-  requestStatus,
-  SCOPE_LABELS,
-  scopeRows,
-  type QueueScope,
-} from "../state/queueScopeStore.ts";
+import { OPEN_SCOPE, requestStatus, scopeRows } from "../state/queueScopeStore.ts";
 import { useResource } from "../state/useResource.ts";
 import { TaskInspector } from "./TaskInspector.tsx";
 import { TASK_DEFAULT_ORDER, taskColumns } from "./taskColumns.tsx";
+import { AttentionBar } from "./AttentionBar.tsx";
+import { QueueToolbar } from "./QueueToolbar.tsx";
 
 const REQUEST_LIMIT = 500;
 
@@ -66,7 +60,7 @@ export function TasksView({
   // one status at a time and cannot express everything-not-done. Narrowing the
   // loaded window is the same contract the filter box already works under, and
   // the truncation notice below still reports when that window was capped.
-  const rows = useMemo(
+  const scoped = useMemo(
     () => filterRows(scopeRows(tasks.data ?? [], scope), FILTER_FIELDS, filter),
     [tasks.data, scope, filter],
   );
@@ -81,6 +75,25 @@ export function TasksView({
       (sessions.data ?? []).filter((entry) => isRecoverable(entry, now)).map((entry) => entry.id),
     );
   }, [sessions.data]);
+
+  // Summarised over the scoped rows, so the counts describe the list the
+  // operator is looking at. A strip that counted the whole board while the
+  // queue showed a filtered slice would be two different answers on one screen.
+  const attention = useMemo(
+    () => summariseAttention(scoped, { staleSessionIds }),
+    [scoped, staleSessionIds],
+  );
+
+  // Narrowing by a reason is a lens on the same rows, not another filter to
+  // remember: deliberately not persisted, and cleared by its own control.
+  const [reason, setReason] = useState<AttentionReason | null>(null);
+  const rows = useMemo(
+    () =>
+      reason
+        ? scoped.filter((task) => attentionReason(task, { staleSessionIds }) === reason)
+        : scoped,
+    [scoped, reason, staleSessionIds],
+  );
 
   const empty = queueEmptyState({
     scope,
@@ -131,50 +144,26 @@ export function TasksView({
           </p>
         </div>
 
-        <div className="queue-toolbar">
-          {/* One control, not a scope toggle beside a status filter: two of
-              them can contradict each other, and this one is on screen
-              whenever the queue is, so a remembered choice can never look
-              like a task that vanished. */}
-          <div className="control">
-            <label htmlFor="status-filter">State</label>
-            <select
-              id="status-filter"
-              value={scope}
-              onChange={(event) => setScope(event.target.value as QueueScope)}
-            >
-              <option value={OPEN_SCOPE}>{SCOPE_LABELS[OPEN_SCOPE]}</option>
-              <option value={ALL_SCOPE}>{SCOPE_LABELS[ALL_SCOPE]}</option>
-              {TASK_STATUSES.map((value) => (
-                <option key={value} value={value}>
-                  {value}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="control">
-            <label htmlFor="assignee-filter">Assignee</label>
-            <select
-              id="assignee-filter"
-              value={assignee}
-              onChange={(event) => setAssignee(event.target.value)}
-            >
-              <option value="">Anyone</option>
-              {/* Name alone is not an identity. Two distinct agent records
-                  share the display name "Toby" — one active, one retired — and
-                  rendering just the name gave the operator two identical
-                  options with no way to tell which one owns SEC-1. Retired
-                  agents stay selectable here: this is a lens over existing
-                  records, and historical assignments to retired identities
-                  must remain filterable. Only "Acting as" gates on status. */}
-              {agents.map((agent) => (
-                <option key={agent.id} value={agent.id}>
-                  {agentOptionLabel(agent)}
-                </option>
-              ))}
-            </select>
-          </div>
-        </div>
+        {/* Above the queue, not beside the navigation: the surface that knew
+            what was wrong used to be the tenth menu item, below Export, so
+            noticing and acting were two motions. Held to one line — UX-SCOPE-2
+            rejected an Attention workspace, and a strip that grows tiles is
+            how that decision gets reversed by accident. */}
+        <AttentionBar
+          groups={attention}
+          total={attentionTotal(attention)}
+          active={reason}
+          onSelect={setReason}
+          scopeHint={scope === OPEN_SCOPE ? undefined : "Counted across the loaded rows."}
+        />
+
+        <QueueToolbar
+          scope={scope}
+          onScope={setScope}
+          assignee={assignee}
+          onAssignee={setAssignee}
+          agents={agents}
+        />
 
         {tasks.error ? <ErrorBanner error={tasks.error} onRetry={tasks.refresh} /> : null}
 
