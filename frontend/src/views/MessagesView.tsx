@@ -118,7 +118,7 @@ export function MessagesView({
                   Ledger
                 </button>
               </div>
-              <p className="queue-count small muted" aria-live="polite">
+              <p className="queue-count small muted">
                 {loadedCountLabel(rows.length, Boolean(filter))}
               </p>
               {/* Conversation only: in the paginated, sortable Ledger "newest"

@@ -85,7 +85,7 @@ export function AuditView({ filter }: { filter: string }) {
             ))}
           </select>
         </div>
-        <p className="queue-count small muted" aria-live="polite">
+        <p className="queue-count small muted">
           {total === 0 ? "No entries" : `${first}–${last} of ${total}`}
         </p>
         <div className="pager">
