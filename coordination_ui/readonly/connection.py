@@ -22,9 +22,7 @@ DEFAULT_TIMEOUT_SECONDS = 5.0
 class ReadOnlyConnection:
     """Opens short-lived read-only connections to one database file."""
 
-    def __init__(
-        self, database: Path, timeout: float = DEFAULT_TIMEOUT_SECONDS
-    ) -> None:
+    def __init__(self, database: Path, timeout: float = DEFAULT_TIMEOUT_SECONDS) -> None:
         self.database = Path(database)
         self.timeout = timeout
 

@@ -115,8 +115,7 @@ class QueryAccessorTests(unittest.TestCase):
 class PagingTests(unittest.TestCase):
     def test_appends_nothing_when_absent(self) -> None:
         request, _ = make_request()
-        self.assertEqual(request.paging(ArgumentBuilder("task", "list")).args,
-                         ["task", "list"])
+        self.assertEqual(request.paging(ArgumentBuilder("task", "list")).args, ["task", "list"])
 
     def test_appends_limit_and_offset(self) -> None:
         request, _ = make_request(query={"limit": ["10"], "offset": ["5"]})

@@ -125,9 +125,7 @@ class TemporaryProject:
         self.run(*args)
         return agent_id
 
-    def seed_session(
-        self, session_id: str = "s1", agent_id: str = "tester"
-    ) -> str:
+    def seed_session(self, session_id: str = "s1", agent_id: str = "tester") -> str:
         self.run(
             "session",
             "start",

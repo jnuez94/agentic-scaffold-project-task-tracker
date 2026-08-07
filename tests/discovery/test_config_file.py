@@ -24,7 +24,9 @@ class ParseTests(unittest.TestCase):
         )
 
     def test_ignores_blank_lines_and_comments(self) -> None:
-        text = "# a comment\n\n  \nversion: 1\n# another\nbackend: sqlite\ndatabase: d.sqlite3\n"
+        text = (
+            "# a comment\n\n  \nversion: 1\n# another\nbackend: sqlite\ndatabase: d.sqlite3\n"
+        )
         self.assertEqual(parse(text).values["version"], "1")
 
     def test_ignores_surrounding_whitespace(self) -> None:
@@ -59,7 +61,10 @@ class ValidateTests(unittest.TestCase):
         self.assertIs(config.validate().validate(), config)
 
     def test_requires_version_one(self) -> None:
-        for text in ("backend: sqlite\ndatabase: d\n", "version: 2\nbackend: sqlite\ndatabase: d\n"):
+        for text in (
+            "backend: sqlite\ndatabase: d\n",
+            "version: 2\nbackend: sqlite\ndatabase: d\n",
+        ):
             with self.subTest(text=text), self.assertRaises(DiscoveryError):
                 parse(text).validate()
 

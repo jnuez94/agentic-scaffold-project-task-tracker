@@ -19,18 +19,14 @@ class RecordTestCase(RouteTestCase):
 class EvidenceTests(RecordTestCase):
     def test_add_evidence_defaults_the_type(self) -> None:
         self.post("/api/evidence", {"task": "T-1", "uri": "file://a", "actor": "alice"})
-        self.assertEqual(
-            self.get("/api/tasks/T-1/evidence")[0]["evidence_type"], "artifact"
-        )
+        self.assertEqual(self.get("/api/tasks/T-1/evidence")[0]["evidence_type"], "artifact")
 
     def test_add_evidence_accepts_an_explicit_type(self) -> None:
         self.post(
             "/api/evidence",
             {"task": "T-1", "uri": "file://b", "actor": "alice", "type": "test-run"},
         )
-        self.assertEqual(
-            self.get("/api/tasks/T-1/evidence")[0]["evidence_type"], "test-run"
-        )
+        self.assertEqual(self.get("/api/tasks/T-1/evidence")[0]["evidence_type"], "test-run")
 
     def test_evidence_increments_the_task_count(self) -> None:
         self.post("/api/evidence", {"task": "T-1", "uri": "file://c", "actor": "alice"})
@@ -56,9 +52,7 @@ class DependencyTests(RecordTestCase):
         self.assertEqual(added["status"], "active")
 
     def test_dependency_accepts_each_documented_type(self) -> None:
-        for index, kind in enumerate(
-            ("informs", "review_required", "evidence_required")
-        ):
+        for index, kind in enumerate(("informs", "review_required", "evidence_required")):
             with self.subTest(kind=kind):
                 added = self.post(
                     "/api/dependencies",
@@ -88,7 +82,9 @@ class DependencyTests(RecordTestCase):
 
     def test_dependency_appears_on_the_task(self) -> None:
         self.post("/api/dependencies", {"task": "T-1", "depends_on": "T-2", "actor": "alice"})
-        self.assertEqual(self.get("/api/tasks/T-1")["dependencies"][0]["depends_on_task_id"], "T-2")
+        self.assertEqual(
+            self.get("/api/tasks/T-1")["dependencies"][0]["depends_on_task_id"], "T-2"
+        )
 
     def test_resolve_dependency_marks_it_resolved(self) -> None:
         self.post("/api/dependencies", {"task": "T-1", "depends_on": "T-2", "actor": "alice"})

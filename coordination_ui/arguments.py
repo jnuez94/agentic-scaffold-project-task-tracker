@@ -47,9 +47,7 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="open the console in the default browser once the server is up",
     )
-    parser.add_argument(
-        "--version", action="version", version=f"coordination-ui {__version__}"
-    )
+    parser.add_argument("--version", action="version", version=f"coordination-ui {__version__}")
     return parser
 
 

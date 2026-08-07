@@ -54,9 +54,7 @@ class Request:
         try:
             return int(raw)
         except ValueError as exc:
-            raise ArgumentError(
-                f"query parameter {name!r} must be an integer"
-            ) from exc
+            raise ArgumentError(f"query parameter {name!r} must be an integer") from exc
 
     def q_flag(self, name: str) -> bool:
         raw = self.q(name)

@@ -177,7 +177,9 @@ class BodylessPostContentTypeTests(LiveServerTestCase):
             connection.close()
 
     def test_form_encoded_empty_post_cannot_reach_heartbeat(self) -> None:
-        status, payload = self.raw_post("/api/sessions/s-csrf/heartbeat", "application/x-www-form-urlencoded")
+        status, payload = self.raw_post(
+            "/api/sessions/s-csrf/heartbeat", "application/x-www-form-urlencoded"
+        )
         self.assertEqual(status, 400)
         self.assertEqual(payload["error"]["code"], "invalid_arguments")
 
@@ -196,7 +198,9 @@ class BodylessPostContentTypeTests(LiveServerTestCase):
 
     def test_form_encoded_empty_post_cannot_end_a_session(self) -> None:
         # The destructive one: ending another origin's session by form POST.
-        status, _ = self.raw_post("/api/sessions/s-csrf/end", "application/x-www-form-urlencoded")
+        status, _ = self.raw_post(
+            "/api/sessions/s-csrf/end", "application/x-www-form-urlencoded"
+        )
         self.assertEqual(status, 400)
         listed = self.get_json("/api/sessions")[1]["data"]
         still_active = [s for s in listed if s["id"] == "s-csrf" and s["status"] == "active"]
@@ -210,7 +214,9 @@ class BodylessPostContentTypeTests(LiveServerTestCase):
         self.assertTrue(payload["ok"])
 
     def test_json_content_type_with_parameters_is_accepted(self) -> None:
-        status, _ = self.raw_post("/api/sessions/s-csrf/heartbeat", "application/json; charset=utf-8")
+        status, _ = self.raw_post(
+            "/api/sessions/s-csrf/heartbeat", "application/json; charset=utf-8"
+        )
         self.assertEqual(status, 200)
 
     def test_ordinary_json_mutation_is_unaffected(self) -> None:

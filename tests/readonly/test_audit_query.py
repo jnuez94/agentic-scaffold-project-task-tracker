@@ -32,9 +32,7 @@ class BuildWhereTests(unittest.TestCase):
         self.assertEqual(params, ["david"])
 
     def test_filters_are_combined_with_and(self) -> None:
-        where, params = AuditQuery.build_where(
-            {"actor": "david", "object_type": "task"}, None
-        )
+        where, params = AuditQuery.build_where({"actor": "david", "object_type": "task"}, None)
         self.assertIn(" AND ", where)
         self.assertEqual(params, ["david", "task"])
 

@@ -65,9 +65,7 @@ class ProjectLocator:
             executable=executable,
         )
 
-    def resolve(
-        self, database: Path | None = None, start: Path | None = None
-    ) -> Project:
+    def resolve(self, database: Path | None = None, start: Path | None = None) -> Project:
         """Dispatch between explicit-database and discovery modes."""
 
         if database is None:

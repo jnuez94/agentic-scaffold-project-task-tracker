@@ -114,7 +114,12 @@ class BroadcastFailureTests(BroadcastTestCase):
         with self.assertRaises(CoordinationError):
             self.post(
                 "/api/messages",
-                {"id": "bcast-8", "sender": "local-operator", "recipient": "team", "body": "   "},
+                {
+                    "id": "bcast-8",
+                    "sender": "local-operator",
+                    "recipient": "team",
+                    "body": "   ",
+                },
             )
 
 

@@ -56,9 +56,7 @@ class MessageTests(MessagingTestCase):
 
     def test_message_requires_a_body(self) -> None:
         with self.assertRaises(CoordinationError):
-            self.post(
-                "/api/messages", {"id": "MSG-5", "sender": "alice", "recipient": "team"}
-            )
+            self.post("/api/messages", {"id": "MSG-5", "sender": "alice", "recipient": "team"})
 
 
 class ArtifactTests(MessagingTestCase):
@@ -113,9 +111,7 @@ class ArtifactTests(MessagingTestCase):
             {"id": "ART-6", "uri": "file://u", "owner": "alice", "type": "design"},
         )
         with self.assertRaises(CoordinationError):
-            self.post(
-                "/api/artifacts/ART-6/status", {"status": "published", "actor": "alice"}
-            )
+            self.post("/api/artifacts/ART-6/status", {"status": "published", "actor": "alice"})
 
     def test_list_filters_by_status(self) -> None:
         self.post(

@@ -28,9 +28,7 @@ class ExecutableLocator:
         if override:
             executable = Path(override).expanduser()
             if not executable.is_file():
-                raise DiscoveryError(
-                    f"{OVERRIDE_ENV_VAR} does not name a file: {executable}"
-                )
+                raise DiscoveryError(f"{OVERRIDE_ENV_VAR} does not name a file: {executable}")
             return executable.resolve()
         executable = Path(project_root) / DEFAULT_CLI_RELPATH
         if not executable.is_file():

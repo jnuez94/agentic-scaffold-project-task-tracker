@@ -44,9 +44,7 @@ class ClaimTests(TaskLifecycleTestCase):
         self.temp.seed_session("s-2", "bob")
         self.post("/api/tasks/T-1/claim", {"agent": "alice", "if_revision": 1})
         with self.assertRaises(CoordinationError) as caught:
-            self.post(
-                "/api/tasks/T-1/claim", {"agent": "bob", "if_revision": 2}, session="s-2"
-            )
+            self.post("/api/tasks/T-1/claim", {"agent": "bob", "if_revision": 2}, session="s-2")
         self.assertEqual(caught.exception.http_status, 409)
 
 
@@ -158,9 +156,7 @@ class UpdateAndAssignTests(TaskLifecycleTestCase):
         self.assertEqual(updated["updated_fields"], ["priority"])
 
     def test_update_can_clear_an_optional_field(self) -> None:
-        self.post(
-            "/api/tasks/T-1/update", {"actor": "alice", "if_revision": 1, "tags": "a,b"}
-        )
+        self.post("/api/tasks/T-1/update", {"actor": "alice", "if_revision": 1, "tags": "a,b"})
         self.post("/api/tasks/T-1/update", {"actor": "alice", "if_revision": 2, "tags": ""})
         self.assertEqual(self.get("/api/tasks/T-1")["tags"], "")
 
@@ -186,7 +182,9 @@ class UpdateAndAssignTests(TaskLifecycleTestCase):
         self.assertEqual(assigned["assignees"], ["alice", "bob"])
 
     def test_assign_can_remove(self) -> None:
-        self.post("/api/tasks/T-1/assign", {"actor": "alice", "if_revision": 1, "add": ["alice"]})
+        self.post(
+            "/api/tasks/T-1/assign", {"actor": "alice", "if_revision": 1, "add": ["alice"]}
+        )
         removed = self.post(
             "/api/tasks/T-1/assign",
             {"actor": "alice", "if_revision": 2, "remove": ["alice"]},

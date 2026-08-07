@@ -92,12 +92,8 @@ class IdentifierOptionTests(unittest.TestCase):
 
 class IntegerOptionTests(unittest.TestCase):
     def test_accepts_int_and_numeric_string(self) -> None:
-        self.assertEqual(
-            ArgumentBuilder("x").integer({"p": 2}, "p", "--p").args[-1], "--p=2"
-        )
-        self.assertEqual(
-            ArgumentBuilder("x").integer({"p": "3"}, "p", "--p").args[-1], "--p=3"
-        )
+        self.assertEqual(ArgumentBuilder("x").integer({"p": 2}, "p", "--p").args[-1], "--p=2")
+        self.assertEqual(ArgumentBuilder("x").integer({"p": "3"}, "p", "--p").args[-1], "--p=3")
 
     def test_rejects_booleans(self) -> None:
         # bool is an int subclass; accepting it would send "--priority=1" for True.
@@ -128,9 +124,7 @@ class ChoiceOptionTests(unittest.TestCase):
         self.assertEqual(caught.exception.details["allowed"], ["todo", "done"])
 
     def test_skips_when_absent(self) -> None:
-        self.assertEqual(
-            ArgumentBuilder("x").choice({}, "s", "--s", ("a", "b")).args, ["x"]
-        )
+        self.assertEqual(ArgumentBuilder("x").choice({}, "s", "--s", ("a", "b")).args, ["x"])
 
 
 class IdentifiersOptionTests(unittest.TestCase):

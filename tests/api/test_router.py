@@ -79,9 +79,7 @@ class DispatchTests(unittest.TestCase):
         self.assertEqual(caught.exception.http_status, 404)
 
     def test_passes_query_body_and_session_through(self) -> None:
-        result = self.router.dispatch(
-            "POST", "/api/things", {"a": ["1"]}, {"b": 2}, "sess-1"
-        )
+        result = self.router.dispatch("POST", "/api/things", {"a": ["1"]}, {"b": 2}, "sess-1")
         self.assertEqual(result["query"], {"a": ["1"]})
         self.assertEqual(result["body"], {"b": 2})
         self.assertEqual(result["session"], "sess-1")

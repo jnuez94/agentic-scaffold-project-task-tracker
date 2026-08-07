@@ -88,7 +88,14 @@ class InvocationTests(unittest.TestCase):
         self.project.seed_agent("tester")
         body = "line one\nline two — é 🙂"
         self.cli.run(
-            ["task", "create", "--id=T-UNI", "--title=t", "--actor=tester", f"--description={body}"]
+            [
+                "task",
+                "create",
+                "--id=T-UNI",
+                "--title=t",
+                "--actor=tester",
+                f"--description={body}",
+            ]
         )
         self.assertEqual(self.cli.run(["task", "show", "T-UNI"])["description"], body)
 

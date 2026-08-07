@@ -107,9 +107,7 @@ class RequestHandlerMixin:
         if method != "GET":
             self.respond_json(
                 HTTPStatus.METHOD_NOT_ALLOWED,
-                error_payload(
-                    "method_not_allowed", f"{method} is not supported for {path}"
-                ),
+                error_payload("method_not_allowed", f"{method} is not supported for {path}"),
             )
             return
         found = self.static_files.read(path)

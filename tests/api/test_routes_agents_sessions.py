@@ -11,9 +11,7 @@ from .route_case import RouteTestCase
 
 class AgentRouteTests(RouteTestCase):
     def test_create_bootstraps_without_an_actor(self) -> None:
-        created = self.post(
-            "/api/agents", {"id": "alice", "name": "Alice", "role": "Engineer"}
-        )
+        created = self.post("/api/agents", {"id": "alice", "name": "Alice", "role": "Engineer"})
         self.assertEqual(created["id"], "alice")
         self.assertEqual(created["actor_type"], "ai")
 
@@ -94,9 +92,7 @@ class SessionRouteTests(RouteTestCase):
 
     def test_start_rejects_an_unknown_agent(self) -> None:
         with self.assertRaises(CoordinationError) as caught:
-            self.post(
-                "/api/sessions", {"id": "s-3", "agent": "ghost", "harness": "pytest"}
-            )
+            self.post("/api/sessions", {"id": "s-3", "agent": "ghost", "harness": "pytest"})
         self.assertEqual(caught.exception.http_status, 404)
 
     def test_list_filters_by_status_and_agent(self) -> None:

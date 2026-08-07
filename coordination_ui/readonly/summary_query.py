@@ -72,20 +72,12 @@ class SummaryQuery:
                 "task_priority": self._histogram(
                     connection, "tasks", "priority", stringify=True
                 ),
-                "escalation_status": self._histogram(
-                    connection, "escalations", "status"
-                ),
-                "session_status": self._histogram(
-                    connection, "agent_sessions", "status"
-                ),
-                "workload": [
-                    dict(row) for row in connection.execute(WORKLOAD_SQL)
-                ],
+                "escalation_status": self._histogram(connection, "escalations", "status"),
+                "session_status": self._histogram(connection, "agent_sessions", "status"),
+                "workload": [dict(row) for row in connection.execute(WORKLOAD_SQL)],
                 "recent_audit": [
                     dict(row)
-                    for row in connection.execute(
-                        RECENT_AUDIT_SQL, [RECENT_AUDIT_LIMIT]
-                    )
+                    for row in connection.execute(RECENT_AUDIT_SQL, [RECENT_AUDIT_LIMIT])
                 ],
             }
 

@@ -86,7 +86,5 @@ class ConfigFile:
         if any(part.lower() == CONFIG_DIRNAME for part in parts):
             raise DiscoveryError("configured database must not nest .coordination")
         if parts[0].lower() in RESERVED_ROOT_NAMES:
-            raise DiscoveryError(
-                f"configured database must not begin with {parts[0]!r}"
-            )
+            raise DiscoveryError(f"configured database must not begin with {parts[0]!r}")
         return self.path.parent / relative

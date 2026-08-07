@@ -26,8 +26,7 @@ class Router:
     def __init__(self, context: ApiContext, routes: Sequence[RouteSpec]) -> None:
         self.context = context
         self.routes = [
-            (method, re.compile(f"^{pattern}$"), handler)
-            for method, pattern, handler in routes
+            (method, re.compile(f"^{pattern}$"), handler) for method, pattern, handler in routes
         ]
 
     def dispatch(

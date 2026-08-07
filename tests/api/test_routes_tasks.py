@@ -14,9 +14,7 @@ class TaskCreateTests(RouteTestCase):
         self.temp.seed_agent("alice")
 
     def test_create_returns_id_status_and_revision(self) -> None:
-        created = self.post(
-            "/api/tasks", {"id": "T-1", "title": "First", "actor": "alice"}
-        )
+        created = self.post("/api/tasks", {"id": "T-1", "title": "First", "actor": "alice"})
         self.assertEqual(created["id"], "T-1")
         self.assertEqual(created["status"], "todo")
         self.assertEqual(created["revision"], 1)

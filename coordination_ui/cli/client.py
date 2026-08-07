@@ -40,9 +40,7 @@ class CoordinationCLI:
 
     # -- argv ---------------------------------------------------------------
 
-    def build_command(
-        self, args: Sequence[str], session: str | None = None
-    ) -> list[str]:
+    def build_command(self, args: Sequence[str], session: str | None = None) -> list[str]:
         """Return the full argv for ``args``, including global options."""
 
         command = [str(self.executable), f"--db={self.database}"]

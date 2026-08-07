@@ -10,7 +10,9 @@ from coordination_ui.cli import CoordinationError
 from coordination_ui.web import JsonBodyReader
 
 
-def headers(length: int | str | None, content_type: str | None = "application/json") -> dict[str, str]:
+def headers(
+    length: int | str | None, content_type: str | None = "application/json"
+) -> dict[str, str]:
     result: dict[str, str] = {}
     if length is not None:
         result["Content-Length"] = str(length)

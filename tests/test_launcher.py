@@ -65,9 +65,7 @@ class FailurePathTests(unittest.TestCase):
     def test_non_loopback_host_exits_with_usage(self) -> None:
         with TemporaryProject() as temp:
             options = LaunchOptions(database=temp.database, host="0.0.0.0")
-            code = Launcher(
-                options, self.stderr, ProjectLocator(locator_for_tests())
-            ).run()
+            code = Launcher(options, self.stderr, ProjectLocator(locator_for_tests())).run()
         self.assertEqual(code, EXIT_USAGE)
         self.assertIn("loopback", self.stderr.getvalue())
 
@@ -76,9 +74,7 @@ class FailurePathTests(unittest.TestCase):
         with TemporaryProject(initialize=False) as temp:
             temp.database.write_text("not a database", encoding="utf-8")
             options = LaunchOptions(database=temp.database)
-            code = Launcher(
-                options, self.stderr, ProjectLocator(locator_for_tests())
-            ).run()
+            code = Launcher(options, self.stderr, ProjectLocator(locator_for_tests())).run()
         self.assertEqual(code, EXIT_FAILURE)
 
 
@@ -95,9 +91,7 @@ class PreflightTests(unittest.TestCase):
         )
 
     def test_resolve_project_finds_the_database(self) -> None:
-        self.assertEqual(
-            self.launcher.resolve_project().database, self.temp.database.resolve()
-        )
+        self.assertEqual(self.launcher.resolve_project().database, self.temp.database.resolve())
 
     def test_preflight_runs_version_and_doctor(self) -> None:
         result = self.launcher.preflight(self.launcher.resolve_project())
