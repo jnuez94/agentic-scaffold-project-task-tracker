@@ -13,9 +13,10 @@ import { Pagination } from "./Pagination.tsx";
 import { SortableHead } from "./SortableHead.tsx";
 import { clampPage, pageSlice } from "../lib/pagination.ts";
 import { usePageSize } from "../state/usePageSize.ts";
+import { withoutVacantColumns, type VacantAware } from "../lib/columns.ts";
 import { nextSortState, sortRows, type SortState, type SortValue } from "../lib/sorting.ts";
 
-export interface Column<T> {
+export interface Column<T> extends VacantAware<T> {
   key: string;
   header: string;
   render: (row: T) => ReactNode;
@@ -72,12 +73,16 @@ export function DataTable<T>({
   // Keyed by idPrefix so each table keeps its own remembered size.
   const [size, setSize] = usePageSize(idPrefix);
 
+  // Against the whole loaded set, not the page in view, so paging cannot
+  // change the table's shape underneath the operator.
+  const present = useMemo(() => withoutVacantColumns(columns, rows), [columns, rows]);
+
   const sorted = useMemo(() => {
     if (!sort) return rows;
-    const column = columns.find((entry) => entry.key === sort.key);
+    const column = present.find((entry) => entry.key === sort.key);
     if (!column?.sortValue) return rows;
     return sortRows(rows, column.sortValue, sort.direction);
-  }, [rows, columns, sort]);
+  }, [rows, present, sort]);
 
   // Filtering or sorting can shrink the set under the current page.
   useEffect(() => {
@@ -99,13 +104,13 @@ export function DataTable<T>({
         <caption className="visually-hidden">
           {caption}
           {sort
-            ? `, sorted by ${labelFor(columns, sort.key)} ${sort.direction === "asc" ? "ascending" : "descending"}`
+            ? `, sorted by ${labelFor(present, sort.key)} ${sort.direction === "asc" ? "ascending" : "descending"}`
             : defaultOrder
               ? `, in ${defaultOrder}`
               : ""}
         </caption>
         <SortableHead
-          columns={columns}
+          columns={present}
           sort={sort}
           defaultOrder={defaultOrder}
           onSort={(key) => setSort((current) => nextSortState(current, key))}
@@ -132,7 +137,7 @@ export function DataTable<T>({
                 }
                 tabIndex={onSelect ? 0 : undefined}
               >
-                {columns.map((column) => (
+                {present.map((column) => (
                   <td
                     key={column.key}
                     className={column.align === "end" ? "align-end" : undefined}

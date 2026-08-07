@@ -73,6 +73,38 @@ describe("task queue columns", () => {
     expect(headers().join(" ")).toContain("Assignees / Claim");
   });
 
+  it("renders tags as plain text rather than pills (UI-44)", () => {
+    renderQueue([task({ tags: "frontend,api" })]);
+    const tags = screen.getByText("frontend · api");
+    expect(tags.className).toContain("tag-text");
+    // The pill treatment is what was costing the title its width.
+    expect(document.querySelectorAll(".tag").length).toBe(0);
+  });
+
+  it("keeps tags matchable as one string for the loaded-row filter", () => {
+    renderQueue([task({ tags: "frontend,api,identity" })]);
+    expect(screen.getByText("frontend · api · identity")).toBeTruthy();
+  });
+
+  it("drops Next action when no row has one to offer (UI-44)", () => {
+    // A done task has no valid transition, and a mature board is mostly done.
+    renderQueue([task({ id: "UI-1", status: "done" }), task({ id: "UI-2", status: "done" })]);
+    expect(headers().join(" ")).not.toContain("Next action");
+  });
+
+  it("keeps Next action as soon as one row has an action", () => {
+    // The contrast is the information; this is the case not to over-collapse.
+    renderQueue([task({ id: "UI-1", status: "done" }), task({ id: "UI-2", status: "todo" })]);
+    expect(headers().join(" ")).toContain("Next action");
+  });
+
+  it("drops Tags only when no row carries any", () => {
+    renderQueue([task({ id: "UI-1", tags: "" }), task({ id: "UI-2", tags: "" })]);
+    expect(headers().join(" ")).not.toContain("Tags");
+
+    screen.getByRole("table"); // sanity: the table still rendered
+  });
+
   it("shows Updated as relative time even years back (UI-46)", () => {
     renderQueue([task({ updated_at: "2020-01-01T00:00:00Z" })]);
     // Purely relative, with no locale date anywhere in it — the seven-day

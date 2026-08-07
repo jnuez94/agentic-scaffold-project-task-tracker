@@ -74,3 +74,27 @@ export function TagList({ tags }: { tags: string[] }) {
     </span>
   );
 }
+
+/**
+ * Tags as quiet delimited text, for tables.
+ *
+ * The pill treatment buys scanning by shared vocabulary, and this board has
+ * none to scan: 117 distinct tags across 80 tasks, 72 of them used exactly
+ * once. Pills were charging the title beside them for an affordance the data
+ * cannot support, so tables render text and the inspector keeps the pills
+ * (UI-44). One element, so the loaded-row filter still matches the whole set.
+ */
+export function TagText({ tags }: { tags: string[] }) {
+  if (tags.length === 0) return null;
+  const all = tags.join(" · ");
+  // Clamped to two lines by CSS. Unclamped, a six-tag task wrapped to four
+  // lines inside the narrowed column and drove the row to 113px — trading the
+  // horizontal noise UI-44 is about for vertical noise, which is worse on a
+  // list an operator scans. The full set stays on the title and, per the
+  // ruling, fully readable in the inspector.
+  return (
+    <span className="tag-text" title={all}>
+      {all}
+    </span>
+  );
+}

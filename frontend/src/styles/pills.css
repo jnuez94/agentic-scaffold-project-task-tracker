@@ -51,6 +51,26 @@
   border: 1px solid var(--line-700);
 }
 
+/* Tags in a table row (UI-44).
+ *
+ * No chrome at all: no border, no fill, no per-tag box. A pill's weight buys
+ * scanning by a shared vocabulary, and this board's tags are 72-of-117 unique,
+ * so it was buying nothing while outshouting the title in the column beside
+ * it. text-400 is the same recessive weight the rest of the table gives to
+ * supporting metadata. The inspector still renders .tag pills, where the space
+ * is not contested. */
+.tag-text {
+  font: var(--body-sm);
+  color: var(--text-400);
+  /* Two lines, then ellipsis. Tags must not be what decides a row's height:
+   * unclamped they took four lines and a 113px row for a one-line title. */
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
 /* Owners */
 
 .owners {

@@ -10,7 +10,7 @@
 import type { Column } from "../components/DataTable.tsx";
 import { IdCell } from "../components/Fields.tsx";
 import { Owners } from "../components/Owners.tsx";
-import { PriorityTag, StatusPill, TagList } from "../components/Pill.tsx";
+import { PriorityTag, StatusPill, TagText } from "../components/Pill.tsx";
 import type { TaskListRow } from "../api/contract.ts";
 import { relativeTime } from "../lib/format.ts";
 import { splitTags, statusRank } from "../lib/labels.ts";
@@ -103,13 +103,30 @@ export function taskColumns(
         );
       },
       sortValue: (task) => nextActionLabel(task, context),
+      // A done task has no valid transition, and a mature board is mostly
+      // done — so this column reserves width to render a column of dashes
+      // exactly as the project it describes matures (UI-44). It stays as soon
+      // as one row has an action to offer.
+      vacantFor: (task) => nextActionLabel(task, context) === null,
     },
     {
       key: "tags",
       header: "Tags",
       priority: 9,
-      render: (task) => <TagList tags={splitTags(task.tags)} />,
+      // Capped, because quieting the pills alone made this column *wider*:
+      // measured 177px before and 218px after, since five small boxes wrap
+      // more compactly than one long string and auto table layout hands the
+      // string the room it asks for. UI-44 is a width complaint, so the width
+      // has to be answered directly — the text wraps inside this instead.
+      width: "140px",
+      // Text, not pills. The board carries 117 distinct tags across 80 tasks
+      // and 72 are used exactly once, so pills were paying the visual mass of
+      // a grouping affordance for what is closer to freeform annotation — and
+      // outshouting the title beside them. Full pills remain in the inspector,
+      // and the loaded-row filter still matches this text (UI-44).
+      render: (task) => <TagText tags={splitTags(task.tags)} />,
       sortValue: (task) => splitTags(task.tags)[0] ?? null,
+      vacantFor: (task) => splitTags(task.tags).length === 0,
     },
   ];
 }
