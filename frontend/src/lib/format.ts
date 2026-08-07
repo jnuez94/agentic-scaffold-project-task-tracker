@@ -47,13 +47,6 @@ export function absoluteTime(value: string | null | undefined): string {
   });
 }
 
-/** Local date only. */
-export function shortDate(value: string | null | undefined): string {
-  const parsed = parseTimestamp(value);
-  if (!parsed) return "—";
-  return parsed.toLocaleDateString(undefined, { month: "short", day: "numeric" });
-}
-
 /** Collapse whitespace and clip, for one-line previews of long stored text. */
 export function preview(text: string, limit = 120): string {
   const collapsed = text.replace(/\s+/g, " ").trim();

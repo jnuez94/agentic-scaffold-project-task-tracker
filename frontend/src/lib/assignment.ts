@@ -15,7 +15,7 @@
  * Kept pure and separate from the panel: these are the rules worth testing
  * exhaustively, and they read badly when tangled with form state.
  *
- * Spec: .documents/ux-reassign-work-spec.md sections 5 and 6.
+ * Spec: docs/ux-reassign-work-spec.md sections 5 and 6.
  */
 
 import type { Agent, TaskDetail, TaskListRow } from "../api/contract.ts";
@@ -148,4 +148,15 @@ export function assignErrorCopy(code: string, message: string, subject?: string)
       // prevented, so show what the CLI actually said rather than paraphrasing.
       return message;
   }
+}
+
+/**
+ * The agent an assignment error is about, when its code identifies one.
+ *
+ * Lives beside assignErrorCopy rather than in the view: which agent a refusal
+ * names is part of interpreting the error, not part of drawing it.
+ */
+export function assignErrorSubject(code: string, task: AssignableTask): string | undefined {
+  if (code === "task_claim_owner_mismatch") return task.claimed_by ?? undefined;
+  return undefined;
 }

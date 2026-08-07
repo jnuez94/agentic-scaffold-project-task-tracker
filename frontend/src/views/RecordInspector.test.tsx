@@ -140,10 +140,10 @@ describe("RecordInspector — cross-links", () => {
       type: "spec",
       status: "accepted",
       owner_id: "michael-ux",
-      uri: ".documents/ux-entity-inspectors-spec.md",
+      uri: "docs/ux-entity-inspectors-spec.md",
       usage_boundaries: "internal",
     });
-    const uri = screen.getByText(".documents/ux-entity-inspectors-spec.md");
+    const uri = screen.getByText("docs/ux-entity-inspectors-spec.md");
     expect(uri.closest("a")).toBeNull();
   });
 });

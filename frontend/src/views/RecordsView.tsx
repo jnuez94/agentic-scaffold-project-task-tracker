@@ -7,6 +7,7 @@ import type { Session, TaskListRow } from "../api/contract.ts";
 import { DataTable } from "../components/DataTable.tsx";
 import { ErrorBanner } from "../components/Feedback.tsx";
 import { filterRows } from "../lib/filters.ts";
+import { CLEAR_FILTER_HINT } from "../lib/copy.ts";
 import { isTruncated } from "../lib/pagination.ts";
 import { useApp } from "../state/AppContext.tsx";
 import { useRecordData } from "../state/useRecordData.ts";
@@ -149,7 +150,7 @@ export function RecordsView<T = Record<string, unknown>>({
           }
           emptyHint={
             filter
-              ? "Clear the filter to see everything loaded."
+              ? CLEAR_FILTER_HINT
               : config.emptyHint
           }
         />

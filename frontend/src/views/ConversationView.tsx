@@ -2,13 +2,15 @@
  * The chronological transcript presentation of loaded messages.
  *
  * Renders the same rows the Ledger table renders — no extra query, no thread,
- * no reply. Visual target:
- * .documents/assets/conversation-direction-operational-transcript.png
+ * no reply. Schema v1 has no thread, reply, read or delivery concept, so this
+ * is a presentation of flat Message records and nothing here may imply
+ * otherwise. See docs/ux-data-shape-and-workflow-spec.md.
  */
 
 import { useEffect, useRef } from "react";
 import type { Message } from "../api/contract.ts";
 import { EmptyState } from "../components/Feedback.tsx";
+import { CLEAR_FILTER_HINT, NO_MESSAGES_MATCH } from "../lib/copy.ts";
 import { groupByDay, isOwnMessage } from "../lib/conversation.ts";
 import { distanceFromBottom, getScrollParent } from "../lib/scrollParent.ts";
 import { absoluteTime, relativeTime } from "../lib/format.ts";
@@ -57,10 +59,10 @@ export function ConversationView({
   if (messages.length === 0) {
     return (
       <EmptyState
-        title={filtered ? "No loaded messages match this filter" : "No messages yet"}
+        title={filtered ? NO_MESSAGES_MATCH : "No messages yet"}
         hint={
           filtered
-            ? "Clear the filter to see everything loaded."
+            ? CLEAR_FILTER_HINT
             : "Use Broadcast to team in the toolbar to send the first one."
         }
       />

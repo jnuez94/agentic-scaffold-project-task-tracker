@@ -13,8 +13,8 @@ import { ApiError } from "../api/errors.ts";
 import { ErrorBanner } from "../components/Feedback.tsx";
 import { availableActions, type TaskAction } from "../lib/transitions.ts";
 import { useApp } from "../state/AppContext.tsx";
+import { SETUP_PENDING } from "../lib/copy.ts";
 
-const SETUP_PENDING = "Waiting for identity setup to finish.";
 
 export function TaskActions({
   task,

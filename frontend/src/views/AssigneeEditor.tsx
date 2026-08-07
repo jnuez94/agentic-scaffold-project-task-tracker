@@ -10,7 +10,7 @@
  * says who is responsible, a claim says who is actively working under a session
  * — and this panel must not blur the two.
  *
- * Spec: .documents/ux-reassign-work-spec.md
+ * Spec: docs/ux-reassign-work-spec.md
  */
 
 import { useEffect, useRef, useState } from "react";
@@ -20,17 +20,23 @@ import { Icon } from "../components/icons.tsx";
 import {
   addCandidates,
   assignErrorCopy,
+  assignErrorSubject,
   buildAssignRequest,
   EMPTY_DRAFT,
   hasPendingChange,
-  removalBlockedReason,
   resultingAssignees,
   wouldLeaveUnowned,
   type AssignableTask,
   type AssignmentDraft,
 } from "../lib/assignment.ts";
-import { agentOptionLabel, isSelectableActor } from "../lib/labels.ts";
 import { useApp } from "../state/AppContext.tsx";
+import {
+  AddAssignee,
+  AssignmentAttribution,
+  AssignmentError,
+  AssignmentResult,
+  CurrentAssignees,
+} from "./AssigneeFields.tsx";
 
 export function AssigneeEditor({
   task,
@@ -61,7 +67,6 @@ export function AssigneeEditor({
     heading.current?.scrollIntoView?.({ block: "nearest" });
   }, []);
 
-  const byId = new Map(agents.map((agent) => [agent.id, agent]));
   const { selectable, retired } = addCandidates(agents, task, draft);
   const result = resultingAssignees(task, draft);
   const unowned = wouldLeaveUnowned(task, draft);
@@ -117,7 +122,7 @@ export function AssigneeEditor({
         text: assignErrorCopy(
           failure.code,
           failure.message,
-          subjectOf(failure, task),
+          assignErrorSubject(failure.code, task),
         ),
         stale: failure.code === "stale_task_revision",
       });
@@ -143,133 +148,42 @@ export function AssigneeEditor({
 
       <form onSubmit={submit}>
         {error ? (
-          <div className="error-banner" role="alert">
-            <p>{error.text}</p>
-            {error.stale ? (
-              <button type="button" onClick={onSaved}>
-                Reload latest
-              </button>
-            ) : null}
-          </div>
+          <AssignmentError
+            text={error.text}
+            stale={error.stale}
+            onReload={onSaved}
+          />
         ) : null}
 
-        <div className="field">
-          <span className="field-label">Currently assigned</span>
-          {task.assignees.length === 0 ? (
-            <p className="small muted">Nobody. This task is unowned.</p>
-          ) : (
-            <ul className="assignee-list">
-              {task.assignees.map((id) => {
-                const agent = byId.get(id);
-                const blocked = removalBlockedReason(task, id);
-                const staged = draft.remove.includes(id);
-                return (
-                  <li key={id} className={staged ? "staged-removal" : ""}>
-                    <span className="assignee-name">
-                      {/* Glyph plus text, never colour alone. */}
-                      <span aria-hidden="true">
-                        {agent && !isSelectableActor(agent) ? "○" : "⬤"}
-                      </span>{" "}
-                      {agent
-                        ? agentOptionLabel(agent)
-                        : `${id} — unknown agent`}
-                    </span>
-                    <button
-                      type="button"
-                      className="link-button"
-                      disabled={Boolean(blocked) || pending}
-                      aria-describedby={blocked ? `blocked-${id}` : undefined}
-                      onClick={() => toggleRemove(id)}
-                    >
-                      {staged ? "Undo remove" : "Remove"}
-                    </button>
-                    {blocked ? (
-                      // Accessible text, not a tooltip: hover must not be the
-                      // only way to reveal something required.
-                      <p className="small muted" id={`blocked-${id}`}>
-                        {blocked}
-                      </p>
-                    ) : null}
-                  </li>
-                );
-              })}
-            </ul>
-          )}
-        </div>
+        <CurrentAssignees
+          task={task}
+          agents={agents}
+          draft={draft}
+          pending={pending}
+          onToggleRemove={toggleRemove}
+        />
 
-        <div className="field">
-          <label className="field-label" htmlFor="assignee-add">
-            Add someone
-          </label>
-          <select
-            id="assignee-add"
-            value=""
-            disabled={pending}
-            onChange={(event) => {
-              const id = event.target.value;
-              if (id)
-                setDraft((current) => ({
-                  ...current,
-                  add: [...current.add, id],
-                }));
-            }}
-          >
-            <option value="">Choose an agent…</option>
-            {selectable.map((agent) => (
-              <option key={agent.id} value={agent.id}>
-                {agentOptionLabel(agent)}
-              </option>
-            ))}
-            {retired.length ? (
-              /* The CLI allows assigning a retired agent. The console does not:
-                 that is exactly how SEC-1 came to be owned by a deactivated
-                 identity. Anyone who genuinely needs it still has the CLI. */
-              <optgroup label="Retired — cannot be assigned">
-                {retired.map((agent) => (
-                  <option key={agent.id} value={agent.id} disabled>
-                    {agentOptionLabel(agent)}
-                  </option>
-                ))}
-              </optgroup>
-            ) : null}
-          </select>
-          {draft.add.length ? (
-            <p className="small">
-              Adding: <span className="mono">{draft.add.join(", ")}</span>
-            </p>
-          ) : null}
-        </div>
+        <AddAssignee
+          selectable={selectable}
+          retired={retired}
+          staged={draft.add}
+          pending={pending}
+          onAdd={(id) =>
+            setDraft((current) => ({ ...current, add: [...current.add, id] }))
+          }
+        />
 
-        <div className="field assignment-result">
-          <span className="field-label">Result</span>
-          {unowned ? (
-            <p role="note" className="unowned-warning">
-              <strong>This will leave the task unowned.</strong> It will appear
-              under Unowned tasks on Health until someone is assigned.
-            </p>
-          ) : (
-            <p className="mono">{result.join(", ") || "nobody"}</p>
-          )}
-          {draft.remove.length ? (
-            <p className="small muted">
-              Removing: <span className="mono">{draft.remove.join(", ")}</span>
-            </p>
-          ) : null}
-        </div>
+        <AssignmentResult
+          result={result}
+          removing={draft.remove}
+          unowned={unowned}
+        />
 
-        <p className="small muted attribution">
-          Acting as{" "}
-          <span className="mono">{identity.actorId ?? "no actor"}</span>
-          {session.activeSessionId ? (
-            <>
-              {" "}
-              in session <span className="mono">{session.activeSessionId}</span>
-            </>
-          ) : (
-            " — no session selected, so attribution will record the actor only"
-          )}
-          . Revision <span className="mono">{task.revision}</span>.
-        </p>
+        <AssignmentAttribution
+          actorId={identity.actorId}
+          sessionId={session.activeSessionId}
+          revision={task.revision}
+        />
 
         <div className="sheet-actions">
           <button
@@ -286,11 +200,4 @@ export function AssigneeEditor({
       </form>
     </section>
   );
-}
-
-/** The agent an error is about, when the code identifies one. */
-function subjectOf(failure: ApiError, task: AssignableTask): string | undefined {
-  if (failure.code === "task_claim_owner_mismatch")
-    return task.claimed_by ?? undefined;
-  return undefined;
 }

@@ -17,7 +17,7 @@
  * the operator would be stranded: retiring the actor you are acting as, and
  * retiring `local-operator`.
  *
- * Spec: .documents/ux-retire-agent-spec.md sections 2 and 6.
+ * Spec: docs/ux-retire-agent-spec.md sections 2 and 6.
  */
 
 import type { Agent, Session, TaskListRow } from "../api/contract.ts";

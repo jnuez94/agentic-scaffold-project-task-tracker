@@ -8,6 +8,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ApiError } from "../api/errors.ts";
+import { describeThrown } from "../lib/copy.ts";
 
 export interface Resource<T> {
   data: T | undefined;
@@ -63,7 +64,7 @@ export function useResource<T>(
         setError(
           caught instanceof ApiError
             ? caught
-            : new ApiError("network_error", describe(caught), 0),
+            : new ApiError("network_error", describeThrown(caught), 0),
         );
       })
       .finally(() => {
@@ -79,7 +80,3 @@ export function useResource<T>(
   return { data, error, loading, loaded, lastUpdated, refresh };
 }
 
-function describe(caught: unknown): string {
-  if (caught instanceof Error) return caught.message;
-  return "The console could not reach the local server.";
-}

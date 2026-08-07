@@ -11,7 +11,7 @@
  * Mikhail did it at sign-off so an incoming agent could claim it — but the
  * operator should choose it rather than discover it.
  *
- * Spec: .documents/ux-retire-agent-spec.md sections 4 and 5.
+ * Spec: docs/ux-retire-agent-spec.md sections 4 and 5.
  */
 
 import { useEffect, useRef, useState } from "react";

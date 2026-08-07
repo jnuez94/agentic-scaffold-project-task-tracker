@@ -1,14 +1,15 @@
 /**
  * Rules for the human operator team broadcast.
  *
- * Contract: .documents/human-operator-team-broadcast-task.md, reviewed in
- * FE-BROADCAST-REVIEW-1.
+ * Contract: docs/ux-data-shape-and-workflow-spec.md, "Human operator team
+ * broadcast". Reviewed in FE-BROADCAST-REVIEW-1.
  *
  * Pure functions so every readiness and validation branch is testable without
  * rendering a sheet or touching the network.
  */
 
 import type { Agent } from "../api/contract.ts";
+import { SETUP_PENDING } from "./copy.ts";
 
 /** The literal recipient the contract reserves for team-wide messages. */
 export const TEAM_RECIPIENT = "team";
@@ -36,7 +37,7 @@ export function broadcastReadiness({
   mutationsEnabled,
 }: ReadinessInput): Readiness {
   if (!mutationsEnabled) {
-    return { kind: "blocked", reason: "Waiting for identity setup to finish." };
+    return { kind: "blocked", reason: SETUP_PENDING };
   }
   if (!actor) {
     return { kind: "blocked", reason: "Select an actor in the header to broadcast." };

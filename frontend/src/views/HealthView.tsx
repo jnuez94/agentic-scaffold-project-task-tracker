@@ -123,7 +123,11 @@ export function HealthView() {
                   {section.key === "stale_sessions" && asSession(row) ? (
                     <button
                       type="button"
-                      className="link-button"
+                      /* Same weight as the identical action in the record
+                         inspector. A dense table row earns the quieter
+                         .link-button; a findings list does not, and one action
+                         wearing two faces in two panels is just noise. */
+                      className="record-action"
                       onClick={(event) => {
                         launcher.current = event.currentTarget;
                         setRecovering(asSession(row));

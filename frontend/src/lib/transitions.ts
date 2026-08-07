@@ -118,8 +118,3 @@ function ownedClaimBlockedReason(
   }
   return undefined;
 }
-
-/** `release` is the explicit spelling of an owned exit from in_progress. */
-export function isReleaseTarget(target: TaskStatus): boolean {
-  return target === "todo" || target === "review" || target === "blocked";
-}

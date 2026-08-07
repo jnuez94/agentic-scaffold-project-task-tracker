@@ -137,8 +137,9 @@ frontend/
   src/styles/  Flowline design tokens and per-concern stylesheets
 ```
 
-One class per file, every file under 200 lines, every class and function under
-test.
+One class per file, every class and function under test. Files are held under
+200 lines; six views currently exceed it and are tracked for splitting rather
+than silently exempted.
 
 ## Tests
 
@@ -146,22 +147,33 @@ test.
 python3 -m unittest discover -s tests -t .
 ```
 
-425 tests. Each one that needs a database creates a throwaway project with
-`coordination init`; nothing in the suite touches
-`.coordination/coordination.sqlite3`.
+469 Python tests, plus 543 frontend tests via `npm test` in `frontend/`. Each
+one that needs a database creates a throwaway project with `coordination init`;
+nothing in the suite touches `.coordination/coordination.sqlite3`.
 
 Tests that need the CLI skip themselves when it is not installed, so the suite
 still runs in a checkout without the scaffold.
 
 ## Design documents
 
-- [`.documents/coordination-console-design.md`](.documents/coordination-console-design.md)
+[`docs/`](docs/README.md) holds the design record for what actually ships:
+
+- [`docs/coordination-console-design.md`](docs/coordination-console-design.md)
   — architecture of record: component diagrams, request sequences, data model,
   security model, testing strategy.
-- [`.documents/ux-visual-interaction-spec.md`](.documents/ux-visual-interaction-spec.md)
-  — selected UX direction (owner: `mikhail-ux`).
-- [`.documents/ux-data-shape-and-workflow-spec.md`](.documents/ux-data-shape-and-workflow-spec.md)
-  — data shapes and workflows behind that direction.
+- [`docs/ux-data-shape-and-workflow-spec.md`](docs/ux-data-shape-and-workflow-spec.md)
+  — what each entity contains, and which workflows the CLI can honestly support.
+- [`docs/ux-visual-interaction-spec.md`](docs/ux-visual-interaction-spec.md)
+  — the Flowline visual system: tokens, states, responsive and accessibility rules.
+- [`docs/ux-entity-inspectors-spec.md`](docs/ux-entity-inspectors-spec.md)
+  — the record inspector on every entity table.
+- [`docs/ux-reassign-work-spec.md`](docs/ux-reassign-work-spec.md)
+  — operator reassignment of task assignees.
+- [`docs/ux-retire-agent-spec.md`](docs/ux-retire-agent-spec.md)
+  — operator retirement and restoration of an agent.
+
+Working material — audits, QA captures, research, superseded directions — stays
+in `.documents/` and is not tracked.
 
 ## The frontend
 

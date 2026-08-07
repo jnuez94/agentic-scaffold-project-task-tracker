@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { TaskListRow, TaskStatus } from "../api/contract.ts";
-import { availableActions, isReleaseTarget, TRANSITIONS } from "./transitions.ts";
+import { availableActions, TRANSITIONS } from "./transitions.ts";
 
 function task(overrides: Partial<TaskListRow> = {}): TaskListRow {
   return {
@@ -116,12 +116,24 @@ describe("availableActions", () => {
   });
 });
 
-describe("isReleaseTarget", () => {
-  it("accepts only the documented release targets", () => {
-    expect(isReleaseTarget("todo")).toBe(true);
-    expect(isReleaseTarget("review")).toBe(true);
-    expect(isReleaseTarget("blocked")).toBe(true);
-    expect(isReleaseTarget("done")).toBe(false);
-    expect(isReleaseTarget("in_progress")).toBe(false);
+describe("release versus status", () => {
+  // This replaces a test for isReleaseTarget, a helper nothing called and whose
+  // docstring claimed the TARGET decides a release. The live rule is the
+  // opposite: the SOURCE status does. Deleting the helper without pinning the
+  // real rule would have removed the only mention of it from the suite.
+  it("spells an exit from in_progress as a release, whatever the target", () => {
+    const from = task({ status: "in_progress", claimed_by: "david", claim_session_id: "s1" });
+    const kinds = availableActions(from, { actorId: "david", sessionId: "s1" })
+      .filter((a) => a.target !== "in_progress")
+      .map((a) => a.kind);
+    expect(kinds.every((k) => k === "release")).toBe(true);
+  });
+
+  it("spells the same targets as a plain status change from anywhere else", () => {
+    const from = task({ status: "todo" });
+    const kinds = availableActions(from, { actorId: "david", sessionId: "s1" })
+      .filter((a) => a.target !== "in_progress")
+      .map((a) => a.kind);
+    expect(kinds.every((k) => k === "status")).toBe(true);
   });
 });

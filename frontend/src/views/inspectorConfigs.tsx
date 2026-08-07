@@ -17,7 +17,7 @@
  * because they get no inspector — audit rows are already complete in the table,
  * Health is a findings list, and Export is a generated document.
  *
- * Spec: .documents/ux-entity-inspectors-spec.md section 5.
+ * Spec: docs/ux-entity-inspectors-spec.md section 5.
  */
 
 import type { RouteName } from "../state/useHashRoute.ts";

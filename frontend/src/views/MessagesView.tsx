@@ -17,6 +17,7 @@ import { ErrorBanner, SkeletonRows } from "../components/Feedback.tsx";
 import { ResizeHandle } from "../components/ResizeHandle.tsx";
 import { loadedCountLabel } from "../lib/conversation.ts";
 import { filterRows } from "../lib/filters.ts";
+import { CLEAR_FILTER_HINT, NO_MESSAGES_MATCH } from "../lib/copy.ts";
 import { isTruncated } from "../lib/pagination.ts";
 import { getScrollParent, scrollToBottom } from "../lib/scrollParent.ts";
 import { useMeasuredHeight } from "../state/useMeasuredHeight.ts";
@@ -163,8 +164,8 @@ export function MessagesView({
                 lastTrigger.current = document.activeElement as HTMLElement;
                 setSelected(row as unknown as Message);
               }}
-              emptyTitle={filter ? "No loaded messages match this filter" : config.emptyTitle}
-              emptyHint={filter ? "Clear the filter to see everything loaded." : config.emptyHint}
+              emptyTitle={filter ? NO_MESSAGES_MATCH : config.emptyTitle}
+              emptyHint={filter ? CLEAR_FILTER_HINT : config.emptyHint}
             />
           ) : null}
         </div>

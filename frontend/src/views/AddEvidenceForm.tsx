@@ -6,6 +6,7 @@ import { useState } from "react";
 import { ApiError } from "../api/errors.ts";
 import { ErrorBanner } from "../components/Feedback.tsx";
 import { useApp } from "../state/AppContext.tsx";
+import { SETUP_PENDING } from "../lib/copy.ts";
 
 export function AddEvidenceForm({
   taskId,
@@ -75,7 +76,7 @@ export function AddEvidenceForm({
           type="submit"
           className="primary"
           disabled={busy || !uri.trim() || !mutationsEnabled}
-          title={mutationsEnabled ? undefined : "Waiting for identity setup to finish."}
+          title={mutationsEnabled ? undefined : SETUP_PENDING}
         >
           {busy ? "Adding…" : "Add evidence"}
         </button>

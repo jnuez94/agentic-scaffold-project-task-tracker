@@ -12,7 +12,7 @@
  * already supports and they arrive as `actions` from the caller rather than
  * being invented here.
  *
- * Spec: .documents/ux-entity-inspectors-spec.md
+ * Spec: docs/ux-entity-inspectors-spec.md
  */
 
 import { useEffect, useRef, type ReactNode } from "react";

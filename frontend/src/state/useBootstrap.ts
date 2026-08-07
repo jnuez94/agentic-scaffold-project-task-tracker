@@ -11,6 +11,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { Coordination } from "../api/coordination.ts";
 import { ApiError } from "../api/errors.ts";
+import { describeThrown } from "../lib/copy.ts";
 import {
   CONSOLE_HARNESS,
   createOperatorRequest,
@@ -156,7 +157,7 @@ export function useBootstrap(
           error:
             caught instanceof ApiError
               ? caught
-              : new ApiError("network_error", describe(caught), 0),
+              : new ApiError("network_error", describeThrown(caught), 0),
         });
       }
     })();
@@ -171,10 +172,6 @@ export function useBootstrap(
   return { phase, ready: phase.kind === "ready", retry };
 }
 
-function describe(caught: unknown): string {
-  if (caught instanceof Error) return caught.message;
-  return "The console could not reach the local server.";
-}
 
 /**
  * Whether a failure is the contract's duplicate-id conflict.
