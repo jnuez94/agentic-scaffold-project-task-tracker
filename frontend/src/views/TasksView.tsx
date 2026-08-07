@@ -19,6 +19,7 @@ import { BOUNDS } from "../state/layoutStore.ts";
 import type { Layout } from "../state/useLayout.ts";
 import { useQueueScope } from "../state/useQueueScope.ts";
 import { OPEN_SCOPE, requestStatus, scopeRows } from "../state/queueScopeStore.ts";
+import { useBoardWatch } from "../state/useBoardWatch.ts";
 import { useResource } from "../state/useResource.ts";
 import { TaskInspector } from "./TaskInspector.tsx";
 import { TASK_DEFAULT_ORDER, taskColumns } from "./taskColumns.tsx";
@@ -95,6 +96,15 @@ export function TasksView({
     [scoped, reason, staleSessionIds],
   );
 
+  // UI-34: notice when another agent moves the board, without moving it. The
+  // request is deliberately unscoped and unfiltered — the question is whether
+  // the board changed, not whether this filtered view did.
+  const watch = useBoardWatch(
+    () => coordination.tasks({ limit: REQUEST_LIMIT }),
+    tasks.data,
+    { enabled: tasks.loaded },
+  );
+
   const empty = queueEmptyState({
     scope,
     filtered: Boolean(filter),
@@ -149,6 +159,28 @@ export function TasksView({
             noticing and acting were two motions. Held to one line — UX-SCOPE-2
             rejected an Attention workspace, and a strip that grows tiles is
             how that decision gets reversed by accident. */}
+        {/* A quiet inline bar at the top of the list, per Michael's ruling —
+            not a toast, which is transient, and not a badge, which does not
+            say what happened. Refreshing is the operator's to do: replacing
+            rows underneath them is the behaviour being complained about. */}
+        {watch.summary ? (
+          <div className="board-changed" role="status">
+            <span>{watch.summary} since this view loaded.</span>
+            <button
+              type="button"
+              onClick={() => {
+                tasks.refresh();
+                watch.dismiss();
+              }}
+            >
+              Refresh
+            </button>
+            <button type="button" className="link" onClick={watch.dismiss}>
+              Dismiss
+            </button>
+          </div>
+        ) : null}
+
         <AttentionBar
           groups={attention}
           total={attentionTotal(attention)}

@@ -266,3 +266,31 @@
 .attention-scope {
   margin-inline-start: auto;
 }
+
+/* The board moved under you (UI-34).
+ *
+ * Quiet and inline at the top of the list, not a toast and not a badge: the
+ * condition persists until the operator refreshes, so it must not evaporate,
+ * and it has to say what changed rather than only that something did. */
+.board-changed {
+  display: flex;
+  gap: var(--space-3);
+  align-items: center;
+  flex-wrap: wrap;
+  padding: var(--space-2) var(--space-3);
+  margin-bottom: var(--space-3);
+  border-radius: var(--radius-panel);
+  border: 1px solid var(--line-700);
+  background: var(--surface-850);
+  font: var(--body-sm);
+}
+
+.board-changed button.link {
+  background: none;
+  border: none;
+  color: var(--text-400);
+  text-decoration: underline;
+  cursor: pointer;
+  padding: 0;
+  min-height: auto;
+}
