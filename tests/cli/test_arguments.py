@@ -105,7 +105,10 @@ class IntegerOptionTests(unittest.TestCase):
             ArgumentBuilder("x").integer({"p": True}, "p", "--p")
 
     def test_rejects_non_numeric(self) -> None:
-        for value in ("abc", "1.5", [], {}):
+        # Annotated because the tuple is deliberately heterogeneous: these
+        # are the non-numeric shapes the builder has to reject.
+        rejected: tuple[object, ...] = ("abc", "1.5", [], {})
+        for value in rejected:
             with self.subTest(value=value), self.assertRaises(ArgumentError):
                 ArgumentBuilder("x").integer({"p": value}, "p", "--p")
 

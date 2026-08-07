@@ -38,8 +38,13 @@ MAX_LIST_LIMIT = 500
 MIN_LIST_LIMIT = 1
 
 
-def describe() -> dict[str, object]:
-    """JSON-safe bundle handed to the frontend at startup."""
+def describe() -> dict[str, dict[str, list[str]]]:
+    """JSON-safe bundle handed to the frontend at startup.
+
+    The nested shape is part of the contract the console reads at boot, so it
+    is spelled out rather than flattened to ``object``: every value is a group
+    of named string lists.
+    """
 
     return {
         "statuses": {

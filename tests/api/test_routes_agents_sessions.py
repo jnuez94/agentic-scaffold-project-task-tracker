@@ -4,27 +4,9 @@ from __future__ import annotations
 
 import unittest
 
-from coordination_ui.api import build_router
 from coordination_ui.cli import CoordinationError
 
-from ..support import TemporaryProject, cli_available
-
-
-@unittest.skipUnless(cli_available(), "coordination CLI not installed")
-class RouteTestCase(unittest.TestCase):
-    def setUp(self) -> None:
-        self.temp = TemporaryProject().start()
-        self.addCleanup(self.temp.stop)
-        self.router = build_router(self.temp.project(), self.temp.cli())
-        self.session: str | None = None
-
-    def get(self, path: str, **query: str) -> object:
-        return self.router.dispatch(
-            "GET", path, {k: [v] for k, v in query.items()}, {}, self.session
-        )
-
-    def post(self, path: str, body: dict[str, object]) -> object:
-        return self.router.dispatch("POST", path, {}, body, self.session)
+from .route_case import RouteTestCase
 
 
 class AgentRouteTests(RouteTestCase):
@@ -94,8 +76,7 @@ class AgentRouteTests(RouteTestCase):
 
 
 class SessionRouteTests(RouteTestCase):
-    def setUp(self) -> None:
-        super().setUp()
+    def seed(self) -> None:
         self.temp.seed_agent("alice")
 
     def test_start_returns_an_active_session(self) -> None:

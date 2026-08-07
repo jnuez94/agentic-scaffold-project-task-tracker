@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import sys
+from collections.abc import Callable
 from http import HTTPStatus
 from typing import Any
 from urllib.parse import parse_qs, unquote, urlsplit
@@ -40,6 +41,13 @@ class RequestHandlerMixin:
     command: str
     rfile: Any
     wfile: Any
+    # The response methods belong in this block for the same reason as the
+    # attributes above: the mixin calls them, the concrete handler inherits
+    # them. Declaring them here is what the five `attr-defined` suppressions
+    # in `respond` were standing in for.
+    send_response: Callable[..., None]
+    send_header: Callable[[str, str], None]
+    end_headers: Callable[[], None]
 
     # -- provided by the concrete server ------------------------------------
     @property
@@ -59,12 +67,12 @@ class RequestHandlerMixin:
     def respond(
         self, status: int, body: bytes, content_type: str
     ) -> None:  # pragma: no cover - exercised over a socket
-        self.send_response(status)  # type: ignore[attr-defined]
-        self.send_header("Content-Type", content_type)  # type: ignore[attr-defined]
-        self.send_header("Content-Length", str(len(body)))  # type: ignore[attr-defined]
+        self.send_response(status)
+        self.send_header("Content-Type", content_type)
+        self.send_header("Content-Length", str(len(body)))
         for name, value in self.security_headers.items():
-            self.send_header(name, value)  # type: ignore[attr-defined]
-        self.end_headers()  # type: ignore[attr-defined]
+            self.send_header(name, value)
+        self.end_headers()
         if self.command != "HEAD":
             self.wfile.write(body)
 

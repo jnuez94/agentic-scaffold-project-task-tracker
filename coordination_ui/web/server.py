@@ -28,17 +28,25 @@ class CoordinationUIHandler(RequestHandlerMixin, BaseHTTPRequestHandler):
     sys_version = ""
     protocol_version = "HTTP/1.1"
 
+    # `BaseHTTPRequestHandler` types `server` as the bare `BaseServer`, which
+    # knows nothing about the three collaborators this console attaches to it.
+    # Narrowing the inherited attribute once is what the three per-property
+    # `attr-defined` suppressions were standing in for — and unlike them it
+    # yields real types instead of `Any`, which is why each property then
+    # needed a second suppression for its return.
+    server: CoordinationUIServer
+
     @property
     def router(self) -> Router:
-        return self.server.router  # type: ignore[attr-defined]
+        return self.server.router
 
     @property
     def static_files(self) -> StaticFileResolver:
-        return self.server.static_files  # type: ignore[attr-defined]
+        return self.server.static_files
 
     @property
     def host_policy(self) -> HostPolicy:
-        return self.server.host_policy  # type: ignore[attr-defined]
+        return self.server.host_policy
 
     def do_GET(self) -> None:
         self.handle_request("GET")
@@ -75,7 +83,13 @@ class CoordinationUIServer(ThreadingHTTPServer):
     @property
     def url(self) -> str:
         host, port = self.server_address[0], self.server_address[1]
-        display = f"[{host}]" if ":" in str(host) else host
+        # `server_address` covers the AF_UNIX case too, so its first element is
+        # typed as possibly bytes. This server only ever binds AF_INET/AF_INET6,
+        # but the guard below already called `str(host)` while the interpolation
+        # used the raw value — an inconsistency that would render `b'::1'` if it
+        # were ever reached. Normalise once, then use the normalised name.
+        name = host.decode() if isinstance(host, bytes) else str(host)
+        display = f"[{name}]" if ":" in name else name
         return f"http://{display}:{port}/"
 
 

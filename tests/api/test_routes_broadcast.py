@@ -9,6 +9,7 @@ recipients returns that same ``team`` message.
 from __future__ import annotations
 
 import unittest
+from typing import Any
 
 from coordination_ui.cli import CoordinationError
 
@@ -30,7 +31,7 @@ class BroadcastTestCase(RouteTestCase):
         self.temp.seed_task("T-1", actor="alice")
         self.session = self.temp.seed_session("console-1", "local-operator")
 
-    def broadcast(self, identifier: str, **extra: object) -> object:
+    def broadcast(self, identifier: str, **extra: Any) -> Any:
         body = {
             "id": identifier,
             "sender": "local-operator",
@@ -64,7 +65,7 @@ class BroadcastCreatesOneRowTests(BroadcastTestCase):
         audit = self.api_audit(object_id="bcast-3")
         self.assertEqual(audit["entries"][0]["session_id"], "console-1")
 
-    def api_audit(self, **query: str) -> dict:
+    def api_audit(self, **query: str) -> Any:
         return self.get("/api/audit", **query)
 
 
