@@ -27,7 +27,9 @@ Startup checks the CLI and schema versions it finds and refuses to serve an
 installation it does not support, naming what it found and what it needs, so a
 mismatch is one line at launch rather than confusing behaviour later.
 
-No third-party Python packages, no build step, no network.
+No third-party Python packages, no build step, no network. Ruff and mypy are
+development tools only: they live in a local virtualenv, nothing imports them,
+and running the console never needs them.
 
 ## Running it
 
@@ -147,12 +149,37 @@ than silently exempted.
 python3 -m unittest discover -s tests -t .
 ```
 
-469 Python tests, plus 543 frontend tests via `npm test` in `frontend/`. Each
+469 Python tests, plus 551 frontend tests via `npm test` in `frontend/`. Each
 one that needs a database creates a throwaway project with `coordination init`;
 nothing in the suite touches `.coordination/coordination.sqlite3`.
 
 Tests that need the CLI skip themselves when it is not installed, so the suite
 still runs in a checkout without the scaffold.
+
+## Linting and types
+
+Optional, and separate from anything the console needs to run:
+
+```bash
+python3 -m venv .venv && .venv/bin/pip install ruff mypy
+```
+
+```bash
+.venv/bin/ruff check . && .venv/bin/ruff format --check . && .venv/bin/mypy
+```
+
+Both are configured in `pyproject.toml`, which carries `[tool.*]` tables only —
+it declares no distribution and adds no dependency to the product.
+
+`ruff format` owns layout at 96 columns. Ruff's `S` rules are the flake8-bandit
+security set, which is why the subprocess bridge in `cli/client.py` and the SQL
+builders in `readonly/` carry explicit, reasoned suppressions rather than
+silence. `RUF100` and mypy's `warn_unused_ignores` both fail on a suppression
+that has stopped applying, so a stale one is a build error instead of a comment
+that quietly outlives the rule it named.
+
+`.agents/` is excluded from both: it is the vendored coordination CLI, not
+source this repository owns.
 
 ## Design documents
 
