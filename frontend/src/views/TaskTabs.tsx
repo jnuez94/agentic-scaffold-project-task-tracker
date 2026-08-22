@@ -10,6 +10,7 @@ import { useState } from "react";
 import type { TaskDetail } from "../api/contract.ts";
 import { EmptyState, ErrorBanner } from "../components/Feedback.tsx";
 import { DependencyList } from "./DependencyList.tsx";
+import { ReviewsPanel } from "./ReviewsPanel.tsx";
 import { EnumPill } from "../components/Pill.tsx";
 import { absoluteTime, relativeTime } from "../lib/format.ts";
 import { humanize } from "../lib/labels.ts";
@@ -51,7 +52,7 @@ export function TaskTabPanel({
       <DependenciesPanel detail={detail} onChanged={() => { refresh(); onChanged(); }} />
     );
   }
-  if (tab === "reviews") return <ReviewsPanel detail={detail} />;
+  if (tab === "reviews") return <ReviewsPanel detail={detail} onChanged={() => { refresh(); onChanged(); }} />;
   return <ActivityPanel taskId={detail.id} />;
 }
 
@@ -136,37 +137,6 @@ function DependenciesPanel({ detail, onChanged }: { detail: TaskDetail; onChange
   );
 }
 
-function ReviewsPanel({ detail }: { detail: TaskDetail }) {
-  if (detail.reviews.length === 0) {
-    return <EmptyState title="No reviews recorded" hint="Reviews are added through the CLI or the Reviews view." />;
-  }
-  return (
-    <ul className="record-list">
-      {detail.reviews.map((review) => (
-        <li key={review.id}>
-          <div className="record-head">
-            <span className="mono">{review.id}</span>
-            <EnumPill value={review.decision} />
-            <span className="small muted">{review.reviewer_id}</span>
-          </div>
-          <p className="small">
-            <strong>Scope:</strong> {review.scope}
-          </p>
-          {review.required_changes ? (
-            <p className="small">
-              <strong>Required changes:</strong> {review.required_changes}
-            </p>
-          ) : null}
-          {review.blocked_claims ? (
-            <p className="small muted">
-              <strong>Does not authorize:</strong> {review.blocked_claims}
-            </p>
-          ) : null}
-        </li>
-      ))}
-    </ul>
-  );
-}
 
 function ActivityPanel({ taskId }: { taskId: string }) {
   const { coordination } = useApp();

@@ -546,3 +546,21 @@ button.close {
 .inspector-section-head h3 {
   margin: 0;
 }
+
+/* The review form shares the escalation form's footprint (UI-52). */
+.review-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  margin-top: var(--space-3);
+  border: 1px solid var(--line-700);
+  border-radius: var(--radius-panel);
+  background: var(--surface-850);
+}
+
+.review-form .optional-fields {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
