@@ -9,7 +9,7 @@
 import { useState } from "react";
 import type { TaskDetail } from "../api/contract.ts";
 import { EmptyState, ErrorBanner } from "../components/Feedback.tsx";
-import { orderDependencies } from "../lib/dependency.ts";
+import { DependencyList } from "./DependencyList.tsx";
 import { EnumPill } from "../components/Pill.tsx";
 import { absoluteTime, relativeTime } from "../lib/format.ts";
 import { humanize } from "../lib/labels.ts";
@@ -126,19 +126,12 @@ function DependenciesPanel({ detail, onChanged }: { detail: TaskDetail; onChange
   }
   return (
     <>
-    <ul className="record-list">
-      {orderDependencies(detail.dependencies).map((dependency) => (
-        <li key={`${dependency.depends_on_task_id}-${dependency.dependency_type}`}>
-          <div className="record-head">
-            <span className="mono">{dependency.depends_on_task_id}</span>
-            <EnumPill value={dependency.dependency_type} />
-            <EnumPill value={dependency.status} />
-          </div>
-          {dependency.rationale ? <p className="small">{dependency.rationale}</p> : null}
-        </li>
-      ))}
-    </ul>
-    {form}
+      <DependencyList
+        taskId={detail.id}
+        dependencies={detail.dependencies}
+        onChanged={onChanged}
+      />
+      {form}
     </>
   );
 }
