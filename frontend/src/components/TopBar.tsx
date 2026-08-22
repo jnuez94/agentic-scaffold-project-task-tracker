@@ -30,6 +30,13 @@ export interface TopBarProps {
   broadcastRef: React.RefObject<HTMLButtonElement | null>;
   broadcastDisabledReason: string | null;
   onBroadcast: () => void;
+  /**
+   * Rendered inside the identity popover, after the selects (UI-51). A slot
+   * rather than an import so this component stays presentational — App
+   * decides what session controls exist. Mounted only while the identity
+   * surface is actually open, so anything the slot fetches is paid on open.
+   */
+  sessionControls?: React.ReactNode;
 }
 
 export function TopBar(props: TopBarProps) {
@@ -174,6 +181,8 @@ export function TopBar(props: TopBarProps) {
               </p>
             ) : null}
           </div>
+
+          {identityOpen || panelOpen ? props.sessionControls : null}
         </div>
       </div>
 

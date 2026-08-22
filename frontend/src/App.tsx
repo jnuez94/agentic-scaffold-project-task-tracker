@@ -15,6 +15,7 @@ import { useApp } from "./state/AppContext.tsx";
 import { BOUNDS } from "./state/layoutStore.ts";
 import { useHashRoute } from "./state/useHashRoute.ts";
 import { RoutedView } from "./views/RoutedView.tsx";
+import { EndSessionControl } from "./views/EndSessionControl.tsx";
 import { useThemePreference } from "./state/useThemePreference.ts";
 import { useRouteEntryScroll } from "./state/useRouteEntryScroll.ts";
 import { useAgentsAfterBootstrap } from "./state/useAgentsAfterBootstrap.ts";
@@ -129,6 +130,19 @@ export function App() {
             onBroadcast={broadcast.onOpen}
             lastUpdated={agents.lastUpdated}
             busy={agents.loading || session.loading}
+            sessionControls={
+              session.activeSessionId ? (
+                <EndSessionControl
+                  sessionId={session.activeSessionId}
+                  onEnded={() => {
+                    // The persisted selection must not outlive the session it
+                    // names — a stale id is the clean-launch bug UI-14 fixed.
+                    setSession(null);
+                    session.refresh();
+                  }}
+                />
+              ) : null
+            }
           />
 
           {/* The scrollport's own height, published for the sticky inspectors.
