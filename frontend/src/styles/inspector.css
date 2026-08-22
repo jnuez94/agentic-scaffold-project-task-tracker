@@ -472,3 +472,47 @@ button.close {
 .path-note {
   margin: var(--space-2) 0 0;
 }
+
+/* Filing a task (UI-48). */
+
+/* A view header that carries one action beside its title. */
+.view-header-with-action {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.view-action {
+  flex: 0 0 auto;
+  margin-top: 2px;
+}
+
+/* Prefix select beside the free-text id. The select is a shortcut that
+ * rewrites the input; the input is the field. */
+.create-id-row {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.create-id-row select {
+  flex: 0 0 auto;
+  max-width: 9em;
+}
+
+.create-id-row input {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.create-task {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.create-task .optional-fields {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}

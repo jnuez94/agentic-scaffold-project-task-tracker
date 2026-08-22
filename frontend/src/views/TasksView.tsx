@@ -22,6 +22,7 @@ import { OPEN_SCOPE, requestStatus, scopeRows } from "../state/queueScopeStore.t
 import { useBoardWatch } from "../state/useBoardWatch.ts";
 import { useResource } from "../state/useResource.ts";
 import { TaskInspector } from "./TaskInspector.tsx";
+import { TaskCreatePanel } from "./TaskCreatePanel.tsx";
 import { TASK_DEFAULT_ORDER, taskColumns } from "./taskColumns.tsx";
 import { AttentionBar } from "./AttentionBar.tsx";
 import { QueueToolbar } from "./QueueToolbar.tsx";
@@ -47,6 +48,9 @@ export function TasksView({
   const { coordination, identity, session } = useApp();
   const [scope, setScope] = useQueueScope();
   const [assignee, setAssignee] = useState("");
+  // Filing a task takes the inspector's slot: one side panel at a time, and
+  // the queue stays visible beside it so an id can be checked by eye.
+  const [creating, setCreating] = useState(false);
 
   const tasks = useResource(
     () => coordination.tasks({
@@ -134,7 +138,7 @@ export function TasksView({
 
   return (
     <div
-      className={selectedId ? "queue-layout with-inspector" : "queue-layout"}
+      className={selectedId || creating ? "queue-layout with-inspector" : "queue-layout"}
       style={{ "--inspector-width": `${inspectorWidth}px` } as CSSProperties}
     >
       <section className="queue" aria-label="Task queue">
@@ -146,12 +150,28 @@ export function TasksView({
             was previously only reachable as the table's accessible caption —
             sighted operators should not have to infer why UI-1 sorts above
             UX-12. */}
-        <div className="view-header">
-          <h1>Tasks</h1>
-          <p className="small muted">
-            Work items and their current state. Ordered by priority, then most
-            recently updated.
-          </p>
+        <div className="view-header view-header-with-action">
+          <div>
+            <h1>Tasks</h1>
+            <p className="small muted">
+              Work items and their current state. Ordered by priority, then most
+              recently updated.
+            </p>
+          </div>
+          {/* UI-48. Not primary: filing is common, but opening a task is
+              constant, and the loudest control on the queue should not be the
+              one that leaves it. */}
+          <button
+            type="button"
+            className="view-action"
+            onClick={() => {
+              onSelect(null);
+              setCreating(true);
+            }}
+            disabled={creating}
+          >
+            File a task
+          </button>
         </div>
 
         {/* Above the queue, not beside the navigation: the surface that knew
@@ -223,7 +243,31 @@ export function TasksView({
         />
       </section>
 
-      {selectedId ? (
+      {creating ? (
+        <>
+          <div className="inspector-scrim" onClick={() => setCreating(false)} aria-hidden="true" />
+          <ResizeHandle
+            label="Resize new task panel"
+            value={inspectorWidth}
+            min={BOUNDS.inspector.min}
+            max={BOUNDS.inspector.max}
+            direction={-1}
+            onResize={(next) => layout.setWidth("inspector", next)}
+            onReset={() => layout.reset("inspector")}
+          />
+          <TaskCreatePanel
+            existingIds={(tasks.data ?? []).map((task) => task.id)}
+            agents={agents}
+            onClose={() => setCreating(false)}
+            onCreated={(id) => {
+              setCreating(false);
+              tasks.refresh();
+              // Land on the thing just filed, with its inspector open.
+              onSelect(id);
+            }}
+          />
+        </>
+      ) : selectedId ? (
         <>
           {/* Only painted in the overlay regimes; CSS hides it elsewhere. */}
           <div className="inspector-scrim" onClick={() => onSelect(null)} aria-hidden="true" />
