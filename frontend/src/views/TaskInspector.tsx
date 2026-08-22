@@ -14,6 +14,9 @@ import { useApp } from "../state/AppContext.tsx";
 import { useResource } from "../state/useResource.ts";
 import { TaskActions } from "./TaskActions.tsx";
 import { AssigneeEditor } from "./AssigneeEditor.tsx";
+import { EscalationForm } from "./EscalationForm.tsx";
+import { blockingReason } from "../lib/escalationDraft.ts";
+import { takeEscalationIntent } from "../lib/escalationIntent.ts";
 import { Overview } from "./TaskOverview.tsx";
 import { TaskTabPanel, TASK_TABS, type TaskTab } from "./TaskTabs.tsx";
 
@@ -31,6 +34,13 @@ export function TaskInspector({
   const { coordination } = useApp();
   const [tab, setTab] = useState<TaskTab>("overview");
   const [editingAssignees, setEditingAssignees] = useState(false);
+  // UI-49: the escalation form, opened from the Overview action or by the
+  // one-shot handoff Health leaves when its blocked-tasks row is used.
+  const [escalating, setEscalating] = useState<{ issue: string } | null>(null);
+  useEffect(() => {
+    const intent = takeEscalationIntent(taskId);
+    if (intent) setEscalating({ issue: intent.issue });
+  }, [taskId]);
   // Focus returns to the control that opened the panel, per spec section 8.
   const assigneeTrigger = useRef<HTMLButtonElement | null>(null);
   const task = useResource(() => coordination.task(taskId), [taskId]);
@@ -152,6 +162,18 @@ export function TaskInspector({
           >
             {tab === "overview" ? (
               <>
+                {escalating ? (
+                  <EscalationForm
+                    relatedTask={detail.id}
+                    prefillIssue={escalating.issue}
+                    agents={agents}
+                    onClose={() => setEscalating(null)}
+                    onRaised={() => {
+                      setEscalating(null);
+                      onChanged();
+                    }}
+                  />
+                ) : null}
                 {editingAssignees ? (
                   <AssigneeEditor
                     task={detail}
@@ -173,6 +195,10 @@ export function TaskInspector({
                       (event as { currentTarget?: HTMLButtonElement })
                         ?.currentTarget ?? null;
                     setEditingAssignees(true);
+                  }}
+                  onEscalate={() => {
+                    setEditingAssignees(false);
+                    setEscalating({ issue: blockingReason(detail) });
                   }}
                 />
               </>

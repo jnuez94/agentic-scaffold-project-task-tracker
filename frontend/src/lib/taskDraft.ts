@@ -40,51 +40,22 @@ export const EMPTY_DRAFT: Omit<TaskDraft, "id"> = {
 /** The CLI accepts 1 through 5; 3 is its own default. */
 export const PRIORITIES = [1, 2, 3, 4, 5] as const;
 
-/**
- * The schema's id rule, mirrored so a refusal is caught before the round trip:
- * 1-128 chars, first char alphanumeric, then alphanumerics and `. _ : @ + -`.
- */
-const ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:@+-]{0,127}$/;
+import {
+  isValidRecordId,
+  nextFreeId as nextFreeIdBy,
+  prefixesInUse as prefixesInUseBy,
+  prefixOf as prefixOfBy,
+  TASK_ID_SHAPE,
+} from "./recordIds.ts";
 
-export function isValidTaskId(id: string): boolean {
-  return ID_PATTERN.test(id);
-}
-
-const PREFIXED = /^([A-Za-z][A-Za-z0-9]*)-(\d+)$/;
-
-/**
- * Prefixes already in use, most-used first, with the highest number seen.
- *
- * Most-used first because the default prefix should be the one this board
- * actually files under; alphabetical would put BRAND ahead of UI here.
- */
-export function prefixesInUse(ids: readonly string[]): { prefix: string; count: number; highest: number }[] {
-  const seen = new Map<string, { count: number; highest: number }>();
-  for (const id of ids) {
-    const match = PREFIXED.exec(id);
-    if (!match) continue;
-    const prefix = match[1]!;
-    const number = Number(match[2]);
-    const entry = seen.get(prefix) ?? { count: 0, highest: 0 };
-    entry.count += 1;
-    entry.highest = Math.max(entry.highest, number);
-    seen.set(prefix, entry);
-  }
-  return [...seen.entries()]
-    .map(([prefix, entry]) => ({ prefix, ...entry }))
-    .sort((a, b) => b.count - a.count || a.prefix.localeCompare(b.prefix));
-}
-
-/** `UI-61` for a board whose highest UI id is 60; `UI-1` for a new prefix. */
-export function nextFreeId(prefix: string, ids: readonly string[]): string {
-  const found = prefixesInUse(ids).find((entry) => entry.prefix === prefix);
-  return `${prefix}-${(found?.highest ?? 0) + 1}`;
-}
-
-/** The prefix of an id, or null if it is not in PREFIX-N form. */
-export function prefixOf(id: string): string | null {
-  return PREFIXED.exec(id)?.[1] ?? null;
-}
+// The id helpers are shared with the escalation form; see recordIds.ts for
+// why the shape is a parameter. Re-exported here bound to the task shape so
+// callers of this module see one vocabulary.
+export const isValidTaskId = isValidRecordId;
+export const prefixesInUse = (ids: readonly string[]) => prefixesInUseBy(ids, TASK_ID_SHAPE);
+export const nextFreeId = (prefix: string, ids: readonly string[]) =>
+  nextFreeIdBy(prefix, ids, TASK_ID_SHAPE);
+export const prefixOf = (id: string) => prefixOfBy(id, TASK_ID_SHAPE);
 
 export interface DraftProblem {
   field: "id" | "title" | "actor";

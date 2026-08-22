@@ -3,7 +3,9 @@
  */
 
 import { useRef, useState } from "react";
-import type { Health, Session } from "../api/contract.ts";
+import type { Health, Session, Task } from "../api/contract.ts";
+import { blockingReason } from "../lib/escalationDraft.ts";
+import { stashEscalationIntent } from "../lib/escalationIntent.ts";
 import { EmptyState, ErrorBanner, SkeletonRows } from "../components/Feedback.tsx";
 import { relativeTime } from "../lib/format.ts";
 import { useApp } from "../state/AppContext.tsx";
@@ -25,10 +27,11 @@ const SECTIONS: { key: keyof Health; title: string; hint: string; link: FindingL
   { key: "stale_sessions", title: "Stale sessions", hint: "Idle longer than the threshold. A session may still be in use — check when it was last seen before recovering it.", link: "session" },
   { key: "unclaimed_in_progress_tasks", title: "In progress without a claim", hint: "An invariant violation; inspect with `coordination doctor`.", link: "task" },
   { key: "invalid_active_claims", title: "Invalid active claims", hint: "The claim references an inactive session or actor.", link: "task" },
-  // "or escalate" was removed: the console has no way to raise an escalation,
-  // so instructing one sent the operator looking for a control that is not
-  // there. Restore it if addEscalation is ever surfaced.
-  { key: "active_blockers", title: "Blocked tasks", hint: "Open each task to see what is blocking it.", link: "task" },
+  // "or escalate" is back (UI-49). It was removed in UI-24 because the console
+  // had no way to raise one and the instruction sent operators hunting for a
+  // control that was not there. The capability and the copy land together, so
+  // the promise is kept at the same commit it is made.
+  { key: "active_blockers", title: "Blocked tasks", hint: "Open each task to see what is blocking it, then resolve the blocker or escalate.", link: "task" },
   { key: "done_without_evidence", title: "Done without evidence", hint: "Reopen or attach evidence.", link: "task" },
   { key: "open_escalations", title: "Open escalations", hint: "Route to the owner with the authority to decide.", link: null },
 ];
@@ -120,6 +123,23 @@ export function HealthView() {
                   {describe(row) ? <span className="small"> — {describe(row)}</span> : null}
                   {/* The hint on this section tells the operator to recover the
                       session; until now the route offered no way to do it. */}
+                  {/* UI-49: the same escalation form the inspector hosts, opened
+                      on the task with its blocking reason already quoted into
+                      the issue, because someone who has just read why a task is
+                      blocked should not retype it. */}
+                  {section.key === "active_blockers" && asTask(row) ? (
+                    <button
+                      type="button"
+                      className="record-action"
+                      onClick={() => {
+                        const task = asTask(row)!;
+                        stashEscalationIntent({ taskId: task.id, issue: blockingReason(task) });
+                        globalThis.location.hash = buildHash("tasks", task.id);
+                      }}
+                    >
+                      Escalate…
+                    </button>
+                  ) : null}
                   {section.key === "stale_sessions" && asSession(row) ? (
                     <button
                       type="button"
@@ -180,6 +200,12 @@ export function findingHref(link: FindingLink, id: string): string | null {
 }
 
 /** A health row is only a session if it carries what recovery needs. */
+function asTask(row: unknown): Task | null {
+  if (!row || typeof row !== "object") return null;
+  const candidate = row as Partial<Task>;
+  return typeof candidate.id === "string" && typeof candidate.status === "string" ? (row as Task) : null;
+}
+
 function asSession(row: unknown): Session | null {
   if (!row || typeof row !== "object") return null;
   const record = row as Record<string, unknown>;

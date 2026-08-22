@@ -8,14 +8,18 @@
 import type { TaskDetail } from "../api/contract.ts";
 import { Field, Tags, TextBlock } from "../components/Fields.tsx";
 import { absoluteTime } from "../lib/format.ts";
+import { blockingReason } from "../lib/escalationDraft.ts";
 
 export function Overview({
   detail,
   onChangeAssignees,
+  onEscalate,
 }: {
   detail: TaskDetail;
   /** Omitted where reassignment does not apply; the control is then absent. */
   onChangeAssignees?: () => void;
+  /** Opens the escalation form for this task (UI-49). */
+  onEscalate?: () => void;
 }) {
   // Why a task is blocked is the reason anyone opens a blocked task, and it sat
   // sixth and seventh in a scroll region showing a fraction of its content: the
@@ -23,7 +27,9 @@ export function Overview({
   // explains it. Promoted directly beneath the chip, and left in place below
   // too — this is an answer offered early, not a field moved.
   const blocked = detail.status === "blocked";
-  const reason = detail.blocked_claims?.trim() || detail.notes?.trim() || "";
+  // Shared with the escalation prefill, so what Health quotes into an
+  // escalation is the sentence shown here (UI-49).
+  const reason = blockingReason(detail);
 
   return (
     <>
@@ -61,6 +67,11 @@ export function Overview({
               onClick={onChangeAssignees}
             >
               Change assignees
+            </button>
+          ) : null}
+          {onEscalate ? (
+            <button type="button" className="record-action" onClick={onEscalate}>
+              Escalate…
             </button>
           ) : null}
         </span>
