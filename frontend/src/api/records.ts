@@ -78,14 +78,6 @@ export interface AuditEntry {
   created_at: string;
 }
 
-export interface AuditPage {
-  entries: AuditEntry[];
-  total: number;
-  limit: number;
-  offset: number;
-  facets: { object_types: string[]; actions: string[]; actors: string[] };
-}
-
 export interface Meta {
   root: string;
   config: string;

@@ -227,6 +227,3 @@ them honestly:
 - it reports "N loaded", never "N of M" — list results carry no total count;
 - its filter box says "Filter loaded rows", not "Search";
 - it has no per-task Messages tab — `message list` filters by recipient only.
-
-The audit view is the exception: it shows a real total, because that read
-computes an unpaged `COUNT` alongside the page.

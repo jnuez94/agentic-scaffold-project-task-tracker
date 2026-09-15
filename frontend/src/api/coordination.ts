@@ -6,7 +6,7 @@ import type { ApiClient, Query } from "./client.ts";
 import type {
   Agent,
   Artifact,
-  AuditPage,
+  AuditEntry,
   Decision,
   Escalation,
   Evidence,
@@ -27,7 +27,7 @@ export class Coordination {
   doctor = () => this.api.get<Record<string, unknown>>("/api/doctor");
   summary = () => this.api.get<Summary>("/api/summary");
   health = (query?: Query) => this.api.get<Health>("/api/health", query);
-  audit = (query?: Query) => this.api.get<AuditPage>("/api/audit", query);
+  audit = (query?: Query) => this.api.get<AuditEntry[]>("/api/audit", query);
   exportReport = () => this.api.getText("/api/export");
 
   agents = (query?: Query) => this.api.get<Agent[]>("/api/agents", query);

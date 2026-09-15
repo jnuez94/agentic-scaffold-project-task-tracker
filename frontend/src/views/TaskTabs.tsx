@@ -143,7 +143,7 @@ function ActivityPanel({ taskId }: { taskId: string }) {
   const audit = useResource(() => coordination.audit({ object_id: taskId, limit: 50 }), [taskId]);
 
   if (audit.error) return <ErrorBanner error={audit.error} onRetry={audit.refresh} />;
-  const entries = audit.data?.entries ?? [];
+  const entries = audit.data ?? [];
   if (audit.loaded && entries.length === 0) {
     return <EmptyState title="No recorded activity" />;
   }

@@ -123,11 +123,6 @@
   flex: none;
 }
 
-.audit-timeline li {
-  border-bottom: 1px solid rgba(41, 64, 84, 0.4);
-  padding-bottom: var(--space-3);
-}
-
 /* Health */
 
 .health-banner {

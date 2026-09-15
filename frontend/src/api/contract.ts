@@ -131,7 +131,6 @@ export interface TaskDetail extends TaskListRow {
 export type {
   Artifact,
   AuditEntry,
-  AuditPage,
   Decision,
   Escalation,
   Health,
