@@ -3,10 +3,6 @@
 | Field | Value |
 | --- | --- |
 | Status | Implemented: backend and React console both shipped and verified |
-| Owner | `david` — Principal Software Development Engineer (Frontend) |
-| Tracked by | `UI-1`, `UI-2`, `UI-3`, `UI-5` |
-| Decisions | `FE-STACK-1` (React + Vite + TypeScript) |
-| Reviews | `FE-ARCH-REVIEW-1` (UX spec feasibility, conditionally accepted) |
 | Contract of record | `.agents/agentic-project-scaffold-lite/docs/cli-contract.md` v1.4.0 |
 | Schema of record | `.agents/agentic-project-scaffold-lite/sqlite/schema.sql` v1 |
 
@@ -25,22 +21,9 @@ exposes, health and audit views, and the Markdown export.
 filesystem-publishing operations whose failure modes need an operator at a
 terminal reading exit codes, not a browser button. They stay CLI-only.
 
-**Settled since first draft:** the visual system and page structure. `mikhail-ux`
-published three directions under `UX-1`; the Coordination Ledger layout with the
-Flowline palette was selected and specified in
-`ux-visual-interaction-spec.md`. `FE-ARCH-REVIEW-1` conditionally accepted it for
-frontend feasibility with four required changes, three of which are data
-availability limits recorded as `UI-5`:
-
-1. list results carry no total count, so exact "showing N of M" is not renderable;
-2. `task list` has no tag or blocked-state filter;
-3. `message list` filters by recipient only, so the inspector has no per-task
-   message source;
-4. white on `violet-500` measures ~4.1:1, under WCAG AA for button labels.
-
-Section 7 still describes the layer boundaries rather than the visual system,
-because those boundaries are what keep the selected direction — or a later
-revision of it — cheap to apply.
+The visual system is specified in `ux-visual-interaction-spec.md`; section 7
+describes the layer boundaries beneath it, which are what keep a change to the
+visual system confined to the view layer.
 
 ## 2. Constraints that shape the design
 
@@ -281,12 +264,12 @@ sequenceDiagram
     participant Cli as bin/coordination
     participant Db as SQLite
 
-    SPA->>Server: POST /api/tasks/UI-1/claim<br/>header X-Coordination-Session = david-fe-20260725<br/>body agent = david, if_revision = 4
+    SPA->>Server: POST /api/tasks/T-7/claim<br/>header X-Coordination-Session = alice-20260101-1<br/>body agent = alice, if_revision = 4
     Server->>Server: Content-Type must be application/json
     Server->>Api: dispatch with session header
     Api->>Api: session present? else session_required
-    Api->>Bridge: run(["task","claim","UI-1",…], session)
-    Bridge->>Cli: --session=david-fe-20260725 … --if-revision=4
+    Api->>Bridge: run(["task","claim","T-7",…], session)
+    Bridge->>Cli: --session=alice-20260101-1 … --if-revision=4
     Cli->>Db: BEGIN IMMEDIATE
     Cli->>Db: revision check, trigger checks, insert claim, audit row
     Db-->>Cli: committed
@@ -307,12 +290,12 @@ sequenceDiagram
     participant Api as api.py
     participant Cli as bin/coordination
 
-    SPA->>Api: POST /api/tasks/UI-1/status {"status":"done","if_revision":4}
-    Api->>Cli: task status UI-1 done --if-revision=4
+    SPA->>Api: POST /api/tasks/T-7/status {"status":"done","if_revision":4}
+    Api->>Cli: task status T-7 done --if-revision=4
     Cli-->>Api: exit 4, {"ok":false,"error":{"code":"stale_task_revision",<br/>"details":{"expected_revision":4,"actual_revision":6}}}
     Api-->>SPA: HTTP 409, error.code preserved verbatim
     SPA->>SPA: keep the user's form input
-    SPA->>Api: GET /api/tasks/UI-1 (refresh)
+    SPA->>Api: GET /api/tasks/T-7 (refresh)
     Api-->>SPA: current row, revision 6
     SPA->>SPA: show "changed by someone else", offer retry at revision 6
 ```
@@ -338,8 +321,7 @@ the UI branches on the code, and the status line is only for HTTP semantics.
 
 ## 7. Frontend architecture
 
-Per `UX-1-HANDOFF-1`, this section defines **module boundaries and data flow
-only**. Every box below is independent of visual treatment; a UX direction
+This section defines **module boundaries and data flow only**. Every box below is independent of visual treatment; a UX direction
 changes the view layer and the token file, not the layers beneath.
 
 ```mermaid
@@ -373,15 +355,14 @@ flowchart TD
 **Dependency budget.** `react`, `react-dom`, and — as build-time only — `vite`,
 `typescript`, `@vitejs/plugin-react`. No router library (hash routing over a
 single served `index.html` is a few dozen lines), no state library (server state
-is the only state; a `useResource` hook covers it), no component library (a UX
-direction is pending and a library would prejudge it). Adding to this list is an
+is the only state; a `useResource` hook covers it), no component library (the visual
+system is the project's own tokens and stylesheets). Adding to this list is an
 architecture decision, not a commit.
 
 **Why a typed contract module.** The ~20 endpoints return row shapes that are
 contractual but not machine-readable. `api/contract.ts` mirrors the "Common Row
 Shapes" table by hand. The contract remains the authority — the types are a
-convenience that must be updated when the contract version changes, and
-`FE-STACK-1` records that obligation explicitly.
+convenience that must be updated when the contract version changes.
 
 **Identity is application state, not form state.** The header holds the acting
 actor and the active session. Every mutation reads from there, so a user cannot
@@ -392,7 +373,7 @@ than reported after the fact.
 **Accessibility floor**, independent of the visual direction: every control
 reachable and operable by keyboard, visible focus, form controls with associated
 labels, errors announced via a live region, no color-only status encoding, and
-WCAG 2.1 AA contrast. These are acceptance criteria on `UI-2`, not polish.
+WCAG 2.1 AA contrast. These are acceptance criteria, not polish.
 
 ## 8. Security model
 
@@ -432,7 +413,8 @@ flowchart LR
 
 The build output is committed. A clean checkout runs the console with Python
 alone — no Node, no `npm install`. The cost is that stale build output is
-possible; `UI-3` covers a check that the committed bundle matches its sources.
+possible; rebuilding and diffing the committed bundle is the check, and it is
+run before a release.
 
 ## 10. Testing strategy
 
@@ -443,24 +425,14 @@ possible; `UI-3` covers a check that the committed bundle matches its sources.
 | `api/` | Route dispatch, enum validation, 405 vs 404, argument mapping per command |
 | `web/` | Live loopback server: Host rejection, content-type rejection, traversal rejection, CSP headers present |
 | Error mapping | Force each exit class and assert HTTP status and preserved `error.code` |
-| Frontend | `tsc --noEmit` in CI plus unit tests for the API client and revision-conflict reducer |
+| Frontend | `tsc --noEmit`, eslint, and vitest unit tests over every module: API client, libraries, state, components, views |
 
 Every test runs against a temporary database created with `coordination init`.
 No test touches `.coordination/coordination.sqlite3`.
 
-## 11. Open questions
-
-| # | Question | Owner | Blocks |
-| --- | --- | --- | --- |
-| Q1 | Which of the three UX directions is selected? | `mikhail-ux` → user | View layer of `UI-2` |
-| Q2 | Should `backup` be exposed read-only in the UI (path shown, not executed)? | `david` | Nothing; deferred |
-| Q3 | Poll interval for live refresh, or manual refresh only? | UX direction | Minor; default manual + explicit refresh |
-
-## 12. What this document does not authorize
+## 11. What this document does not authorize
 
 It does not authorize direct writes to `coordination.sqlite3`, runtime network
 access, CDN-hosted assets, relaxing the CSP, exposing the console beyond
 loopback, adding frontend runtime dependencies beyond React and ReactDOM, or
-treating the TypeScript row types as a substitute for the CLI contract. It also
-does not constitute UX approval — the visual system remains `mikhail-ux`'s call
-under `UX-1`, and release readiness remains a human decision.
+treating the TypeScript row types as a substitute for the CLI contract.

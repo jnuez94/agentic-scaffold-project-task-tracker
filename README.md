@@ -138,8 +138,8 @@ frontend/
 ```
 
 One class per file, every class and function under test. Files are held under
-200 lines; six views currently exceed it and are tracked for splitting rather
-than silently exempted.
+200 lines; eleven files under `frontend/src/views/` currently exceed it, and
+none is exempted.
 
 ## Tests
 
@@ -147,7 +147,7 @@ than silently exempted.
 python3 -m unittest discover -s tests -t .
 ```
 
-469 Python tests, plus 551 frontend tests via `npm test` in `frontend/`. Each
+438 Python tests, plus 847 frontend tests via `npm test` in `frontend/`. Each
 one that needs a database creates a throwaway project with `coordination init`;
 nothing in the suite touches `.coordination/coordination.sqlite3`.
 
@@ -197,9 +197,6 @@ source this repository owns.
 - [`docs/ux-retire-agent-spec.md`](docs/ux-retire-agent-spec.md)
   — operator retirement and restoration of an agent.
 
-Working material — audits, QA captures, research, superseded directions — stays
-in `.documents/` and is not tracked.
-
 ## The frontend
 
 A React 19 + TypeScript console, bundled by Vite into `coordination_ui/static/`
@@ -219,8 +216,7 @@ committed bundle — do that whenever frontend sources change.
 cd frontend && npm test
 ```
 
-62 unit tests over the API client, error mapping, transition rules, labels, and
-identity storage.
+847 unit tests across the API client, libraries, state, components, and views.
 
 Three things the UI deliberately does *not* do, because the CLI cannot back
 them honestly:
