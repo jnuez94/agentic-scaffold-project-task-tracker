@@ -76,10 +76,11 @@ determines the HTTP status:
 | 5 | 500 | `configuration_error`, `database_corrupt` |
 | 6 | 503 | `database_busy` |
 
-The audit log is the one route built from two commands. `audit list` reads
-forward from a cursor and has no descending order, so the console asks
-`summary` for the head cursor and then lists from `head - limit`, which yields
-the newest window. Filters narrow within that window.
+The audit log is the one route composed from more than one command. `audit
+list` reads forward from a cursor and has no descending order, so unfiltered
+the console asks `summary` for the head cursor and lists from `head - limit`;
+filtered, it walks the matches forward in pages of 500 and keeps the newest,
+so a record's history is complete however old the record is.
 
 `backup`, `restore`, and `init` are intentionally not exposed. They are
 destructive or filesystem-publishing operations whose failure modes need an

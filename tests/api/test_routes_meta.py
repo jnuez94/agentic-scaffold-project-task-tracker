@@ -133,11 +133,12 @@ class AuditTests(MetaTestCase):
         rows = self.get("/api/audit", object_id="T-1")
         self.assertEqual([row["object_id"] for row in rows], ["T-1"])
 
-    def test_audit_filters_narrow_within_the_window(self) -> None:
-        # The newest id belongs to T-2, so a one-row window has no T-1 in it:
-        # the limit bounds audit ids, not matches. Pinned so the semantics
-        # cannot change without this test noticing.
-        self.assertEqual(self.get("/api/audit", object_id="T-1", limit="1"), [])
+    def test_audit_filters_reach_matches_older_than_the_window(self) -> None:
+        # The newest audit id belongs to T-2. A filtered request still finds
+        # T-1: the limit bounds matches, not audit ids, so a record's history
+        # is complete however far back it sits.
+        rows = self.get("/api/audit", object_id="T-1", limit="1")
+        self.assertEqual([row["object_id"] for row in rows], ["T-1"])
 
     def test_audit_filters_by_actor(self) -> None:
         rows = self.get("/api/audit", actor="alice")

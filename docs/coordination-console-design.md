@@ -167,12 +167,14 @@ non-overlapping add/remove, `update` requires one content field) exist only to
 produce a better message than a generic argparse failure, and the CLI still
 enforces all three.
 
-The audit route is the one handler built from two commands. `audit list` reads
-forward from a cursor and has no descending order, so `/api/audit` asks
-`summary --section totals` for the head cursor, lists from `head - limit`, and
-reverses the rows. Its filters are the CLI's own flags and narrow within that
-window: a filtered request is bounded by the same `limit` audit ids, not by
-`limit` matches.
+The audit route is the one handler composed from more than one command, and
+the composition lives in `api/audit_window.py` so the handler stays a
+translation. `audit list` reads forward from a cursor and has no descending
+order. Unfiltered, `/api/audit` asks `summary --section totals` for the head
+cursor, lists from `head - limit`, and reverses the rows: two calls. Filtered,
+it walks the matches forward in pages of the CLI's maximum and keeps the newest
+`limit`: one call per 500 matches, so a single record's history is one call and
+complete however old the record is.
 
 ### 4.4 `web/`
 

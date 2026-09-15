@@ -6,6 +6,7 @@ from typing import Any
 
 from ...cli import ArgumentBuilder
 from .. import enums
+from ..audit_window import AuditWindow
 from ..enums import MAX_LIST_LIMIT, MIN_LIST_LIMIT
 from ..request import Request
 from ..text_response import TextResponse
@@ -61,27 +62,21 @@ def get_health(request: Request) -> Any:
 def get_audit(request: Request) -> Any:
     """The newest window of the audit log, newest first.
 
-    ``audit list`` reads forward from a cursor and has no descending order,
-    so the newest rows take two commands: ``summary --section totals`` for
-    the head cursor, then ``audit list --since head-limit``. The filters are
-    the CLI's own and narrow *within* that window — a filtered request is
-    bounded by the same ``limit`` audit ids, not by ``limit`` matches.
+    ``audit list`` has no descending order, so the composition lives in
+    AuditWindow. The filters are the CLI's own flags; a filtered request
+    returns the newest ``limit`` matches across the whole log, the same
+    answer the direct query used to give, so a record's Activity tab is
+    complete however old the record is.
     """
 
     requested = request.q_int("limit")
     limit = max(MIN_LIST_LIMIT, min(requested or DEFAULT_AUDIT_LIMIT, MAX_LIST_LIMIT))
-    totals = request.run(ArgumentBuilder("summary").option("--section", "totals"))
-    head = int(totals.get("audit_cursor") or 0)
-
-    builder = ArgumentBuilder("audit", "list")
-    builder.option("--since", str(max(0, head - limit)))
-    builder.option("--limit", str(limit))
+    filters: dict[str, str] = {}
     for name, flag in AUDIT_FILTERS:
         value = request.q_identifier(name) if name in ("actor", "session") else request.q(name)
         if value:
-            builder.option(flag, value)
-    rows = request.run(builder)
-    return list(reversed(rows))
+            filters[flag] = value
+    return AuditWindow(request.run, limit, filters).rows()
 
 
 def get_export(request: Request) -> TextResponse:
