@@ -6,6 +6,7 @@ from typing import Any
 
 from ...cli import ArgumentBuilder
 from .. import enums
+from ..enums import MAX_LIST_LIMIT, MIN_LIST_LIMIT
 from ..request import Request
 from ..text_response import TextResponse
 
@@ -14,6 +15,16 @@ HEALTH_OPTIONS = (
     ("stale_session_minutes", "--stale-session-minutes"),
     ("limit", "--limit"),
 )
+
+AUDIT_FILTERS = (
+    ("actor", "--actor"),
+    ("session", "--session-id"),
+    ("object_type", "--object-type"),
+    ("object_id", "--object-id"),
+    ("action", "--action"),
+)
+
+DEFAULT_AUDIT_LIMIT = 100
 
 
 def get_meta(request: Request) -> Any:
@@ -35,7 +46,7 @@ def get_doctor(request: Request) -> Any:
 
 
 def get_summary(request: Request) -> Any:
-    return request.readonly.summary()
+    return request.run(ArgumentBuilder("summary"))
 
 
 def get_health(request: Request) -> Any:
@@ -48,16 +59,29 @@ def get_health(request: Request) -> Any:
 
 
 def get_audit(request: Request) -> Any:
-    return request.readonly.audit(
-        limit=request.q_int("limit", 100) or 100,
-        offset=request.q_int("offset", 0) or 0,
-        actor=request.q_identifier("actor"),
-        session_id=request.q_identifier("session"),
-        object_type=request.q("object_type"),
-        object_id=request.q("object_id"),
-        action=request.q("action"),
-        search=request.q("q"),
-    )
+    """The newest window of the audit log, newest first.
+
+    ``audit list`` reads forward from a cursor and has no descending order,
+    so the newest rows take two commands: ``summary --section totals`` for
+    the head cursor, then ``audit list --since head-limit``. The filters are
+    the CLI's own and narrow *within* that window — a filtered request is
+    bounded by the same ``limit`` audit ids, not by ``limit`` matches.
+    """
+
+    requested = request.q_int("limit")
+    limit = max(MIN_LIST_LIMIT, min(requested or DEFAULT_AUDIT_LIMIT, MAX_LIST_LIMIT))
+    totals = request.run(ArgumentBuilder("summary").option("--section", "totals"))
+    head = int(totals.get("audit_cursor") or 0)
+
+    builder = ArgumentBuilder("audit", "list")
+    builder.option("--since", str(max(0, head - limit)))
+    builder.option("--limit", str(limit))
+    for name, flag in AUDIT_FILTERS:
+        value = request.q_identifier(name) if name in ("actor", "session") else request.q(name)
+        if value:
+            builder.option(flag, value)
+    rows = request.run(builder)
+    return list(reversed(rows))
 
 
 def get_export(request: Request) -> TextResponse:

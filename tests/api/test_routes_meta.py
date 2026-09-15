@@ -45,13 +45,14 @@ class DoctorAndSummaryTests(MetaTestCase):
         self.assertEqual(doctor["integrity_check"], "ok")
         self.assertEqual(doctor["journal_mode"], "wal")
 
-    def test_summary_reports_totals(self) -> None:
+    def test_summary_is_the_cli_envelope(self) -> None:
         summary = self.get("/api/summary")
         self.assertEqual(summary["totals"]["tasks"], 2)
         self.assertEqual(summary["totals"]["agents"], 1)
+        self.assertIn("audit_cursor", summary)
 
     def test_summary_includes_the_task_histogram(self) -> None:
-        self.assertEqual(self.get("/api/summary")["task_status"], {"todo": 2})
+        self.assertEqual(self.get("/api/summary")["task_status"]["todo"], 2)
 
     def test_summary_includes_workload(self) -> None:
         workload = self.get("/api/summary")["workload"]
@@ -99,14 +100,49 @@ class HealthTests(MetaTestCase):
         self.assertTrue(self.get("/api/health")["healthy"])
 
 
-class AuditAndExportTests(MetaTestCase):
-    def test_audit_returns_entries_and_facets(self) -> None:
-        audit = self.get("/api/audit")
-        self.assertGreater(audit["total"], 0)
-        self.assertIn("alice", audit["facets"]["actors"])
+class AuditTests(MetaTestCase):
+    """The audit route composes ``summary`` and ``audit list`` into the newest window."""
+
+    def test_audit_is_a_bare_list_newest_first(self) -> None:
+        ids = [row["id"] for row in self.get("/api/audit")]
+        self.assertGreater(len(ids), 0)
+        self.assertEqual(ids, sorted(ids, reverse=True))
+
+    def test_audit_rows_carry_the_contract_columns(self) -> None:
+        newest = self.get("/api/audit")[0]
+        self.assertEqual(
+            set(newest),
+            {
+                "id",
+                "actor",
+                "session_id",
+                "action",
+                "object_type",
+                "object_id",
+                "detail",
+                "created_at",
+            },
+        )
+        self.assertEqual(newest["object_id"], "T-2")
+
+    def test_audit_limit_bounds_the_newest_window(self) -> None:
+        everything = self.get("/api/audit")
+        self.assertEqual(self.get("/api/audit", limit="2"), everything[:2])
 
     def test_audit_filters_by_object_id(self) -> None:
-        self.assertEqual(self.get("/api/audit", object_id="T-1")["total"], 1)
+        rows = self.get("/api/audit", object_id="T-1")
+        self.assertEqual([row["object_id"] for row in rows], ["T-1"])
+
+    def test_audit_filters_narrow_within_the_window(self) -> None:
+        # The newest id belongs to T-2, so a one-row window has no T-1 in it:
+        # the limit bounds audit ids, not matches. Pinned so the semantics
+        # cannot change without this test noticing.
+        self.assertEqual(self.get("/api/audit", object_id="T-1", limit="1"), [])
+
+    def test_audit_filters_by_actor(self) -> None:
+        rows = self.get("/api/audit", actor="alice")
+        self.assertGreater(len(rows), 0)
+        self.assertEqual({row["actor"] for row in rows}, {"alice"})
 
     def test_audit_rejects_a_non_numeric_limit(self) -> None:
         from coordination_ui.cli import CoordinationError
@@ -114,6 +150,18 @@ class AuditAndExportTests(MetaTestCase):
         with self.assertRaises(CoordinationError):
             self.get("/api/audit", limit="lots")
 
+    def test_audit_clamps_an_oversized_limit(self) -> None:
+        # The CLI rejects --limit above 500; the route clamps rather than relays.
+        self.assertGreater(len(self.get("/api/audit", limit="9999")), 0)
+
+    def test_audit_rejects_a_malformed_actor(self) -> None:
+        from coordination_ui.cli import CoordinationError
+
+        with self.assertRaises(CoordinationError):
+            self.get("/api/audit", actor="--actor")
+
+
+class ExportTests(MetaTestCase):
     def test_export_returns_markdown_not_json(self) -> None:
         response = self.get("/api/export")
         self.assertIsInstance(response, TextResponse)

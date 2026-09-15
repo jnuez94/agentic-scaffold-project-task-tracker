@@ -10,7 +10,6 @@ from ..cli import ArgumentError, CoordinationCLI, validate_identifier
 from .enums import MAX_LIST_LIMIT, MIN_LIST_LIMIT
 
 if TYPE_CHECKING:  # pragma: no cover - typing only
-    from ..readonly import ReadOnlyDatabase
     from .context import ApiContext
 
 
@@ -29,10 +28,6 @@ class Request:
     @property
     def cli(self) -> CoordinationCLI:
         return self.context.cli
-
-    @property
-    def readonly(self) -> ReadOnlyDatabase:
-        return self.context.readonly
 
     # -- path ---------------------------------------------------------------
 

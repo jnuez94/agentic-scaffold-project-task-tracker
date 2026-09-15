@@ -63,7 +63,7 @@ class BroadcastCreatesOneRowTests(BroadcastTestCase):
         message = self.get("/api/messages")[0]
         self.assertNotIn("session_id", message)
         audit = self.api_audit(object_id="bcast-3")
-        self.assertEqual(audit["entries"][0]["session_id"], "console-1")
+        self.assertEqual(audit[0]["session_id"], "console-1")
 
     def api_audit(self, **query: str) -> Any:
         return self.get("/api/audit", **query)

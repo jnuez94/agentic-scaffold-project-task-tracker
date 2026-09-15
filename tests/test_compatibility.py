@@ -106,7 +106,9 @@ class MessageTests(unittest.TestCase):
 class VerifyTests(unittest.TestCase):
     def test_a_supported_installation_passes(self) -> None:
         self.assertIsNone(
-            verify({"cli_version": MINIMUM_CLI_VERSION, "schema_version": 1}, {"schema_version": 1})
+            verify(
+                {"cli_version": MINIMUM_CLI_VERSION, "schema_version": 1}, {"schema_version": 1}
+            )
         )
 
     def test_an_old_cli_is_refused(self) -> None:
@@ -135,7 +137,9 @@ class VerifyTests(unittest.TestCase):
     def test_doctor_is_authoritative_for_the_served_database(self) -> None:
         # `version` reports what the CLI was built for; `doctor` reports the
         # database actually being served, which is the one that matters.
-        message = verify({"cli_version": MINIMUM_CLI_VERSION, "schema_version": 1}, {"schema_version": 2})
+        message = verify(
+            {"cli_version": MINIMUM_CLI_VERSION, "schema_version": 1}, {"schema_version": 2}
+        )
         self.assertIsNotNone(message)
 
     def test_a_missing_version_field_is_refused(self) -> None:

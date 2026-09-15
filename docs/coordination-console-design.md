@@ -46,7 +46,7 @@ revision of it — cheap to apply.
 
 | # | Constraint | Source | Consequence |
 | --- | --- | --- | --- |
-| C1 | `.coordination/coordination.sqlite3` must not be edited directly | `AGENTS.md` | Every mutation shells out to `bin/coordination` |
+| C1 | `.coordination/coordination.sqlite3` must not be edited directly | `AGENTS.md` | Every read and every write shells out to `bin/coordination` |
 | C2 | The CLI contract is the machine interface; branch on `error.code` | `AGENTS.md` | Error codes survive the HTTP hop unmodified |
 | C3 | Python 3.10+, no third-party runtime dependencies | cli-contract §Supported Environment | Server is stdlib-only |
 | C4 | One local machine, trusted local OS users, no network sync | cli-contract §Supported Environment | Loopback bind, no auth, no CORS |
@@ -66,7 +66,6 @@ flowchart LR
         HTTP["web/<br/>ThreadingHTTPServer"]
         API["api/<br/>route table"]
         BRIDGE["cli/<br/>subprocess wrapper"]
-        RO["readonly/<br/>query_only connection"]
         DISC["discovery/<br/>project resolution"]
     end
 
@@ -75,34 +74,25 @@ flowchart LR
 
     SPA -->|"fetch: JSON over HTTP"| HTTP
     HTTP --> API
-    API -->|"reads and all writes"| BRIDGE
-    API -->|"audit log, aggregate counts"| RO
+    API -->|"every read and write"| BRIDGE
     BRIDGE -->|"argv subprocess"| CLI
     CLI -->|"BEGIN IMMEDIATE, advisory lock"| DB
-    RO -.->|"read-only, no writes"| DB
     DISC -.->|"resolves paths at startup"| HTTP
 
     classDef authority fill:#1f6f43,stroke:#0d3b23,color:#fff
     class CLI,DB authority
 ```
 
-Two paths reach the database and they are deliberately asymmetric:
-
-- **The CLI path carries every write and almost every read.** The CLI owns
-  validation, identifier grammar, locking, revision checks, transition rules,
-  and audit attribution. Reimplementing any of that in the server would create a
-  second source of truth that drifts.
-- **The read-only path exists because the CLI has no equivalent command.** There
-  is no `coordination audit` and no aggregate-count command, so the audit
-  timeline and dashboard tiles open the database directly. That connection is
-  opened `mode=ro` **and** pinned with `PRAGMA query_only = ON`, so it cannot
-  write even if a future bug tried to.
+One path reaches the database. The CLI owns validation, identifier grammar,
+locking, revision checks, transition rules, and audit attribution;
+reimplementing any of that in the server would create a second source of truth
+that drifts. The console composes CLI commands and never opens the database
+itself, so the only SQLite connection in the process is the CLI's own.
 
 ### 3.1 Python package dependencies
 
 Packages depend strictly downward; there are no cycles. `cli/client.py` is the
-only module that spawns a process, and `readonly/connection.py` is the only
-module that opens a SQLite connection.
+only module that spawns a process, and no module opens a SQLite connection.
 
 ```mermaid
 flowchart TD
@@ -111,7 +101,6 @@ flowchart TD
     WEB["web/<br/>server, handler, host policy,<br/>security headers, body reader, static"]
     API["api/<br/>router, request, context, enums<br/>+ routes/ per entity"]
     CLI["cli/<br/>client, arguments, identifier,<br/>response parser, errors"]
-    RO["readonly/<br/>connection, audit, summary"]
     DISC["discovery/<br/>locator, config, executable, project"]
 
     MAIN --> LAUNCH
@@ -120,9 +109,7 @@ flowchart TD
     LAUNCH --> WEB
     WEB --> API
     API --> CLI
-    API --> RO
     API --> DISC
-    RO --> CLI
 ```
 
 Each file holds one class and stays under 200 lines, so every unit is
@@ -132,7 +119,6 @@ importable and testable in isolation. The counts below are the shipped state.
 | --- | ---: | --- |
 | `cli/` | 9 | Run `bin/coordination`; build argv; parse its contract |
 | `discovery/` | 6 | Resolve project, config, database, executable |
-| `readonly/` | 5 | `query_only` audit and aggregate reads |
 | `api/` | 6 + 10 routes | Route table; one handler per CLI command |
 | `web/` | 7 | HTTP, loopback policy, CSP, static serving |
 | root | 4 | Package metadata, argparse, launcher, entry point |
@@ -171,14 +157,7 @@ The single choke point for CLI invocation.
 
 No shell is ever involved: `subprocess.run` receives a list, `shell=False`.
 
-### 4.3 `readonly/`
-
-Two queries the CLI cannot serve: the filtered audit timeline (with total count
-and facet values) and the dashboard summary (per-table counts, task status and
-priority histograms, per-agent workload, recent audit entries). The summary runs
-all of its statements on one connection so the tiles are mutually consistent.
-
-### 4.4 `api/`
+### 4.3 `api/`
 
 A flat route table. Each handler is a mechanical translation of exactly one
 documented CLI command — it appends options and returns the CLI's `data`
@@ -188,7 +167,14 @@ non-overlapping add/remove, `update` requires one content field) exist only to
 produce a better message than a generic argparse failure, and the CLI still
 enforces all three.
 
-### 4.5 `web/`
+The audit route is the one handler built from two commands. `audit list` reads
+forward from a cursor and has no descending order, so `/api/audit` asks
+`summary --section totals` for the head cursor, lists from `head - limit`, and
+reverses the rows. Its filters are the CLI's own flags and narrow within that
+window: a filtered request is bounded by the same `limit` audit ids, not by
+`limit` matches.
+
+### 4.4 `web/`
 
 `ThreadingHTTPServer` so a slow CLI call cannot block the whole UI. Serves the
 Vite build output from `coordination_ui/static/` and the `/api/` surface.

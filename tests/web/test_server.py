@@ -38,9 +38,10 @@ class ReadEndpointTests(LiveServerTestCase):
         self.assertEqual(headers["Content-Type"], "text/markdown; charset=utf-8")
         self.assertIn(b"#", raw)
 
-    def test_audit_reports_a_total(self) -> None:
+    def test_audit_is_a_list_of_the_newest_rows(self) -> None:
         _, payload = self.get_json("/api/audit?limit=1")
-        self.assertGreater(payload["data"]["total"], 0)
+        self.assertEqual(len(payload["data"]), 1)
+        self.assertIn("id", payload["data"][0])
 
     def test_unknown_route_is_404_with_a_stable_code(self) -> None:
         status, payload = self.get_json("/api/nope")

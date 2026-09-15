@@ -60,12 +60,10 @@ this console does not.
 
 ```
 browser  ->  coordination_ui  ->  bin/coordination  ->  coordination.sqlite3
-                     |
-                     +--------->  read-only connection (audit log, dashboard counts)
 ```
 
-**Every write, and nearly every read, is a subprocess call to
-`bin/coordination`.** The CLI keeps sole responsibility for validation,
+**Every read and every write is a subprocess call to `bin/coordination`.**
+Nothing in this package opens the database. The CLI keeps sole responsibility for validation,
 locking, revision checks, transition rules, and audit attribution. Its stable
 `error.code` is passed through to the browser unchanged, and its exit code
 determines the HTTP status:
@@ -78,10 +76,10 @@ determines the HTTP status:
 | 5 | 500 | `configuration_error`, `database_corrupt` |
 | 6 | 503 | `database_busy` |
 
-Two reads have no CLI equivalent — the audit timeline and the dashboard
-aggregate counts — so they open SQLite directly. Those connections are opened
-`mode=ro` **and** pinned with `PRAGMA query_only = ON`; the test suite asserts
-that `INSERT` and `DROP` are both refused through them.
+The audit log is the one route built from two commands. `audit list` reads
+forward from a cursor and has no descending order, so the console asks
+`summary` for the head cursor and then lists from `head - limit`, which yields
+the newest window. Filters narrow within that window.
 
 `backup`, `restore`, and `init` are intentionally not exposed. They are
 destructive or filesystem-publishing operations whose failure modes need an
@@ -126,7 +124,6 @@ customer data, or regulated data into coordination records.
 coordination_ui/
   cli/         subprocess bridge; the only code that runs bin/coordination
   discovery/   resolves which project, database, and executable to use
-  readonly/    query_only SQLite for the audit log and dashboard counts
   api/         route table; one handler per documented CLI command
   web/         loopback HTTP server, security policy, static serving
   static/      the built frontend bundle (committed)
@@ -172,9 +169,9 @@ Both are configured in `pyproject.toml`, which carries `[tool.*]` tables only �
 it declares no distribution and adds no dependency to the product.
 
 `ruff format` owns layout at 96 columns. Ruff's `S` rules are the flake8-bandit
-security set, which is why the subprocess bridge in `cli/client.py` and the SQL
-builders in `readonly/` carry explicit, reasoned suppressions rather than
-silence. `RUF100` and mypy's `warn_unused_ignores` both fail on a suppression
+security set, which is why the subprocess bridge in `cli/client.py` carries an
+explicit, reasoned suppression rather than silence. `RUF100` and mypy's
+`warn_unused_ignores` both fail on a suppression
 that has stopped applying, so a stale one is a build error instead of a comment
 that quietly outlives the rule it named.
 
