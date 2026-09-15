@@ -7,7 +7,7 @@
 | Tracked by | `UI-1`, `UI-2`, `UI-3`, `UI-5` |
 | Decisions | `FE-STACK-1` (React + Vite + TypeScript) |
 | Reviews | `FE-ARCH-REVIEW-1` (UX spec feasibility, conditionally accepted) |
-| Contract of record | `.agents/agentic-project-scaffold-lite/docs/cli-contract.md` v1.2.0 |
+| Contract of record | `.agents/agentic-project-scaffold-lite/docs/cli-contract.md` v1.4.0 |
 | Schema of record | `.agents/agentic-project-scaffold-lite/sqlite/schema.sql` v1 |
 
 ## 1. Purpose and scope
@@ -70,7 +70,7 @@ flowchart LR
         DISC["discovery/<br/>project resolution"]
     end
 
-    CLI["bin/coordination<br/>contract v1.2.0"]
+    CLI["bin/coordination<br/>contract v1.4.0"]
     DB[("coordination.sqlite3<br/>schema v1, WAL")]
 
     SPA -->|"fetch: JSON over HTTP"| HTTP
@@ -365,7 +365,7 @@ flowchart TD
 
     subgraph data["Data layer — stable across UX directions"]
         CLIENT["api/client.ts<br/>typed fetch, injects session header"]
-        TYPES["api/contract.ts<br/>row types mirrored from cli-contract v1.2.0"]
+        TYPES["api/contract.ts<br/>row types mirrored from cli-contract v1.4.0"]
         HOOKS["hooks/useResource.ts<br/>load, refresh, mutate, invalidate"]
     end
 

@@ -12,7 +12,7 @@ class ReadEndpointTests(LiveServerTestCase):
         status, payload = self.get_json("/api/meta")
         self.assertEqual(status, 200)
         self.assertTrue(payload["ok"])
-        self.assertEqual(payload["data"]["cli_version"], "1.2.0")
+        self.assertEqual(payload["data"]["cli_version"], "1.4.0")
 
     def test_response_is_json_with_a_charset(self) -> None:
         _, headers, _ = self.request("GET", "/api/meta")

@@ -95,7 +95,7 @@ class PreflightTests(unittest.TestCase):
 
     def test_preflight_runs_version_and_doctor(self) -> None:
         result = self.launcher.preflight(self.launcher.resolve_project())
-        self.assertEqual(result["version"]["cli_version"], "1.2.0")
+        self.assertEqual(result["version"]["cli_version"], "1.4.0")
         self.assertTrue(result["doctor"]["healthy"])
 
     def test_report_names_the_database_and_url(self) -> None:
@@ -147,7 +147,7 @@ class CompatibilityGateTests(unittest.TestCase):
     def test_an_unsupported_schema_stops_startup(self) -> None:
         launcher = self.launcher()
         launcher.preflight = lambda project: {  # type: ignore[method-assign]
-            "version": {"cli_version": "1.2.0"},
+            "version": {"cli_version": "1.4.0"},
             "doctor": {"schema_version": 2},
         }
         self.assertEqual(launcher.run(), EXIT_FAILURE)

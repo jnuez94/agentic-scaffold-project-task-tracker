@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import argparse
-from contextlib import contextmanager
+from collections.abc import Callable, Generator, Iterable
+from contextlib import contextmanager, suppress
+from dataclasses import dataclass, field
 from datetime import datetime, timezone
 import errno
 import fcntl
@@ -13,13 +15,16 @@ import os
 from pathlib import Path
 import re
 import sqlite3
+import sys
+import threading
 import time
-from typing import Any, BinaryIO, Generator, Iterable
+from typing import Any, BinaryIO, cast
 
 from coordination.errors import (
     EXIT_BUSY,
     EXIT_CONFLICT,
     EXIT_ENVIRONMENT,
+    EXIT_INTERNAL,
     EXIT_NOT_FOUND,
     EXIT_USAGE,
     fail,
@@ -34,12 +39,52 @@ MAX_TEXT_LENGTH = 65536
 MAX_PATH_LENGTH = 4096
 DEFAULT_LIST_LIMIT = 100
 MAX_LIST_LIMIT = 500
+MAX_IDENTIFIER_ARRAY_ITEMS = 500
 MAX_STALE_DAYS = 3650
 MAX_STALE_SESSION_MINUTES = 5_256_000
 MAX_STALE_SECONDS = 315_360_000
+# A session is "stale" for recovery and sweeping only after this many seconds
+# of silence. The floor exists so that `recover` cannot be aimed at a session
+# that heartbeated a moment ago: the one gate separating "dead" from "alive"
+# must not be caller-zeroable. `--force` is the explicit, separately audited
+# override for an operator who knows better.
+MIN_STALE_SECONDS = 60
+# A claim held by a session silent for this long may be reclaimed by another
+# actor's `task claim`, which reaps the silent session first. Agents doing long
+# silent work must heartbeat; the default matches `session recover`.
+SESSION_LEASE_SECONDS = 3600
 MAX_DIAGNOSTIC_FINDINGS = 100
+# audit_log.id is a 64-bit AUTOINCREMENT rowid; cursors range over it.
+MAX_AUDIT_CURSOR = 9_223_372_036_854_775_807
 IDENTIFIER_PATTERN = re.compile(r"[A-Za-z0-9][A-Za-z0-9._:@+-]*\Z")
 _CONNECTION_LOCKS: dict[int, BinaryIO] = {}
+# Connections opened during the active operation, per thread. A long-lived
+# process serves operations on whichever thread its transport hands it, so this
+# must not be shared state. See `connection_scope`.
+_OPEN_CONNECTIONS = threading.local()
+
+
+@dataclass
+class OperationScope:
+    """What one service operation opened, wrote, and waited for.
+
+    Connections are released at scope exit. Audit ids written inside the
+    operation are contiguous (one write transaction holds the writer lock), so
+    the receipt the dispatch boundary returns is simply their min and max.
+    Advisory-lock wait is accumulated so the operation log can report
+    contention that never reaches the database.
+    """
+
+    connections: list[sqlite3.Connection] = field(default_factory=list)
+    audit_ids: list[int] = field(default_factory=list)
+    lock_wait_ms: float = 0.0
+
+
+def current_scope() -> OperationScope | None:
+    stack = getattr(_OPEN_CONNECTIONS, "stack", None)
+    return stack[-1] if stack else None
+
+
 REQUIRED_COLUMNS = {
     "metadata": frozenset({"key", "value"}),
     "agents": frozenset(
@@ -217,7 +262,8 @@ def identifier(value: str) -> str:
         or IDENTIFIER_PATTERN.fullmatch(value) is None
     ):
         raise argparse.ArgumentTypeError(
-            "must be 1-128 ASCII characters: letters, digits, '.', '_', ':', '@', '+', or '-'"
+            "must be 1-128 ASCII characters: "
+            "letters, digits, '.', '_', ':', '@', '+', or '-'"
         )
     return value
 
@@ -275,6 +321,60 @@ def _bounded_integer(value: str, minimum: int, maximum: int, label: str) -> int:
     return parsed
 
 
+def audit_cursor(value: str) -> int:
+    return _bounded_integer(value, 0, MAX_AUDIT_CURSOR, "cursor")
+
+
+def tag_token(value: str) -> str:
+    """Validate one tag for filtering: a comma-separated token of `tags`."""
+    token = required_text(value).strip()
+    if "," in token or any(character.isspace() for character in token):
+        raise argparse.ArgumentTypeError(
+            "must be a single tag token without commas or whitespace"
+        )
+    return token
+
+
+# Record types a status change may cite as its cause, keyed to their tables.
+BECAUSE_TABLES = {
+    "review": "reviews",
+    "decision": "decisions",
+    "message": "messages",
+    "task": "tasks",
+    "escalation": "escalations",
+    "artifact": "artifacts",
+}
+
+
+def because_reference(value: str) -> str:
+    """Validate a causality reference of the form `type:id`."""
+    kind, separator, record_id = value.partition(":")
+    if not separator or kind not in BECAUSE_TABLES:
+        raise argparse.ArgumentTypeError(
+            "must be TYPE:ID where TYPE is one of " + ", ".join(sorted(BECAUSE_TABLES))
+        )
+    return f"{kind}:{identifier(record_id)}"
+
+
+def resolve_reference(connection: sqlite3.Connection, reference: str) -> str:
+    """Require the referenced record to exist; return the canonical reference.
+
+    Causality is a fact the ledger may carry: a status change that names the
+    review, decision, or message that caused it. The reference is checked at
+    write time so the audit trail never points at a record that was never
+    there.
+    """
+    kind, _, record_id = reference.partition(":")
+    table = BECAUSE_TABLES[kind]
+    require_row(
+        connection,
+        f"SELECT id FROM {table} WHERE id = ?",
+        (record_id,),
+        f"{kind} {record_id}",
+    )
+    return reference
+
+
 def positive_revision(value: str) -> int:
     return _bounded_integer(value, 1, 2_147_483_647, "revision")
 
@@ -301,17 +401,25 @@ def stale_session_minutes(value: str) -> int:
 
 
 def stale_seconds(value: str) -> int:
-    return _bounded_integer(value, 0, MAX_STALE_SECONDS, "stale seconds")
+    return _bounded_integer(
+        value, MIN_STALE_SECONDS, MAX_STALE_SECONDS, "stale seconds"
+    )
 
 
 def require_unique(values: list[str], option: str) -> None:
-    duplicates = sorted({value for value in values if values.count(value) > 1})
+    seen: set[str] = set()
+    duplicates: set[str] = set()
+    for value in values:
+        if value in seen:
+            duplicates.add(value)
+        else:
+            seen.add(value)
     if duplicates:
         fail(
             "invalid_arguments",
             f"{option} may not contain duplicate values",
             EXIT_USAGE,
-            {"option": option, "duplicates": duplicates},
+            {"option": option, "duplicates": sorted(duplicates)},
         )
 
 
@@ -419,24 +527,30 @@ def _acquire_file_lock(
     descriptor = os.open(path, flags, 0o600)
     handle = os.fdopen(descriptor, "a+b", buffering=0)
     operation = fcntl.LOCK_EX if exclusive else fcntl.LOCK_SH
-    deadline = time.monotonic() + (timeout_ms / 1000)
-    while True:
-        try:
-            fcntl.flock(handle.fileno(), operation | fcntl.LOCK_NB)
-            return handle
-        except BlockingIOError:
-            if time.monotonic() >= deadline:
+    started = time.monotonic()
+    deadline = started + (timeout_ms / 1000)
+    try:
+        while True:
+            try:
+                fcntl.flock(handle.fileno(), operation | fcntl.LOCK_NB)
+                return handle
+            except BlockingIOError:
+                if time.monotonic() >= deadline:
+                    handle.close()
+                    fail(
+                        "database_busy",
+                        "Timed out waiting for an operational file lock",
+                        EXIT_BUSY,
+                        {"lock": str(path), "timeout_ms": timeout_ms},
+                    )
+                time.sleep(min(0.01, max(0.0, deadline - time.monotonic())))
+            except BaseException:
                 handle.close()
-                fail(
-                    "database_busy",
-                    "Timed out waiting for an operational file lock",
-                    EXIT_BUSY,
-                    {"lock": str(path), "timeout_ms": timeout_ms},
-                )
-            time.sleep(min(0.01, max(0.0, deadline - time.monotonic())))
-        except BaseException:
-            handle.close()
-            raise
+                raise
+    finally:
+        scope = current_scope()
+        if scope is not None:
+            scope.lock_wait_ms += (time.monotonic() - started) * 1000
 
 
 def _release_file_lock(handle: BinaryIO) -> None:
@@ -456,9 +570,7 @@ def advisory_file_lock(
     handle = _acquire_file_lock(
         path,
         exclusive=exclusive,
-        timeout_ms=(
-            configured_busy_timeout_ms() if timeout_ms is None else timeout_ms
-        ),
+        timeout_ms=(configured_busy_timeout_ms() if timeout_ms is None else timeout_ms),
     )
     try:
         yield
@@ -473,6 +585,50 @@ def close_connection(connection: sqlite3.Connection) -> None:
         handle = _CONNECTION_LOCKS.pop(id(connection), None)
         if handle is not None:
             _release_file_lock(handle)
+
+
+def _track_connection(connection: sqlite3.Connection) -> None:
+    """Register a connection for release at the end of the active operation."""
+    scope = current_scope()
+    if scope is not None:
+        # A strong reference also stops CPython from recycling the id() that
+        # keys _CONNECTION_LOCKS while the handle is still live.
+        scope.connections.append(connection)
+
+
+@contextmanager
+def connection_scope() -> Generator[OperationScope, None, None]:
+    """Release every connection and advisory lock opened by one operation.
+
+    Entity functions open connections and return materialized rows; none of
+    them own the closing side. That is harmless in a one-shot CLI process,
+    where exit releases everything, but a long-lived transport accumulates
+    shared locks on the database lock file until an operation needing the
+    exclusive lock -- restore -- can no longer take it, and blocks every other
+    process too. Dispatch boundaries wrap each operation in this scope.
+    """
+    stack = getattr(_OPEN_CONNECTIONS, "stack", None)
+    if stack is None:
+        stack = []
+        _OPEN_CONNECTIONS.stack = stack
+    scope = OperationScope()
+    stack.append(scope)
+    try:
+        yield scope
+    finally:
+        finished = stack.pop()
+        for connection in finished.connections:
+            # Already-closed connections are fine: sqlite3 close() is
+            # idempotent and close_connection tolerates a missing handle.
+            with suppress(sqlite3.Error):
+                close_connection(connection)
+        # Scopes nest: the dispatch boundary opens one around the whole
+        # operation and each service method opens its own. What the inner
+        # scope wrote and waited for belongs to the operation, so it rolls up
+        # to the parent; connections were released here and do not.
+        if stack:
+            stack[-1].audit_ids.extend(finished.audit_ids)
+            stack[-1].lock_wait_ms += finished.lock_wait_ms
 
 
 def paths_refer_to_same_file(left: Path, right: Path) -> bool:
@@ -552,8 +708,7 @@ def operational_path(
 
 def protected_database_paths(path: Path) -> tuple[Path, ...]:
     return tuple(
-        Path(f"{path}{suffix}")
-        for suffix in ("", "-wal", "-shm", "-journal", ".lock")
+        Path(f"{path}{suffix}") for suffix in ("", "-wal", "-shm", "-journal", ".lock")
     )
 
 
@@ -584,6 +739,26 @@ def coordination_root_for_database(database: Path) -> Path:
         if ancestor.name.casefold() == ".coordination":
             return ancestor
     return database.parent
+
+
+def validate_contained_path(candidate: Path, root: Path, *, label: str) -> None:
+    """Require a path to resolve inside the coordination root.
+
+    The CLI may read and write wherever its operator points it; a transport
+    driven by an agent must not. Containment is decided on resolved paths so
+    `..` segments and symbolic links cannot escape the root.
+    """
+    resolved_root = root.resolve()
+    resolved_candidate = candidate.resolve()
+    try:
+        resolved_candidate.relative_to(resolved_root)
+    except ValueError:
+        fail(
+            "path_outside_coordination_root",
+            f"{label} must stay inside the coordination root",
+            EXIT_USAGE,
+            {"path": str(candidate), "root": str(resolved_root)},
+        )
 
 
 def protected_coordination_metadata_paths(database: Path) -> tuple[Path, ...]:
@@ -686,7 +861,8 @@ def validate_external_path(
         if paths_refer_to_same_file(candidate, protected):
             fail(
                 "invalid_arguments",
-                f"{label} must not alias the coordination database or its operational files",
+                f"{label} must not alias the coordination database "
+                "or its operational files",
                 EXIT_USAGE,
                 {
                     "path": str(candidate),
@@ -777,8 +953,39 @@ def publish_temporary_file(
     fsync_directory(destination.parent)
 
 
-def emit(value: Any) -> None:
-    print(json.dumps({"ok": True, "data": value}, indent=2, sort_keys=True))
+def emit(value: Any, *, audit_range: list[int] | None = None) -> None:
+    envelope: dict[str, Any] = {"ok": True, "data": value}
+    if audit_range is not None:
+        envelope["audit_range"] = audit_range
+    print(json.dumps(envelope, indent=2, sort_keys=True))
+
+
+def operation_log_sink_from_environment(
+    *,
+    default: str,
+) -> Callable[[dict[str, Any]], None] | None:
+    """Resolve COORDINATION_LOG into an operation-log sink, or None.
+
+    `stderr` writes one JSON object per line to standard error; `off` (or
+    empty, `0`, `false`) disables the log. The log is observability, not a
+    ledger: it never creates managed files and is the only place refused or
+    failed operations, durations, and lock waits are visible.
+    """
+    raw = os.environ.get("COORDINATION_LOG", default).strip().lower()
+    if raw in ("", "off", "0", "false", "none"):
+        return None
+    if raw == "stderr":
+
+        def sink(record: dict[str, Any]) -> None:
+            print(json.dumps(record, sort_keys=True), file=sys.stderr, flush=True)
+
+        return sink
+    fail(
+        "configuration_error",
+        "COORDINATION_LOG must be 'stderr' or 'off'",
+        EXIT_ENVIRONMENT,
+        {"value": raw},
+    )
 
 
 def rows(values: Iterable[sqlite3.Row]) -> list[dict[str, Any]]:
@@ -1124,11 +1331,14 @@ def runtime_version() -> str:
             EXIT_ENVIRONMENT,
             {"version_file": str(version), "reason": str(error)},
         )
-    if re.fullmatch(
-        r"(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)"
-        r"(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?",
-        value,
-    ) is None:
+    if (
+        re.fullmatch(
+            r"(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)"
+            r"(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?",
+            value,
+        )
+        is None
+    ):
         fail(
             "installation_error",
             "Installed VERSION is not valid semantic version text",
@@ -1160,8 +1370,7 @@ def schema_details(connection: sqlite3.Connection) -> dict[str, Any]:
     tables = objects["table"]
     columns = {
         table: {
-            str(row[1])
-            for row in connection.execute(f'PRAGMA table_info("{table}")')
+            str(row[1]) for row in connection.execute(f'PRAGMA table_info("{table}")')
         }
         for table in REQUIRED_TABLES & tables
     }
@@ -1350,13 +1559,13 @@ def connect(
                 {"synchronous": synchronous},
             )
     except BaseException:
-        try:
+        # `connection` stays unbound when sqlite3.connect itself raised.
+        with suppress(UnboundLocalError):
             connection.close()
-        except UnboundLocalError:
-            pass
         _release_file_lock(handle)
         raise
     _CONNECTION_LOCKS[id(connection)] = handle
+    _track_connection(connection)
     return connection
 
 
@@ -1386,13 +1595,13 @@ def connect_read_only(path: Path) -> sqlite3.Connection:
         connection.execute(f"PRAGMA busy_timeout = {timeout_ms}")
         ensure_supported_schema(connection)
     except BaseException:
-        try:
+        # `connection` stays unbound when sqlite3.connect itself raised.
+        with suppress(UnboundLocalError):
             connection.close()
-        except UnboundLocalError:
-            pass
         _release_file_lock(handle)
         raise
     _CONNECTION_LOCKS[id(connection)] = handle
+    _track_connection(connection)
     return connection
 
 
@@ -1574,7 +1783,17 @@ def audit(
            ) VALUES (?, ?, ?, ?, ?, ?, ?)""",
         (actor, session_id, action, object_type, object_id, detail, stamp),
     )
-    return int(cursor.lastrowid)
+    audit_id = cursor.lastrowid
+    if audit_id is None:  # pragma: no cover - INSERT always assigns a row ID
+        fail(
+            "internal_error",
+            "Audit record did not receive a row ID",
+            EXIT_INTERNAL,
+        )
+    scope = current_scope()
+    if scope is not None:
+        scope.audit_ids.append(int(audit_id))
+    return audit_id
 
 
 def require_active_actor(
@@ -1605,7 +1824,7 @@ def require_active_actor(
             EXIT_CONFLICT,
             {"actor": actor},
         )
-    return value
+    return cast(sqlite3.Row, value)
 
 
 def require_active_session(
@@ -1659,4 +1878,4 @@ def require_row(
     value = connection.execute(query, parameters).fetchone()
     if value is None:
         fail("not_found", f"Not found: {label}", EXIT_NOT_FOUND, {"resource": label})
-    return value
+    return cast(sqlite3.Row, value)

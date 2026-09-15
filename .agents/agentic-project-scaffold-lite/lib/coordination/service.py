@@ -9,37 +9,54 @@ validation, database/session context, and stable exception translation.
 from __future__ import annotations
 
 import argparse
+from collections.abc import Callable, Mapping, Sequence
+from contextlib import suppress
+import functools
 import inspect
 import sqlite3
-from types import SimpleNamespace
-from typing import Any, Callable, Mapping, Sequence
+import time
+from typing import Any, cast
 
 from coordination.core import (
     DEFAULT_LIST_LIMIT,
+    IDENTIFIER_PATTERN,
+    MAX_AUDIT_CURSOR,
+    MAX_IDENTIFIER_ARRAY_ITEMS,
     MAX_LIST_LIMIT,
     MAX_STALE_DAYS,
     MAX_STALE_SECONDS,
     MAX_STALE_SESSION_MINUTES,
+    MIN_STALE_SECONDS,
     SCHEMA_VERSION,
+    OperationScope,
+    because_reference,
     canonical_schema_sql,
     connect,
+    connection_scope,
+    coordination_root_for_database,
     discover_db,
     ensure_supported_schema,
     expected_schema_definitions,
     identifier,
+    now,
+    operational_path,
     optional_text,
     path_argument,
     required_text,
     schema_details,
+    tag_token,
+    validate_contained_path,
 )
 from coordination.entities import (
     agents,
     artifacts,
+    audit,
     decisions,
     dependencies,
     diagnostics,
     escalations,
     evidence,
+    inbox,
     maintenance,
     messages,
     reports,
@@ -47,6 +64,7 @@ from coordination.entities import (
     sessions,
     tasks,
 )
+from coordination.entities.descriptors import timestamp
 from coordination.errors import (
     EXIT_BUSY,
     EXIT_CONFLICT,
@@ -59,6 +77,11 @@ from coordination.errors import (
 
 
 OperationResult = dict[str, Any] | list[dict[str, Any]] | None
+OperationLog = Callable[[dict[str, Any]], None]
+# Parameters that name the accountable principal or the primary object of an
+# operation. The operation log records identifiers only, never free text.
+ACCOUNTABLE_PARAMETERS = ("actor", "agent", "reviewer", "owner", "sender", "raised_by")
+OBJECT_PARAMETERS = ("id", "task", "input", "output")
 MAX_SQLITE_INTEGER = 2_147_483_647
 
 
@@ -120,6 +143,54 @@ def _optional_choice(
     return _choice(field, value, choices)
 
 
+def _choices(
+    field: str,
+    value: object | None,
+    choices: Sequence[str],
+) -> list[str] | None:
+    """Accept one choice or a list of choices; return a deduplicated list."""
+    if value is None:
+        return None
+    items = [value] if isinstance(value, str) else value
+    if not isinstance(items, list):
+        fail(
+            "invalid_arguments",
+            f"{field} must be one of {', '.join(choices)}, or an array of them",
+            EXIT_USAGE,
+            {"field": field, "choices": list(choices)},
+        )
+    selected: list[str] = []
+    for item in items:
+        checked = _choice(field, item, choices)
+        if checked not in selected:
+            selected.append(checked)
+    return selected or None
+
+
+def _strings(field: str, value: object | None) -> list[str] | None:
+    """Accept a list of short strings (repeatable CLI flags, MCP arrays)."""
+    if value is None:
+        return None
+    items = [value] if isinstance(value, str) else value
+    if not isinstance(items, list) or not all(isinstance(item, str) for item in items):
+        fail(
+            "invalid_arguments",
+            f"{field} must be a string or an array of strings",
+            EXIT_USAGE,
+            {"field": field},
+        )
+    if len(items) > MAX_IDENTIFIER_ARRAY_ITEMS or any(
+        len(item) > 4096 for item in items
+    ):
+        fail(
+            "invalid_arguments",
+            f"{field} has too many or too long entries",
+            EXIT_USAGE,
+            {"field": field, "maximum": MAX_IDENTIFIER_ARRAY_ITEMS},
+        )
+    return [item for item in items if item] or None
+
+
 def _integer(
     field: str,
     value: object,
@@ -162,7 +233,35 @@ def _identifiers(field: str, value: object) -> list[str]:
             EXIT_USAGE,
             {"field": field},
         )
+    if len(value) > MAX_IDENTIFIER_ARRAY_ITEMS:
+        fail(
+            "invalid_arguments",
+            (f"{field} must contain at most {MAX_IDENTIFIER_ARRAY_ITEMS} identifiers"),
+            EXIT_USAGE,
+            {
+                "field": field,
+                "maximum": MAX_IDENTIFIER_ARRAY_ITEMS,
+                "actual": len(value),
+            },
+        )
     return [_validate(field, identifier, item) for item in value]
+
+
+def _identifier_parameter(
+    parameters: Mapping[str, object],
+    names: Sequence[str],
+) -> str | None:
+    """Return the first named parameter that is a well-formed identifier.
+
+    Used only by the operation log, which records principals and object ids
+    and never free text; a value that is not identifier-shaped is omitted
+    rather than logged.
+    """
+    for name in names:
+        value = parameters.get(name)
+        if isinstance(value, str) and IDENTIFIER_PATTERN.fullmatch(value):
+            return value
+    return None
 
 
 class CoordinationService:
@@ -174,10 +273,40 @@ class CoordinationService:
         db: str | None = None,
         session: str | None = None,
         schema_sql_provider: Callable[[], str] = canonical_schema_sql,
+        contain_paths: bool = False,
+        transport: str = "cli",
+        operation_log: OperationLog | None = None,
     ) -> None:
         self.db = _optional("db", path_argument, db)
         self.session = _optional("session", identifier, session)
         self._schema_sql_provider = schema_sql_provider
+        self.transport = _validate("transport", identifier, transport)
+        # The dispatch boundary is the observability boundary: it is the only
+        # place that sees every operation, including the ones the database
+        # never records -- refusals, conflicts, busy timeouts. The sink gets
+        # one record per invocation. `last_receipt` is the caller-facing
+        # summary of the most recent invocation.
+        self._operation_log = operation_log
+        self.last_receipt: dict[str, Any] = {}
+        # Transport policy. The CLI reads and writes wherever its operator
+        # points it. A transport whose caller is an agent acting on text it
+        # did not write must not: with it, `backup --output ~/.zshrc --force`
+        # is a prompt-injection away. Containment keeps every file path an
+        # agent supplies inside the coordination root.
+        self.contain_paths = _boolean("contain_paths", contain_paths)
+
+    def _require_contained(
+        self,
+        value: str,
+        *,
+        label: str,
+        must_exist: bool,
+    ) -> None:
+        if not self.contain_paths:
+            return
+        candidate = operational_path(value, label=label, must_exist=must_exist)
+        root = coordination_root_for_database(discover_db(self.db))
+        validate_contained_path(candidate, root, label=label)
 
     def _args(self, **values: object) -> argparse.Namespace:
         return argparse.Namespace(db=self.db, session=self.session, **values)
@@ -205,41 +334,92 @@ class CoordinationService:
                 EXIT_USAGE,
                 {"operation": operation},
             )
+        started = time.monotonic()
+        scope: OperationScope | None = None
+        failure: CoordinationError | None = None
         try:
-            return method(*bound.args, **bound.kwargs)
-        except CoordinationError:
+            # Every connection this operation opens is released here, so a
+            # long-lived transport never accumulates advisory locks between
+            # calls. Without it, restore cannot take its exclusive lock.
+            with connection_scope() as scope:
+                result = cast(OperationResult, method(*bound.args, **bound.kwargs))
+        except CoordinationError as error:
+            failure = error
             raise
         except sqlite3.IntegrityError as error:
-            raise CoordinationError(
+            failure = CoordinationError(
                 "constraint_violation",
                 "Coordination constraint failed",
                 EXIT_CONFLICT,
                 {"database_error": str(error)},
-            ) from error
+            )
+            raise failure from error
         except sqlite3.OperationalError as error:
             message = str(error)
             if "locked" in message.lower() or "busy" in message.lower():
-                value = CoordinationError("database_busy", message, EXIT_BUSY)
+                failure = CoordinationError("database_busy", message, EXIT_BUSY)
             else:
-                value = CoordinationError(
+                failure = CoordinationError(
                     "database_error",
                     message,
                     EXIT_ENVIRONMENT,
                 )
-            raise value from error
+            raise failure from error
         except (sqlite3.DatabaseError, OSError) as error:
-            raise CoordinationError(
+            failure = CoordinationError(
                 "environment_error",
                 str(error),
                 EXIT_ENVIRONMENT,
-            ) from error
+            )
+            raise failure from error
         except Exception as error:
-            raise CoordinationError(
+            failure = CoordinationError(
                 "internal_error",
                 "Unexpected coordination service failure",
                 EXIT_INTERNAL,
                 {"error_type": type(error).__name__},
-            ) from error
+            )
+            raise failure from error
+        finally:
+            self._finish(operation, parameters, scope, started, failure)
+        return result
+
+    def _finish(
+        self,
+        operation: str,
+        parameters: Mapping[str, object],
+        scope: OperationScope | None,
+        started: float,
+        failure: CoordinationError | None,
+    ) -> None:
+        audit_range = (
+            [min(scope.audit_ids), max(scope.audit_ids)]
+            if scope is not None and scope.audit_ids and failure is None
+            else None
+        )
+        self.last_receipt = {
+            "audit_range": audit_range,
+            "duration_ms": int((time.monotonic() - started) * 1000),
+            "lock_wait_ms": int(scope.lock_wait_ms) if scope is not None else 0,
+        }
+        if self._operation_log is None:
+            return
+        record: dict[str, Any] = {
+            "ts": now(),
+            "transport": self.transport,
+            "operation": operation,
+            "actor": _identifier_parameter(parameters, ACCOUNTABLE_PARAMETERS),
+            "session": self.session or _identifier_parameter(parameters, ("session",)),
+            "object": _identifier_parameter(parameters, OBJECT_PARAMETERS),
+            "outcome": "ok" if failure is None else "error",
+            **self.last_receipt,
+        }
+        if failure is not None:
+            record["code"] = failure.code
+            record["exit_code"] = failure.exit_code
+        # Logging must never change an operation's outcome.
+        with suppress(Exception):
+            self._operation_log(record)
 
     def invoke_cli(self, args: argparse.Namespace) -> OperationResult:
         """Dispatch a parsed CLI namespace through the shared service API."""
@@ -360,6 +540,9 @@ class CoordinationService:
         actor_type: str | None = None,
         limit: int = DEFAULT_LIST_LIMIT,
         offset: int = 0,
+        where: list[str] | None = None,
+        order_by: list[str] | None = None,
+        updated_since: str | None = None,
     ) -> list[dict[str, Any]]:
         return agents.list_agents(
             self._args(
@@ -371,6 +554,9 @@ class CoordinationService:
                 ),
                 limit=_integer("limit", limit, 1, MAX_LIST_LIMIT),
                 offset=_integer("offset", offset, 0, MAX_SQLITE_INTEGER),
+                where=_strings("where", where),
+                order_by=_strings("order_by", order_by),
+                updated_since=_optional("updated_since", timestamp, updated_since),
             )
         )
 
@@ -428,6 +614,8 @@ class CoordinationService:
         harness: str | None = None,
         limit: int = DEFAULT_LIST_LIMIT,
         offset: int = 0,
+        where: list[str] | None = None,
+        order_by: list[str] | None = None,
     ) -> list[dict[str, Any]]:
         return sessions.list_sessions(
             self._args(
@@ -440,13 +628,13 @@ class CoordinationService:
                 harness=_optional("harness", required_text, harness),
                 limit=_integer("limit", limit, 1, MAX_LIST_LIMIT),
                 offset=_integer("offset", offset, 0, MAX_SQLITE_INTEGER),
+                where=_strings("where", where),
+                order_by=_strings("order_by", order_by),
             )
         )
 
     def session_heartbeat(self, *, id: str) -> dict[str, str]:
-        return sessions.heartbeat(
-            self._args(id=_validate("id", identifier, id))
-        )
+        return sessions.heartbeat(self._args(id=_validate("id", identifier, id)))
 
     def session_end(self, *, id: str) -> dict[str, str]:
         return sessions.end(self._args(id=_validate("id", identifier, id)))
@@ -458,6 +646,7 @@ class CoordinationService:
         actor: str,
         reason: str,
         stale_after_seconds: int = 3600,
+        force: bool = False,
     ) -> dict[str, object]:
         return sessions.recover(
             self._args(
@@ -467,9 +656,32 @@ class CoordinationService:
                 stale_after_seconds=_integer(
                     "stale_after_seconds",
                     stale_after_seconds,
-                    0,
+                    MIN_STALE_SECONDS,
                     MAX_STALE_SECONDS,
                 ),
+                force=_boolean("force", force),
+            )
+        )
+
+    def session_sweep(
+        self,
+        *,
+        actor: str,
+        reason: str,
+        stale_after_seconds: int = 3600,
+        limit: int = DEFAULT_LIST_LIMIT,
+    ) -> dict[str, object]:
+        return sessions.sweep(
+            self._args(
+                actor=_validate("actor", identifier, actor),
+                reason=_validate("reason", required_text, reason),
+                stale_after_seconds=_integer(
+                    "stale_after_seconds",
+                    stale_after_seconds,
+                    MIN_STALE_SECONDS,
+                    MAX_STALE_SECONDS,
+                ),
+                limit=_integer("limit", limit, 1, MAX_LIST_LIMIT),
             )
         )
 
@@ -510,17 +722,25 @@ class CoordinationService:
     def task_list(
         self,
         *,
-        status: str | None = None,
+        status: str | list[str] | None = None,
         assignee: str | None = None,
+        tag: str | None = None,
         limit: int = DEFAULT_LIST_LIMIT,
         offset: int = 0,
+        where: list[str] | None = None,
+        order_by: list[str] | None = None,
+        updated_since: str | None = None,
     ) -> list[dict[str, Any]]:
         return tasks.list_tasks(
             self._args(
-                status=_optional_choice("status", status, tasks.STATUSES),
+                status=_choices("status", status, tasks.STATUSES),
                 assignee=_optional("assignee", identifier, assignee),
+                tag=_optional("tag", tag_token, tag),
                 limit=_integer("limit", limit, 1, MAX_LIST_LIMIT),
                 offset=_integer("offset", offset, 0, MAX_SQLITE_INTEGER),
+                where=_strings("where", where),
+                order_by=_strings("order_by", order_by),
+                updated_since=_optional("updated_since", timestamp, updated_since),
             )
         )
 
@@ -578,9 +798,7 @@ class CoordinationService:
                 title=_optional("title", required_text, title),
                 description=_optional("description", optional_text, description),
                 priority=(
-                    None
-                    if priority is None
-                    else _integer("priority", priority, 1, 5)
+                    None if priority is None else _integer("priority", priority, 1, 5)
                 ),
                 tags=_optional("tags", optional_text, tags),
                 acceptance=_optional("acceptance", optional_text, acceptance),
@@ -621,6 +839,7 @@ class CoordinationService:
         actor: str,
         if_revision: int,
         note: str = "",
+        because: str | None = None,
     ) -> dict[str, Any]:
         return tasks.status(
             self._args(
@@ -634,6 +853,8 @@ class CoordinationService:
                     MAX_SQLITE_INTEGER,
                 ),
                 note=_validate("note", optional_text, note),
+                require_owned_claim=False,
+                because=_optional("because", because_reference, because),
             )
         )
 
@@ -645,6 +866,7 @@ class CoordinationService:
         actor: str,
         if_revision: int,
         note: str = "",
+        because: str | None = None,
     ) -> dict[str, Any]:
         release_status = _choice(
             "status",
@@ -663,6 +885,9 @@ class CoordinationService:
                     MAX_SQLITE_INTEGER,
                 ),
                 note=_validate("note", optional_text, note),
+                # Release is only an owned handback, never a plain transition.
+                require_owned_claim=True,
+                because=_optional("because", because_reference, because),
             )
         )
 
@@ -689,12 +914,16 @@ class CoordinationService:
         task: str,
         limit: int = DEFAULT_LIST_LIMIT,
         offset: int = 0,
+        where: list[str] | None = None,
+        order_by: list[str] | None = None,
     ) -> list[dict[str, object]]:
         return evidence.list_evidence(
             self._args(
                 task=_validate("task", identifier, task),
                 limit=_integer("limit", limit, 1, MAX_LIST_LIMIT),
                 offset=_integer("offset", offset, 0, MAX_SQLITE_INTEGER),
+                where=_strings("where", where),
+                order_by=_strings("order_by", order_by),
             )
         )
 
@@ -791,12 +1020,16 @@ class CoordinationService:
         task: str | None = None,
         limit: int = DEFAULT_LIST_LIMIT,
         offset: int = 0,
+        where: list[str] | None = None,
+        order_by: list[str] | None = None,
     ) -> list[dict[str, object]]:
         return reviews.list_reviews(
             self._args(
                 task=_optional("task", identifier, task),
                 limit=_integer("limit", limit, 1, MAX_LIST_LIMIT),
                 offset=_integer("offset", offset, 0, MAX_SQLITE_INTEGER),
+                where=_strings("where", where),
+                order_by=_strings("order_by", order_by),
             )
         )
 
@@ -828,9 +1061,7 @@ class CoordinationService:
                     decisions.DECISION_STATUSES,
                 ),
                 options=_validate("options", optional_text, options),
-                implications=_validate(
-                    "implications", optional_text, implications
-                ),
+                implications=_validate("implications", optional_text, implications),
                 evidence=_validate("evidence", optional_text, evidence),
                 blocked_claims=_validate(
                     "blocked_claims", optional_text, blocked_claims
@@ -846,11 +1077,40 @@ class CoordinationService:
         *,
         limit: int = DEFAULT_LIST_LIMIT,
         offset: int = 0,
+        where: list[str] | None = None,
+        order_by: list[str] | None = None,
+        updated_since: str | None = None,
     ) -> list[dict[str, object]]:
         return decisions.list_decisions(
             self._args(
                 limit=_integer("limit", limit, 1, MAX_LIST_LIMIT),
                 offset=_integer("offset", offset, 0, MAX_SQLITE_INTEGER),
+                where=_strings("where", where),
+                order_by=_strings("order_by", order_by),
+                updated_since=_optional("updated_since", timestamp, updated_since),
+            )
+        )
+
+    def decision_status(
+        self,
+        *,
+        id: str,
+        status: str,
+        actor: str,
+        if_status: str | None = None,
+        note: str = "",
+        because: str | None = None,
+    ) -> dict[str, str]:
+        return decisions.status(
+            self._args(
+                id=_validate("id", identifier, id),
+                status=_choice("status", status, decisions.DECISION_STATUSES),
+                actor=_validate("actor", identifier, actor),
+                if_status=_optional_choice(
+                    "if_status", if_status, decisions.DECISION_STATUSES
+                ),
+                note=_validate("note", optional_text, note),
+                because=_optional("because", because_reference, because),
             )
         )
 
@@ -879,14 +1139,35 @@ class CoordinationService:
         self,
         *,
         recipient: str | None = None,
+        task: str | None = None,
         limit: int = DEFAULT_LIST_LIMIT,
         offset: int = 0,
+        where: list[str] | None = None,
+        order_by: list[str] | None = None,
     ) -> list[dict[str, Any]]:
         return messages.list_messages(
             self._args(
                 recipient=_optional("recipient", required_text, recipient),
+                task=_optional("task", identifier, task),
                 limit=_integer("limit", limit, 1, MAX_LIST_LIMIT),
                 offset=_integer("offset", offset, 0, MAX_SQLITE_INTEGER),
+                where=_strings("where", where),
+                order_by=_strings("order_by", order_by),
+            )
+        )
+
+    def message_redact(
+        self,
+        *,
+        id: str,
+        actor: str,
+        reason: str,
+    ) -> dict[str, str]:
+        return messages.redact(
+            self._args(
+                id=_validate("id", identifier, id),
+                actor=_validate("actor", identifier, actor),
+                reason=_validate("reason", required_text, reason),
             )
         )
 
@@ -930,6 +1211,9 @@ class CoordinationService:
         status: str | None = None,
         limit: int = DEFAULT_LIST_LIMIT,
         offset: int = 0,
+        where: list[str] | None = None,
+        order_by: list[str] | None = None,
+        updated_since: str | None = None,
     ) -> list[dict[str, Any]]:
         return artifacts.list_artifacts(
             self._args(
@@ -940,6 +1224,9 @@ class CoordinationService:
                 ),
                 limit=_integer("limit", limit, 1, MAX_LIST_LIMIT),
                 offset=_integer("offset", offset, 0, MAX_SQLITE_INTEGER),
+                where=_strings("where", where),
+                order_by=_strings("order_by", order_by),
+                updated_since=_optional("updated_since", timestamp, updated_since),
             )
         )
 
@@ -949,16 +1236,43 @@ class CoordinationService:
         id: str,
         status: str,
         actor: str,
+        if_status: str | None = None,
+        because: str | None = None,
     ) -> dict[str, str]:
         return artifacts.status(
             self._args(
                 id=_validate("id", identifier, id),
-                status=_choice(
-                    "status",
-                    status,
-                    artifacts.ARTIFACT_STATUSES,
-                ),
+                status=_choice("status", status, artifacts.ARTIFACT_STATUSES),
                 actor=_validate("actor", identifier, actor),
+                if_status=_optional_choice(
+                    "if_status", if_status, artifacts.ARTIFACT_STATUSES
+                ),
+                because=_optional("because", because_reference, because),
+            )
+        )
+
+    def artifact_update(
+        self,
+        *,
+        id: str,
+        actor: str,
+        uri: str | None = None,
+        type: str | None = None,
+        usage_boundaries: str | None = None,
+        if_status: str | None = None,
+    ) -> dict[str, Any]:
+        return artifacts.update(
+            self._args(
+                id=_validate("id", identifier, id),
+                actor=_validate("actor", identifier, actor),
+                uri=_optional("uri", required_text, uri),
+                type=_optional("type", required_text, type),
+                usage_boundaries=_optional(
+                    "usage_boundaries", optional_text, usage_boundaries
+                ),
+                if_status=_optional_choice(
+                    "if_status", if_status, artifacts.ARTIFACT_STATUSES
+                ),
             )
         )
 
@@ -999,6 +1313,8 @@ class CoordinationService:
         status: str | None = None,
         limit: int = DEFAULT_LIST_LIMIT,
         offset: int = 0,
+        where: list[str] | None = None,
+        order_by: list[str] | None = None,
     ) -> list[dict[str, Any]]:
         return escalations.list_escalations(
             self._args(
@@ -1009,6 +1325,8 @@ class CoordinationService:
                 ),
                 limit=_integer("limit", limit, 1, MAX_LIST_LIMIT),
                 offset=_integer("offset", offset, 0, MAX_SQLITE_INTEGER),
+                where=_strings("where", where),
+                order_by=_strings("order_by", order_by),
             )
         )
 
@@ -1020,6 +1338,8 @@ class CoordinationService:
         actor: str,
         status: str = "resolved",
         follow_up_tasks: str = "",
+        if_status: str | None = None,
+        because: str | None = None,
     ) -> dict[str, str]:
         return escalations.resolve(
             self._args(
@@ -1036,6 +1356,10 @@ class CoordinationService:
                     optional_text,
                     follow_up_tasks,
                 ),
+                if_status=_optional_choice(
+                    "if_status", if_status, escalations.ESCALATION_STATUSES
+                ),
+                because=_optional("because", because_reference, because),
             )
         )
 
@@ -1045,6 +1369,7 @@ class CoordinationService:
         stale_days: int = 7,
         stale_session_minutes: int = 60,
         limit: int = DEFAULT_LIST_LIMIT,
+        section: str | list[str] | None = None,
     ) -> dict[str, object]:
         return reports.health(
             self._args(
@@ -1061,6 +1386,236 @@ class CoordinationService:
                     MAX_STALE_SESSION_MINUTES,
                 ),
                 limit=_integer("limit", limit, 1, MAX_LIST_LIMIT),
+                section=_choices("section", section, reports.HEALTH_SECTIONS),
+            )
+        )
+
+    def summary(
+        self,
+        *,
+        section: str | list[str] | None = None,
+    ) -> dict[str, object]:
+        return reports.summary(
+            self._args(
+                section=_choices("section", section, reports.SUMMARY_SECTIONS),
+            )
+        )
+
+    def task_history(
+        self,
+        *,
+        id: str,
+        since: int = 0,
+        limit: int = DEFAULT_LIST_LIMIT,
+        offset: int = 0,
+    ) -> list[dict[str, Any]]:
+        return audit.history(
+            self._args(
+                object_type="task",
+                id=_validate("id", identifier, id),
+                since=_integer("since", since, 0, MAX_AUDIT_CURSOR),
+                limit=_integer("limit", limit, 1, MAX_LIST_LIMIT),
+                offset=_integer("offset", offset, 0, MAX_SQLITE_INTEGER),
+            )
+        )
+
+    def agent_history(
+        self,
+        *,
+        id: str,
+        since: int = 0,
+        limit: int = DEFAULT_LIST_LIMIT,
+        offset: int = 0,
+    ) -> list[dict[str, Any]]:
+        return audit.history(
+            self._args(
+                object_type="agent",
+                id=_validate("id", identifier, id),
+                since=_integer("since", since, 0, MAX_AUDIT_CURSOR),
+                limit=_integer("limit", limit, 1, MAX_LIST_LIMIT),
+                offset=_integer("offset", offset, 0, MAX_SQLITE_INTEGER),
+            )
+        )
+
+    def session_history(
+        self,
+        *,
+        id: str,
+        since: int = 0,
+        limit: int = DEFAULT_LIST_LIMIT,
+        offset: int = 0,
+    ) -> list[dict[str, Any]]:
+        return audit.history(
+            self._args(
+                object_type="session",
+                id=_validate("id", identifier, id),
+                since=_integer("since", since, 0, MAX_AUDIT_CURSOR),
+                limit=_integer("limit", limit, 1, MAX_LIST_LIMIT),
+                offset=_integer("offset", offset, 0, MAX_SQLITE_INTEGER),
+            )
+        )
+
+    def artifact_history(
+        self,
+        *,
+        id: str,
+        since: int = 0,
+        limit: int = DEFAULT_LIST_LIMIT,
+        offset: int = 0,
+    ) -> list[dict[str, Any]]:
+        return audit.history(
+            self._args(
+                object_type="artifact",
+                id=_validate("id", identifier, id),
+                since=_integer("since", since, 0, MAX_AUDIT_CURSOR),
+                limit=_integer("limit", limit, 1, MAX_LIST_LIMIT),
+                offset=_integer("offset", offset, 0, MAX_SQLITE_INTEGER),
+            )
+        )
+
+    def decision_history(
+        self,
+        *,
+        id: str,
+        since: int = 0,
+        limit: int = DEFAULT_LIST_LIMIT,
+        offset: int = 0,
+    ) -> list[dict[str, Any]]:
+        return audit.history(
+            self._args(
+                object_type="decision",
+                id=_validate("id", identifier, id),
+                since=_integer("since", since, 0, MAX_AUDIT_CURSOR),
+                limit=_integer("limit", limit, 1, MAX_LIST_LIMIT),
+                offset=_integer("offset", offset, 0, MAX_SQLITE_INTEGER),
+            )
+        )
+
+    def message_history(
+        self,
+        *,
+        id: str,
+        since: int = 0,
+        limit: int = DEFAULT_LIST_LIMIT,
+        offset: int = 0,
+    ) -> list[dict[str, Any]]:
+        return audit.history(
+            self._args(
+                object_type="message",
+                id=_validate("id", identifier, id),
+                since=_integer("since", since, 0, MAX_AUDIT_CURSOR),
+                limit=_integer("limit", limit, 1, MAX_LIST_LIMIT),
+                offset=_integer("offset", offset, 0, MAX_SQLITE_INTEGER),
+            )
+        )
+
+    def review_history(
+        self,
+        *,
+        id: str,
+        since: int = 0,
+        limit: int = DEFAULT_LIST_LIMIT,
+        offset: int = 0,
+    ) -> list[dict[str, Any]]:
+        return audit.history(
+            self._args(
+                object_type="review",
+                id=_validate("id", identifier, id),
+                since=_integer("since", since, 0, MAX_AUDIT_CURSOR),
+                limit=_integer("limit", limit, 1, MAX_LIST_LIMIT),
+                offset=_integer("offset", offset, 0, MAX_SQLITE_INTEGER),
+            )
+        )
+
+    def escalation_history(
+        self,
+        *,
+        id: str,
+        since: int = 0,
+        limit: int = DEFAULT_LIST_LIMIT,
+        offset: int = 0,
+    ) -> list[dict[str, Any]]:
+        return audit.history(
+            self._args(
+                object_type="escalation",
+                id=_validate("id", identifier, id),
+                since=_integer("since", since, 0, MAX_AUDIT_CURSOR),
+                limit=_integer("limit", limit, 1, MAX_LIST_LIMIT),
+                offset=_integer("offset", offset, 0, MAX_SQLITE_INTEGER),
+            )
+        )
+
+    def inbox_list(
+        self,
+        *,
+        agent: str | None = None,
+        limit: int = DEFAULT_LIST_LIMIT,
+        offset: int = 0,
+    ) -> dict[str, Any]:
+        return inbox.list_inbox(
+            self._args(
+                agent=_optional("agent", identifier, agent),
+                limit=_integer("limit", limit, 1, MAX_LIST_LIMIT),
+                offset=_integer("offset", offset, 0, MAX_SQLITE_INTEGER),
+            )
+        )
+
+    def inbox_mark_read(
+        self,
+        *,
+        cursor: int,
+        agent: str | None = None,
+    ) -> dict[str, Any]:
+        return inbox.mark_read(
+            self._args(
+                agent=_optional("agent", identifier, agent),
+                cursor=_integer("cursor", cursor, 0, MAX_AUDIT_CURSOR),
+            )
+        )
+
+    def agent_show(self, *, id: str) -> dict[str, Any]:
+        return agents.show(self._args(id=_validate("id", identifier, id)))
+
+    def session_show(self, *, id: str) -> dict[str, Any]:
+        return sessions.show(self._args(id=_validate("id", identifier, id)))
+
+    def artifact_show(self, *, id: str) -> dict[str, Any]:
+        return artifacts.show(self._args(id=_validate("id", identifier, id)))
+
+    def decision_show(self, *, id: str) -> dict[str, Any]:
+        return decisions.show(self._args(id=_validate("id", identifier, id)))
+
+    def message_show(self, *, id: str) -> dict[str, Any]:
+        return messages.show(self._args(id=_validate("id", identifier, id)))
+
+    def review_show(self, *, id: str) -> dict[str, Any]:
+        return reviews.show(self._args(id=_validate("id", identifier, id)))
+
+    def escalation_show(self, *, id: str) -> dict[str, Any]:
+        return escalations.show(self._args(id=_validate("id", identifier, id)))
+
+    def audit_list(
+        self,
+        *,
+        actor: str | None = None,
+        session_id: str | None = None,
+        object_type: str | None = None,
+        object_id: str | None = None,
+        action: str | None = None,
+        since: int = 0,
+        limit: int = DEFAULT_LIST_LIMIT,
+        offset: int = 0,
+    ) -> list[dict[str, Any]]:
+        return audit.list_audit(
+            self._args(
+                actor=_optional("actor", identifier, actor),
+                session_id=_optional("session_id", identifier, session_id),
+                object_type=_optional("object_type", required_text, object_type),
+                object_id=_optional("object_id", required_text, object_id),
+                action=_optional("action", required_text, action),
+                since=_integer("since", since, 0, MAX_AUDIT_CURSOR),
+                limit=_integer("limit", limit, 1, MAX_LIST_LIMIT),
+                offset=_integer("offset", offset, 0, MAX_SQLITE_INTEGER),
             )
         )
 
@@ -1069,11 +1624,29 @@ class CoordinationService:
         *,
         output: str | None = None,
         force: bool = False,
+        actor: str | None = None,
     ) -> dict[str, object] | None:
+        """Write a Markdown export, to `output` or to standard output.
+
+        Unlike every other operation here, this one is not fully
+        transport-neutral: without `output` it writes Markdown to stdout and
+        returns None. That is correct for the CLI, whose stdout the caller
+        owns and may redirect, and unusable for a transport that owns stdout
+        itself -- on a stdio JSON-RPC connection it would corrupt the stream.
+        A transport must therefore either omit this operation or require
+        `output`. The shipped MCP tool set omits it, which
+        `tests/mcp-security.py` enforces.
+        """
+        checked_output = _optional("output", path_argument, output)
+        if checked_output is not None:
+            self._require_contained(
+                checked_output, label="Export output", must_exist=False
+            )
         return reports.export(
             self._args(
-                output=_optional("output", path_argument, output),
+                output=checked_output,
                 force=_boolean("force", force),
+                actor=_optional("actor", identifier, actor),
             )
         )
 
@@ -1082,11 +1655,15 @@ class CoordinationService:
         *,
         output: str,
         force: bool = False,
+        actor: str | None = None,
     ) -> dict[str, object]:
+        checked_output = _validate("output", path_argument, output)
+        self._require_contained(checked_output, label="Backup output", must_exist=False)
         return maintenance.backup(
             self._args(
-                output=_validate("output", path_argument, output),
+                output=checked_output,
                 force=_boolean("force", force),
+                actor=_optional("actor", identifier, actor),
             )
         )
 
@@ -1097,9 +1674,11 @@ class CoordinationService:
         actor: str,
         force: bool = False,
     ) -> dict[str, object]:
+        checked_input = _validate("input", path_argument, input)
+        self._require_contained(checked_input, label="Restore input", must_exist=True)
         return maintenance.restore(
             self._args(
-                input=_validate("input", path_argument, input),
+                input=checked_input,
                 actor=_validate("actor", identifier, actor),
                 force=_boolean("force", force),
             )
@@ -1113,3 +1692,26 @@ SERVICE_OPERATIONS = frozenset(
     and not name.startswith("_")
     and name not in {"invoke", "invoke_cli"}
 )
+
+
+def _release_connections_after(method: Callable[..., Any]) -> Callable[..., Any]:
+    @functools.wraps(method)
+    def wrapper(*args: Any, **kwargs: Any) -> Any:
+        with connection_scope():
+            return method(*args, **kwargs)
+
+    return wrapper
+
+
+# Each operation releases its own connections and advisory locks, whether it was
+# reached through `invoke` or called directly as library API. Scopes nest, so
+# the redundant scope in `invoke` costs nothing. Without this a long-lived
+# caller accumulates shared locks on the database lock file until `restore`
+# cannot take its exclusive lock -- and neither can any other process.
+for _operation in SERVICE_OPERATIONS:
+    setattr(
+        CoordinationService,
+        _operation,
+        _release_connections_after(getattr(CoordinationService, _operation)),
+    )
+del _operation

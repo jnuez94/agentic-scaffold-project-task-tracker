@@ -125,6 +125,24 @@ class TemporaryProject:
         self.run(*args)
         return agent_id
 
+    def age_session(self, session_id: str, seconds: int) -> None:
+        """Backdate ``last_seen_at`` on this throwaway database.
+
+        Test time-travel, on a database this fixture created in a temp dir and
+        will delete — not ``.coordination/coordination.sqlite3``, which stays
+        untouched. It exists because the CLI has no way to age a session, its
+        recovery floor is 60 seconds, and the alternative — exposing ``--force``
+        through the console's route — would add a capability to a write
+        endpoint purely so a test could reach the happy path.
+        """
+        import sqlite3
+
+        with sqlite3.connect(self.database) as connection:
+            connection.execute(
+                "UPDATE agent_sessions SET last_seen_at = datetime(last_seen_at, ?) WHERE id = ?",
+                (f"-{int(seconds)} seconds", session_id),
+            )
+
     def seed_session(self, session_id: str = "s1", agent_id: str = "tester") -> str:
         self.run(
             "session",

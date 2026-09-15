@@ -6,12 +6,31 @@ import argparse
 import os
 import signal
 import sqlite3
+from typing import Any, NoReturn
 
 from coordination.core import (
     canonical_schema_sql,
     emit,
     identifier,
+    operation_log_sink_from_environment,
     path_argument,
+)
+from coordination.entities import (
+    agents,
+    artifacts,
+    audit,
+    decisions,
+    dependencies,
+    diagnostics,
+    escalations,
+    evidence,
+    inbox,
+    maintenance,
+    messages,
+    reports,
+    reviews,
+    sessions,
+    tasks,
 )
 from coordination.errors import (
     EXIT_BUSY,
@@ -22,30 +41,15 @@ from coordination.errors import (
     CoordinationError,
     emit_error,
 )
-from coordination.entities import (
-    agents,
-    artifacts,
-    decisions,
-    dependencies,
-    diagnostics,
-    escalations,
-    evidence,
-    maintenance,
-    messages,
-    reports,
-    reviews,
-    sessions,
-    tasks,
-)
 from coordination.service import CoordinationService
 
 
 class CoordinationArgumentParser(argparse.ArgumentParser):
-    def __init__(self, *args: object, **kwargs: object) -> None:
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
         kwargs.setdefault("allow_abbrev", False)
         super().__init__(*args, **kwargs)
 
-    def error(self, message: str) -> None:
+    def error(self, message: str) -> NoReturn:
         raise CoordinationError("invalid_arguments", message, EXIT_USAGE)
 
 
@@ -63,7 +67,10 @@ def build_parser() -> argparse.ArgumentParser:
         "--session",
         default=os.environ.get("COORDINATION_SESSION"),
         type=identifier,
-        help="Active agent session ID used for audit attribution; defaults to COORDINATION_SESSION",
+        help=(
+            "Active agent session ID used for audit attribution; "
+            "defaults to COORDINATION_SESSION"
+        ),
     )
     commands = parser.add_subparsers(dest="command", required=True)
 
@@ -83,6 +90,8 @@ def build_parser() -> argparse.ArgumentParser:
         escalations,
         maintenance,
         reports,
+        audit,
+        inbox,
     ):
         entity.register(commands)
     return parser
@@ -104,13 +113,18 @@ def main() -> int:
     try:
         parser = build_parser()
         args = parser.parse_args()
-        result = CoordinationService(
+        service = CoordinationService(
             db=args.db,
             session=args.session,
             schema_sql_provider=canonical_schema_sql,
-        ).invoke_cli(args)
+            # Opt-in for the CLI: COORDINATION_LOG=stderr. A one-shot process
+            # already reports its outcome; the log adds duration, lock wait,
+            # and the audit receipt for pipelines that want them.
+            operation_log=operation_log_sink_from_environment(default="off"),
+        )
+        result = service.invoke_cli(args)
         if result is not None:
-            emit(result)
+            emit(result, audit_range=service.last_receipt.get("audit_range"))
     except CoordinationError as error:
         emit_error(error)
         return error.exit_code
@@ -150,7 +164,8 @@ def main() -> int:
             )
         )
         return EXIT_ENVIRONMENT
-    except Exception as error:  # pragma: no cover - final CLI safety boundary
+    # The outermost boundary must map anything at all to a stable JSON envelope.
+    except Exception as error:  # noqa: BLE001  # pragma: no cover
         emit_error(
             CoordinationError(
                 "internal_error",

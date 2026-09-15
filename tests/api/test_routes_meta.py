@@ -19,7 +19,7 @@ class MetaTestCase(RouteTestCase):
 class MetaTests(MetaTestCase):
     def test_reports_cli_and_schema_versions(self) -> None:
         meta = self.get("/api/meta")
-        self.assertEqual(meta["cli_version"], "1.2.0")
+        self.assertEqual(meta["cli_version"], "1.4.0")
         self.assertEqual(meta["schema_version"], 1)
 
     def test_includes_resolved_paths(self) -> None:

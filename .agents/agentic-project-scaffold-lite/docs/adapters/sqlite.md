@@ -1,6 +1,6 @@
 # SQLite Adapter
 
-Status: supported in version `1.2.0`; CLI contract remains compatible with
+Status: supported in version `1.4.0`; CLI contract remains compatible with
 version `1.1.0`.
 
 Use SQLite when every participant operates on one local project directory.
@@ -9,6 +9,14 @@ verified backups, and deterministic access without running a service.
 
 Do not share the database between independent machines, network filesystems, or
 Git clones. Do not commit live SQLite files.
+
+The adapter is for personal work on one operator's machine. It is not designed
+for shared hosts — multi-user machines, cloud desktops, or shared development
+servers — where a second human or an untrusted process can reach the project
+directory: actor identity is asserted and validated, not authenticated, and the
+runtime protects cooperating principals from each other's mistakes, not from a
+hostile co-tenant. A shared-host-capable coordination layer is a separate
+product offering.
 
 ## Requirements
 
@@ -52,7 +60,7 @@ Install the optional SDK/bootstrap dependency, then opt the SQLite project into
 the stdio launcher:
 
 ```sh
-python3 -m pip install 'agentic-project-scaffold-lite[mcp]==1.2.0'
+python3 -m pip install 'agentic-project-scaffold-lite[mcp]==1.4.0'
 ./scripts/install.sh \
   --target /path/to/project \
   --adapter sqlite \
@@ -92,6 +100,11 @@ Reinstalling the same backend repairs managed files and blocks without
 replacing coordination state. It rejects an incompatible existing backend, a
 database path outside `.coordination/`, invalid destination types, and
 destinations that would overlap the source checkout.
+
+For a complete 1.1.0-to-1.4.0 procedure, optional MCP enablement, environment
+selection, state verification, and rollback, see
+[Upgrade Existing Installations](../upgrade.md). Schema version 1 is unchanged;
+same-backend reinstall does not migrate or replace the configured database.
 
 The configured database value may use ordinary nested directories, but it must
 be relative and cannot contain `..` or another `.coordination` component.
@@ -335,6 +348,21 @@ agreed stale threshold:
   --reason "Worker stopped before releasing its claim" \
   --stale-after-seconds 3600
 ```
+
+The threshold cannot be set below 60 seconds. To recover a session that has
+not reached the threshold, add `--force`; the intervention is audited as
+forced. To recover every stale session at once, oldest first and bounded:
+
+```sh
+"$tool" session sweep \
+  --actor product-owner \
+  --reason "Nightly sweep of silent workers" \
+  --stale-after-seconds 3600
+```
+
+Another actor's `task claim` also reaps a holder silent for more than 3600
+seconds on its own, so a crashed worker's task does not need an operator to
+become claimable again.
 
 The reason must contain non-whitespace text. Recovery atomically blocks claimed
 tasks, increments their revisions, appends the reason to their notes, removes

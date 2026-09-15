@@ -1,6 +1,6 @@
 """Whether the CLI this console found is one it can actually talk to.
 
-The console ships separately from the CLI it drives, mirrors the v1.2.0
+The console ships separately from the CLI it drives, mirrors the v1.4.0
 contract enumerations in ``api.enums``, and documents ``COORDINATION_BIN`` as a
 user-facing override. Those three facts together mean an operator can very
 reasonably end up pointing this at a CLI it was never written against.

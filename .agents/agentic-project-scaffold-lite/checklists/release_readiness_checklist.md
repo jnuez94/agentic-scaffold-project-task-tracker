@@ -157,6 +157,11 @@ qualification from a single aggregate test result.
 
 ## Optional MCP Transport (1.2.0 And Later)
 
+- [ ] A CLI-only schema-v1 installation upgrades in place with `--with-mcp`
+      while preserving configuration, database contents, and audit history.
+- [ ] Verification rejects a noncanonical MCP launcher without executing it.
+- [ ] Installation and verification both reject MCP SDK versions outside
+      `mcp>=1.28.1,<2`.
 - [ ] MCP installation is rejected for Markdown and absent from a default
       SQLite installation.
 - [ ] The default Python dependency set is empty; the optional extra is
@@ -183,6 +188,61 @@ qualification from a single aggregate test result.
       qualification.
 - [ ] Generic Codex and Claude setup examples invoke the same server and no
       installer mutates harness configuration.
+
+## Trust Model And Console Surface (1.3.0 And Later)
+
+- [ ] A confirmed `coordination_restore` completes in an MCP server that has
+      already served many calls, and a live server does not block CLI restore.
+- [ ] `coordination_backup` has no `force`; every MCP backup output and
+      restore input outside the coordination root fails
+      `path_outside_coordination_root` before any file is opened.
+- [ ] `session recover` rejects a stale threshold below 60 seconds; `--force`
+      recovers a live session and is audited as `forced; ...`.
+- [ ] `session sweep` recovers only stale sessions, oldest first, bounded, and
+      never the operator's own session.
+- [ ] `task claim` reaps a holder silent past the claim lease and takes the
+      task in one transaction; a holder seen within the lease is never
+      displaced; the displaced holder's next write is refused.
+- [ ] `agent update --status` requires an explicit `--actor`; the audit row
+      names that actor, never the target.
+- [ ] `audit list` is ordered by `id`, bounded, filtered by exact match, and
+      `--since` returns only rows after the cursor; `summary.audit_cursor` is
+      the head.
+- [ ] `summary` counts are computed in one read transaction; `health`
+      derives `healthy` from anomaly sections only.
+- [ ] `--if-status` refuses a changed status with `status_mismatch` on
+      artifact status/update, decision status, and escalation resolve.
+- [ ] `message redact` leaves the row and its attribution, audits the reason,
+      and the redacted content is absent from the database file.
+- [ ] `task show` detail arrays are bounded and report `truncated_sections`.
+- [ ] Every CLI subcommand maps to a service operation whose parameters the
+      parsed namespace satisfies (`tests/unit/test_cli_service_parity.py`).
+
+## Observability And Read Surface (1.4.0 And Later)
+
+- [ ] Every successful mutation's envelope carries a contiguous `audit_range`
+      over both transports; reads omit it.
+- [ ] With `COORDINATION_LOG=stderr` (MCP: by default) every invocation that
+      reaches the service writes one JSON record -- including refused writes,
+      conflicts, and busy timeouts -- with no free text; a broken sink never
+      changes an outcome; an unknown value is `configuration_error`.
+- [ ] `doctor` reports `record_consistency` findings for rows written around
+      the runtime and clears them after a write through the runtime, without
+      failing.
+- [ ] `backup`/`export --actor` audit egress in the source database; the MCP
+      backup tool requires `actor`.
+- [ ] `<entity> history ID` is ordered by audit id, bounded, and honors
+      `--since`.
+- [ ] `--because TYPE:ID` is validated to exist and recorded as
+      `because=TYPE:ID`; `summary.time_in_state` derives from audit rows.
+- [ ] A new agent's inbox starts empty at the audit head; `inbox list` never
+      moves the cursor; `mark-read` is forward-only and audited; a 128-char
+      agent id works.
+- [ ] Every `list` honors `--where`/`--order-by` (and `--updated-since` where
+      `updated_at` exists) exactly per its descriptor, refuses anything
+      outside it with `invalid_arguments`, and orders deterministically;
+      `id:in` is the batch read; every entity has `show`.
+- [ ] `tests/unit/test_cli_service_parity.py` still walks every subcommand.
 
 ## Release Decision
 

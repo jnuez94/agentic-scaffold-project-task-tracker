@@ -51,7 +51,7 @@ class InvocationTests(unittest.TestCase):
 
     def test_run_returns_data(self) -> None:
         data = self.cli.run(["version"])
-        self.assertEqual(data["cli_version"], "1.2.0")
+        self.assertEqual(data["cli_version"], "1.4.0")
         self.assertEqual(data["schema_version"], 1)
 
     def test_run_reports_a_healthy_database(self) -> None:

@@ -15,7 +15,7 @@ Two things, and the second is the one people miss:
 | | |
 | --- | --- |
 | Python | 3.10 or newer |
-| coordination CLI | `>=1.2.0,<2.0.0`, from [agentic-project-scaffold-lite](https://github.com/jnuez94/agentic-project-scaffold-lite) |
+| coordination CLI | `>=1.4.0,<2.0.0`, from [agentic-project-scaffold-lite](https://github.com/jnuez94/agentic-project-scaffold-lite) |
 
 This console is a **view onto a coordination database; it is not a coordination
 tool on its own.** Every read and every write is performed by the coordination

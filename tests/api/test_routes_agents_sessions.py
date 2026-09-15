@@ -135,9 +135,11 @@ class SessionRouteTests(RouteTestCase):
 
     def test_recover_ends_a_stale_session(self) -> None:
         self.temp.seed_session("s-10", "alice")
+        # 60 is the CLI's floor since 1.3.0; the fixture ages the session past it.
+        self.temp.age_session("s-10", seconds=120)
         recovered = self.post(
             "/api/sessions/s-10/recover",
-            {"actor": "alice", "reason": "harness died", "stale_after_seconds": 0},
+            {"actor": "alice", "reason": "harness died", "stale_after_seconds": 60},
         )
         self.assertEqual(recovered["status"], "ended")
         self.assertEqual(recovered["recovered_tasks"], [])

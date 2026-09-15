@@ -42,7 +42,7 @@ class CliRangeTests(unittest.TestCase):
     def test_accepts_later_compatible_releases(self) -> None:
         # A range, not a pin: the contract documents a stable surface, so
         # pinning would break an operator on every CLI patch release.
-        for version in ("1.2.1", "1.3.0", "1.99.99"):
+        for version in ("1.4.1", "1.5.0", "1.99.99"):
             with self.subTest(version=version):
                 self.assertTrue(cli_version_supported(version))
 
@@ -78,7 +78,7 @@ class SchemaTests(unittest.TestCase):
 
 class MessageTests(unittest.TestCase):
     def test_a_compatible_pair_has_nothing_to_say(self) -> None:
-        self.assertIsNone(describe_cli_problem("1.2.0"))
+        self.assertIsNone(describe_cli_problem(MINIMUM_CLI_VERSION))
         self.assertIsNone(describe_schema_problem(1))
 
     def test_the_refusal_names_found_required_and_remedy(self) -> None:
@@ -106,7 +106,7 @@ class MessageTests(unittest.TestCase):
 class VerifyTests(unittest.TestCase):
     def test_a_supported_installation_passes(self) -> None:
         self.assertIsNone(
-            verify({"cli_version": "1.2.0", "schema_version": 1}, {"schema_version": 1})
+            verify({"cli_version": MINIMUM_CLI_VERSION, "schema_version": 1}, {"schema_version": 1})
         )
 
     def test_an_old_cli_is_refused(self) -> None:
@@ -119,7 +119,7 @@ class VerifyTests(unittest.TestCase):
         self.assertIsNotNone(message)
 
     def test_an_unsupported_schema_is_refused(self) -> None:
-        message = verify({"cli_version": "1.2.0"}, {"schema_version": 2})
+        message = verify({"cli_version": MINIMUM_CLI_VERSION}, {"schema_version": 2})
         assert message is not None
         self.assertIn("schema", message)
 
@@ -135,7 +135,7 @@ class VerifyTests(unittest.TestCase):
     def test_doctor_is_authoritative_for_the_served_database(self) -> None:
         # `version` reports what the CLI was built for; `doctor` reports the
         # database actually being served, which is the one that matters.
-        message = verify({"cli_version": "1.2.0", "schema_version": 1}, {"schema_version": 2})
+        message = verify({"cli_version": MINIMUM_CLI_VERSION, "schema_version": 1}, {"schema_version": 2})
         self.assertIsNotNone(message)
 
     def test_a_missing_version_field_is_refused(self) -> None:
