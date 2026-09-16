@@ -8,6 +8,7 @@
  * the operator understands and one they discover in the audit log.
  */
 
+import { describeCause, type Because } from "./because.ts";
 import { receiptSuffix } from "./receipt.ts";
 
 export interface ClaimResult {
@@ -33,6 +34,8 @@ export function transitionAnnouncement(
   taskId: string,
   target: string,
   result: TransitionResult,
+  because: Because | null = null,
 ): string {
-  return `${taskId} moved to ${target} at revision ${result.revision}.${receiptSuffix(result)}`;
+  const cause = because ? ` Because of ${describeCause(because)}.` : "";
+  return `${taskId} moved to ${target} at revision ${result.revision}.${cause}${receiptSuffix(result)}`;
 }

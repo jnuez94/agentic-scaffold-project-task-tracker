@@ -8,6 +8,7 @@
  */
 
 import type { Column } from "../components/DataTable.tsx";
+import { AuditDetail } from "../components/AuditDetail.tsx";
 import type { AuditEntry } from "../api/contract.ts";
 import { absoluteTime, relativeTime } from "../lib/format.ts";
 import { humanize } from "../lib/labels.ts";
@@ -56,7 +57,7 @@ export const AUDIT_COLUMNS: Column<AuditEntry>[] = [
     key: "detail",
     header: "Detail",
     priority: 5,
-    render: (entry) => <span className="small">{entry.detail}</span>,
+    render: (entry) => <AuditDetail detail={entry.detail} className="small" />,
     sortValue: (entry) => entry.detail,
     vacantFor: (entry) => !entry.detail,
   },

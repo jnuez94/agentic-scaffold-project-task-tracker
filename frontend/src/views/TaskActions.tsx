@@ -15,6 +15,8 @@ import { availableActions, type TaskAction } from "../lib/transitions.ts";
 import { useApp } from "../state/AppContext.tsx";
 import { SETUP_PENDING } from "../lib/copy.ts";
 import { claimAnnouncement, transitionAnnouncement } from "../lib/taskAnnouncements.ts";
+import { autoCause, describeCause, formatBecause, parseBecause } from "../lib/because.ts";
+import { BecausePicker } from "./BecausePicker.tsx";
 
 
 export function TaskActions({
@@ -28,6 +30,9 @@ export function TaskActions({
 }) {
   const { coordination, identity, announce, mutationsEnabled, session } = useApp();
   const [note, setNote] = useState("");
+  // UI-72: the record a change follows from, "" for none. Leaving review
+  // cites the latest review on its own; a chosen cause wins over that.
+  const [because, setBecause] = useState("");
   const [error, setError] = useState<ApiError | undefined>();
   const [busy, setBusy] = useState<TaskStatus | null>(null);
 
@@ -48,13 +53,15 @@ export function TaskActions({
     setBusy(action.target);
     setError(undefined);
     try {
-      const result = await dispatch(action);
+      const cause = causeFor(action);
+      const result = await dispatch(action, cause);
       announce(
         action.kind === "claim"
           ? claimAnnouncement(task.id, result)
-          : transitionAnnouncement(task.id, action.target, result),
+          : transitionAnnouncement(task.id, action.target, result, cause),
       );
       setNote("");
+      setBecause("");
       onDone();
     } catch (caught) {
       // The note is deliberately preserved so a conflict costs no typing.
@@ -64,7 +71,14 @@ export function TaskActions({
     }
   };
 
-  const dispatch = async (action: TaskAction) => {
+  const causeFor = (action: TaskAction) => {
+    if (action.kind === "claim") return null;
+    const chosen = because ? parseBecause(`because=${because}`).because : null;
+    return chosen ?? autoCause(task, action);
+  };
+  const automatic = autoCause(task, { kind: "status" });
+
+  const dispatch = async (action: TaskAction, cause: ReturnType<typeof causeFor>) => {
     const actor = identity.actorId;
     if (!actor) throw new ApiError("invalid_actor", "Select an actor first.", 400);
 
@@ -73,6 +87,7 @@ export function TaskActions({
     }
     const body: Record<string, unknown> = { actor, if_revision: task.revision };
     if (note.trim()) body["note"] = note;
+    if (cause) body["because"] = formatBecause(cause);
     if (action.kind === "release") {
       return coordination.releaseTask(task.id, { ...body, to: action.target });
     }
@@ -117,6 +132,13 @@ export function TaskActions({
                 placeholder="Recorded in the task notes and the audit log."
               />
             </div>
+
+            <BecausePicker task={task} value={because} onChange={setBecause} disabled={busy !== null} />
+            {!because && automatic ? (
+              <p className="small muted">
+                Leaving review cites {describeCause(automatic)} as the cause unless another is chosen.
+              </p>
+            ) : null}
 
             {actions
               .filter((action) => action.blockedReason)

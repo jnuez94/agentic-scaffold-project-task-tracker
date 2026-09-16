@@ -9,6 +9,7 @@ enforces all three independently.
 from __future__ import annotations
 
 import re
+from collections.abc import Mapping
 from typing import Any
 
 from ...cli import ArgumentBuilder, ArgumentError, CoordinationError, require_choice
@@ -26,6 +27,25 @@ CONTENT_FIELDS = (
 
 
 TAG_TOKEN = re.compile(r"^[^\s,]+$")
+
+# ``--because TYPE:ID`` (1.4.0): the record a status change follows from. The
+# CLI checks the record exists; the console checks only that it is a known
+# type and an identifier, so nothing unshaped reaches argv.
+BECAUSE = re.compile(
+    r"^(review|decision|message|task|escalation|artifact):[A-Za-z0-9][A-Za-z0-9._:@+-]{0,127}$"
+)
+
+
+def because_option(builder: ArgumentBuilder, body: Mapping[str, Any]) -> None:
+    value = body.get("because")
+    if value in (None, ""):
+        return
+    if not isinstance(value, str) or not BECAUSE.match(value):
+        raise ArgumentError(
+            "field 'because' must be TYPE:ID with TYPE one of review, decision, message, "
+            "task, escalation, artifact"
+        )
+    builder.option("--because", value)
 
 
 def list_tasks(request: Request) -> Any:
@@ -130,6 +150,7 @@ def set_task_status(request: Request) -> Any:
     builder.identifier(body, "actor", "--actor", required=True)
     builder.integer(body, "if_revision", "--if-revision", required=True)
     builder.text(body, "note", "--note")
+    because_option(builder, body)
     return request.run(builder, with_session=True)
 
 
@@ -142,6 +163,7 @@ def release_task(request: Request) -> Any:
     builder.identifier(body, "actor", "--actor", required=True)
     builder.integer(body, "if_revision", "--if-revision", required=True)
     builder.text(body, "note", "--note")
+    because_option(builder, body)
     return request.run(builder, with_session=True)
 
 

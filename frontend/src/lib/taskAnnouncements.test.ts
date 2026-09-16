@@ -43,6 +43,12 @@ describe("claimAnnouncement", () => {
 });
 
 describe("transitionAnnouncement", () => {
+  it("names the cause when the change cites one", () => {
+    expect(
+      transitionAnnouncement("T-1", "blocked", moved({ revision: 3, status: "blocked" }), { type: "review", id: "REV-1" }),
+    ).toBe("T-1 moved to blocked at revision 3. Because of review REV-1.");
+  });
+
   it("names target, revision from the response, and the receipt", () => {
     expect(
       transitionAnnouncement("T-1", "review", moved({ revision: 3, status: "review", audit_range: [9, 9] })),

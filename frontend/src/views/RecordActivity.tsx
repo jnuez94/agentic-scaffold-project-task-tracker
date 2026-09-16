@@ -8,6 +8,7 @@
  */
 
 import type { AuditEntry } from "../api/contract.ts";
+import { AuditDetail } from "../components/AuditDetail.tsx";
 import { EmptyState, ErrorBanner, SkeletonRows } from "../components/Feedback.tsx";
 import { absoluteTime, relativeTime } from "../lib/format.ts";
 import { humanize } from "../lib/labels.ts";
@@ -44,7 +45,7 @@ export function ActivityTimeline({ entries }: { entries: AuditEntry[] }) {
               {relativeTime(entry.created_at)}
               {entry.session_id ? ` · session ${entry.session_id}` : ""}
             </div>
-            {entry.detail ? <div className="small muted">{entry.detail}</div> : null}
+            {entry.detail ? <AuditDetail detail={entry.detail} className="small muted" /> : null}
           </div>
         </li>
       ))}
