@@ -8,7 +8,8 @@ import { DataTable } from "../components/DataTable.tsx";
 import { ErrorBanner } from "../components/Feedback.tsx";
 import { filterRows } from "../lib/filters.ts";
 import { CLEAR_FILTER_HINT } from "../lib/copy.ts";
-import { isTruncated } from "../lib/pagination.ts";
+import { isTruncated, rangeLabel } from "../lib/pagination.ts";
+import { anyPicked, whereClauses, type PickerValues } from "../lib/recordPickers.ts";
 import { useApp } from "../state/AppContext.tsx";
 import { useRecordData } from "../state/useRecordData.ts";
 import type { RouteName } from "../state/useHashRoute.ts";
@@ -16,6 +17,8 @@ import { RECORD_CONFIGS } from "./recordConfigs.tsx";
 import { withActionColumn } from "./recordActionColumn.tsx";
 import { INSPECTOR_CONFIGS } from "./inspectorConfigs.tsx";
 import { RecordPanels } from "./RecordPanels.tsx";
+import { RecordPickers } from "./RecordPickers.tsx";
+import type { Agent } from "../api/contract.ts";
 
 const REQUEST_LIMIT = 500;
 
@@ -27,9 +30,12 @@ export function RecordsView<T = Record<string, unknown>>({
   selectedKey,
   detail = null,
   onDetail,
+  agents = [],
 }: {
   route: RouteName;
   filter: string;
+  /** For the agent pickers; the shell already holds the list. */
+  agents?: readonly Agent[];
   /** Bumped by a caller to force a refetch, e.g. after sending a broadcast. */
   reloadKey?: number;
   /** Receives the already-loaded row, so a detail view needs no extra query. */
@@ -47,7 +53,8 @@ export function RecordsView<T = Record<string, unknown>>({
   const { coordination, identity } = useApp();
   const config = RECORD_CONFIGS[route];
   const inspectorConfig = INSPECTOR_CONFIGS[route];
-  const [statusValue, setStatusValue] = useState("");
+  const [picked, setPicked] = useState<PickerValues>({});
+  const where = useMemo(() => whereClauses(picked), [picked]);
   const [acting, setActing] = useState<Record<string, unknown> | null>(null);
   // Selection is view state only. These entities have no `show` command, so a
   // deep-link route would promise a record the CLI cannot resolve on load.
@@ -65,7 +72,7 @@ export function RecordsView<T = Record<string, unknown>>({
     coordination,
     route,
     config,
-    statusValue,
+    where,
     reloadKey,
   );
 
@@ -161,27 +168,21 @@ export function RecordsView<T = Record<string, unknown>>({
           <p className="small muted">{config.description}</p>
         </div>
 
-        <div className="queue-toolbar">
-          {config.statusOptions ? (
-            <div className="control">
-              <label htmlFor="record-status">
-                {config.statusOptions.label}
-              </label>
-              <select
-                id="record-status"
-                value={statusValue}
-                onChange={(event) => setStatusValue(event.target.value)}
-              >
-                <option value="">All</option>
-                {config.statusOptions.values.map((value) => (
-                  <option key={value} value={value}>
-                    {value}
-                  </option>
-                ))}
-              </select>
-            </div>
-          ) : null}
-        </div>
+        {config.pickers ? (
+          <div className="queue-toolbar">
+            {/* UI-70: each picker is a --where clause, so choosing one asks
+                the CLI for the newest 500 matches rather than narrowing the
+                500 already here. The filter box beside them stays over what
+                is loaded; free text has no CLI equivalent. */}
+            <RecordPickers
+              pickers={config.pickers}
+              values={picked}
+              agents={agents}
+              idPrefix={route}
+              onChange={(column, value) => setPicked((current) => ({ ...current, [column]: value }))}
+            />
+          </div>
+        ) : null}
 
         {records.error ? (
           <ErrorBanner error={records.error} onRetry={records.refresh} />
@@ -208,6 +209,18 @@ export function RecordsView<T = Record<string, unknown>>({
             ((records.data ?? [])).length,
             REQUEST_LIMIT,
           )}
+          pagerCopy={
+            anyPicked(picked)
+              ? {
+                  rangeLabel: (page, size, total) =>
+                    rangeLabel(page, size, total, {
+                      matching: true,
+                      filtered: Boolean(filter),
+                      truncated: isTruncated((records.data ?? []).length, REQUEST_LIMIT),
+                    }),
+                }
+              : undefined
+          }
           loading={records.loading}
           loaded={records.loaded}
           selectedKey={

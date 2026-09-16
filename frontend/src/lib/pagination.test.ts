@@ -108,6 +108,16 @@ describe("rangeLabel", () => {
     expect(rangeLabel(1, 25, 500, { truncated: true })).toContain("500+");
   });
 
+  it("counts matches when the request itself was narrowed", () => {
+    expect(rangeLabel(1, 10, 37, { matching: true })).toBe("Showing 1–10 of 37 matching");
+    expect(rangeLabel(1, 50, 37, { matching: true })).toBe("37 matching");
+    expect(rangeLabel(1, 10, 500, { matching: true, truncated: true })).toBe(
+      "Showing 1–10 of 500+ matching",
+    );
+    expect(rangeLabel(1, 50, 5, { matching: true, filtered: true })).toBe("5 matching (filtered)");
+    expect(rangeLabel(1, 50, 0, { matching: true })).toBe("No rows match");
+  });
+
   it("uses the singular for one row", () => {
     expect(rangeLabel(1, 25, 1)).toBe("1 row loaded");
   });

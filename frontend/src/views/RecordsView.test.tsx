@@ -113,7 +113,9 @@ describe("RecordsView across a route change", () => {
     await screen.findByText("ART-1");
 
     await userEvent.selectOptions(screen.getByLabelText("Status"), "accepted");
-    await waitFor(() => expect(calls.some((u) => u.includes("status=accepted"))).toBe(true));
+    await waitFor(() =>
+      expect(calls.some((u) => u.includes("where=status%3Aeq%3Daccepted"))).toBe(true),
+    );
 
     rerender(wrap(impl, <RecordsView key="decisions" route="decisions" filter="" />));
     await screen.findByText("DEC-1");
@@ -122,7 +124,7 @@ describe("RecordsView across a route change", () => {
     // vocabularies do not even overlap.
     const decisionCalls = calls.filter((u) => u.includes("/api/decisions"));
     expect(decisionCalls.length).toBeGreaterThan(0);
-    expect(decisionCalls.every((u) => !u.includes("status="))).toBe(true);
+    expect(decisionCalls.every((u) => !u.includes("where="))).toBe(true);
   });
 
   it("keeps rows on screen while the same route refreshes", async () => {

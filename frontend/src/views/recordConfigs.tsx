@@ -14,6 +14,7 @@ import { preview, relativeTime } from "../lib/format.ts";
 import { list, text } from "../lib/rowValue.ts";
 import { isRecoverable } from "../lib/staleness.ts";
 import type { RouteName } from "../state/useHashRoute.ts";
+import type { PickerSpec } from "../lib/recordPickers.ts";
 
 export interface RecordConfig {
   title: string;
@@ -22,10 +23,11 @@ export interface RecordConfig {
   emptyHint: string;
   filterFields: string[];
   filterPlaceholder: string;
-  statusOptions?: { param: string; label: string; values: string[] };
+  /** Structured pickers, each one `--where` clause on the request (UI-70). */
+  pickers?: PickerSpec[];
   /** The server-side order restored when a sort is cleared. */
   defaultOrder: string;
-  load: (coordination: Coordination, query: Record<string, string>) => Promise<unknown[]>;
+  load: (coordination: Coordination, query: Record<string, string | string[]>) => Promise<unknown[]>;
   columns: Column<never>[];
   /**
    * An optional per-row action for this entity.
@@ -57,6 +59,10 @@ export const RECORD_CONFIGS: Partial<Record<RouteName, RecordConfig>> = {
     emptyHint: "Register one with `coordination agent add`.",
     filterFields: ["id", "name", "role", "goal"],
     filterPlaceholder: "Filter loaded agents…",
+    pickers: [
+      { column: "status", label: "Status", kind: "enum", values: ["active", "inactive"] },
+      { column: "actor_type", label: "Type", kind: "enum", values: ["ai", "human", "service"] },
+    ],
     defaultOrder: "the CLI order: role, then id",
     load: (c, q) => c.agents({ all: "1", ...q }),
     columns: columns<Record<string, string>>([
@@ -76,7 +82,10 @@ export const RECORD_CONFIGS: Partial<Record<RouteName, RecordConfig>> = {
     emptyHint: "Start one with `coordination session start`.",
     filterFields: ["id", "agent_id", "harness", "model"],
     filterPlaceholder: "Filter loaded sessions…",
-    statusOptions: { param: "status", label: "Status", values: ["active", "ended"] },
+    pickers: [
+      { column: "status", label: "Status", kind: "enum", values: ["active", "ended"] },
+      { column: "agent_id", label: "Agent", kind: "agent" },
+    ],
     defaultOrder: "the CLI order: started, then id",
     load: (c, q) => c.sessions(q),
     // Offered only on rows the CLI would actually accept, so the console never
@@ -107,6 +116,10 @@ export const RECORD_CONFIGS: Partial<Record<RouteName, RecordConfig>> = {
     emptyHint: "Add one with `coordination review add`.",
     filterFields: ["id", "reviewer_id", "scope", "artifact_uri", "task_id"],
     filterPlaceholder: "Filter loaded reviews…",
+    pickers: [
+      { column: "decision", label: "Decision", kind: "enum", values: ["accepted", "conditionally_accepted", "changes_requested", "rejected"] },
+      { column: "reviewer_id", label: "Reviewer", kind: "agent" },
+    ],
     defaultOrder: "the CLI order: created, then id",
     load: (c, q) => c.reviews(q),
     columns: columns<Record<string, string>>([
@@ -126,6 +139,10 @@ export const RECORD_CONFIGS: Partial<Record<RouteName, RecordConfig>> = {
     emptyHint: "Add one with `coordination decision add`.",
     filterFields: ["id", "title", "owner_id", "context", "decision"],
     filterPlaceholder: "Filter loaded decisions…",
+    pickers: [
+      { column: "status", label: "Status", kind: "enum", values: ["proposed", "accepted", "superseded", "rejected"] },
+      { column: "owner_id", label: "Owner", kind: "agent" },
+    ],
     defaultOrder: "the CLI order: created, then id",
     load: (c, q) => c.decisions(q),
     columns: columns<Record<string, string>>([
@@ -144,6 +161,11 @@ export const RECORD_CONFIGS: Partial<Record<RouteName, RecordConfig>> = {
     emptyHint: "Send one with `coordination message send`.",
     filterFields: ["id", "sender_id", "recipient", "body", "tags", "task_id"],
     filterPlaceholder: "Filter loaded messages…",
+    pickers: [
+      { column: "sender_id", label: "From", kind: "agent" },
+      { column: "recipient", label: "To", kind: "recipient" },
+      { column: "task_id", label: "Task", kind: "text" },
+    ],
     defaultOrder: "the CLI order: created, then id",
     load: (c, q) => c.messages(q),
     columns: columns<Record<string, string>>([
@@ -180,7 +202,11 @@ export const RECORD_CONFIGS: Partial<Record<RouteName, RecordConfig>> = {
     emptyHint: "Add one with `coordination artifact add`.",
     filterFields: ["id", "uri", "owner_id", "type"],
     filterPlaceholder: "Filter loaded artifacts…",
-    statusOptions: { param: "status", label: "Status", values: ["draft", "review", "accepted", "superseded"] },
+    pickers: [
+      { column: "status", label: "Status", kind: "enum", values: ["draft", "review", "accepted", "superseded"] },
+      { column: "type", label: "Type", kind: "text" },
+      { column: "owner_id", label: "Owner", kind: "agent" },
+    ],
     defaultOrder: "the CLI order: updated, then id",
     load: (c, q) => c.artifacts(q),
     columns: columns<Record<string, string | string[]>>([
@@ -199,7 +225,10 @@ export const RECORD_CONFIGS: Partial<Record<RouteName, RecordConfig>> = {
     emptyHint: "A healthy project usually has none open.",
     filterFields: ["id", "raised_by", "owner", "issue", "requested_decision"],
     filterPlaceholder: "Filter loaded escalations…",
-    statusOptions: { param: "status", label: "Status", values: ["open", "in_review", "resolved", "closed_no_action"] },
+    pickers: [
+      { column: "status", label: "Status", kind: "enum", values: ["open", "in_review", "resolved", "closed_no_action"] },
+      { column: "raised_by", label: "Raised by", kind: "agent" },
+    ],
     defaultOrder: "the CLI order: created, then id",
     load: (c, q) => c.escalations(q),
     columns: columns<Record<string, string>>([

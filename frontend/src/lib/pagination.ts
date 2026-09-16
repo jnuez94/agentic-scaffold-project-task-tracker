@@ -59,19 +59,27 @@ export function rangeLabel(
   page: number,
   size: number,
   total: number,
-  options: { filtered?: boolean; truncated?: boolean } = {},
+  options: { filtered?: boolean; truncated?: boolean; matching?: boolean } = {},
 ): string {
   const noun = total === 1 ? "row" : "rows";
-  if (total === 0) return options.filtered ? "No rows match this filter" : "No rows loaded";
+  if (total === 0) {
+    if (options.filtered) return "No rows match this filter";
+    return options.matching ? "No rows match" : "No rows loaded";
+  }
 
   const { first, last } = pageBounds(page, size, total);
   const scope = options.filtered ? " (filtered)" : "";
   const more = options.truncated ? "+" : "";
-  const base =
-    total <= size
-      ? `${total}${more} ${noun} loaded${scope}`
-      : `Showing ${first}–${last} of ${total}${more} loaded${scope}`;
-  return base;
+  // "matching" when a picker narrowed the request itself (UI-70): the window
+  // is then the newest N matches, and "loaded" would undersell what it is.
+  if (options.matching) {
+    return total <= size
+      ? `${total}${more} matching${scope}`
+      : `Showing ${first}–${last} of ${total}${more} matching${scope}`;
+  }
+  return total <= size
+    ? `${total}${more} ${noun} loaded${scope}`
+    : `Showing ${first}–${last} of ${total}${more} loaded${scope}`;
 }
 
 /**

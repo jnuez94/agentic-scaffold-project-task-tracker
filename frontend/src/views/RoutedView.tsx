@@ -87,6 +87,7 @@ export function RoutedView({
           key={route.name}
           route={route.name}
           filter={filter}
+          agents={agents}
           detail={route.detail}
           onDetail={(id) => navigate(route.name, id)}
         />

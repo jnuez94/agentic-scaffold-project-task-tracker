@@ -21,15 +21,17 @@ export function useRecordData(
   coordination: Coordination,
   route: RouteName,
   config: RecordConfig | undefined,
-  statusValue: string,
+  where: readonly string[],
   reloadKey: number,
 ) {
-  const statusParam = config?.statusOptions?.param;
+  // Compared by value: the same clauses in a new array are the same request.
+  const whereKey = where.join("\u0000");
   const query = useMemo(() => {
-    const built: Record<string, string> = { limit: String(REQUEST_LIMIT) };
-    if (statusParam && statusValue) built[statusParam] = statusValue;
+    const built: Record<string, string | string[]> = { limit: String(REQUEST_LIMIT) };
+    if (where.length > 0) built["where"] = [...where];
     return built;
-  }, [statusParam, statusValue]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [whereKey]);
 
   const records = useResource(
     () => (config ? config.load(coordination, query) : Promise.resolve([])),
