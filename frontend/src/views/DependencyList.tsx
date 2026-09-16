@@ -20,6 +20,7 @@ import { EnumPill } from "../components/Pill.tsx";
 import { describeThrown } from "../lib/copy.ts";
 import { orderDependencies } from "../lib/dependency.ts";
 import { useApp } from "../state/AppContext.tsx";
+import { receiptSuffix } from "../lib/receipt.ts";
 
 export function DependencyList({
   taskId,
@@ -42,7 +43,7 @@ export function DependencyList({
     setFailure(undefined);
     setPendingEdge(edgeOf(dependency));
     try {
-      await coordination.resolveDependency({
+      const resolved = await coordination.resolveDependency({
         task: taskId,
         depends_on: dependency.depends_on_task_id,
         type: dependency.dependency_type,
@@ -52,7 +53,8 @@ export function DependencyList({
       // survives — "resolved" must not read as "removed".
       announce(
         `${taskId} no longer waits on ${dependency.depends_on_task_id}. ` +
-          "The dependency is kept in the record as resolved.",
+          "The dependency is kept in the record as resolved." +
+          receiptSuffix(resolved),
       );
       onChanged();
     } catch (caught) {

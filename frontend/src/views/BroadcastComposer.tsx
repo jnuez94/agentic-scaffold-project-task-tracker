@@ -16,6 +16,7 @@ import { newBroadcastId } from "../lib/messageId.ts";
 import { absoluteTime } from "../lib/format.ts";
 import { useApp } from "../state/AppContext.tsx";
 import { useFocusTrap } from "../state/useFocusTrap.ts";
+import { receiptSuffix } from "../lib/receipt.ts";
 
 export interface BroadcastComposerProps {
   senderId: string;
@@ -102,7 +103,7 @@ export function BroadcastComposer({
       setTask("");
       setTags("");
       attemptId.current = null;
-      announce(`Broadcast ${created.id ?? request.id} sent to the team.`);
+      announce(`Broadcast ${created.id ?? request.id} sent to the team.${receiptSuffix(created)}`);
       onSent();
     } catch (caught) {
       const failure =

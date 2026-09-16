@@ -121,7 +121,7 @@ class RequestHandlerMixin:
         try:
             body = self.body_reader.read(self.headers, self.rfile) if method == "POST" else {}
             session = (self.headers.get(SESSION_HEADER) or "").strip() or None
-            result = self.router.dispatch(
+            result, receipt = self.router.dispatch_with_receipt(
                 method, path, parse_qs(query, keep_blank_values=True), body, session
             )
         except CoordinationError as error:
@@ -138,7 +138,9 @@ class RequestHandlerMixin:
         if isinstance(result, TextResponse):
             self.respond(HTTPStatus.OK, result.encode(), result.content_type)
             return
-        self.respond_json(HTTPStatus.OK, {"ok": True, "data": result})
+        # The receipt rides beside data, as the CLI's own envelope carries it,
+        # so the browser can say "Recorded as audit N" about what it just did.
+        self.respond_json(HTTPStatus.OK, {"ok": True, "data": result, **receipt})
 
     def log_error_safely(self, exc: BaseException) -> None:  # pragma: no cover
         sys.stderr.write(f"[coordination-ui] unhandled {type(exc).__name__}: {exc}\n")

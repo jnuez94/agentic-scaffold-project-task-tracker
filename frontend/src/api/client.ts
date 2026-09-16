@@ -11,6 +11,9 @@ export const SESSION_HEADER = "X-Coordination-Session";
 
 export type Query = Record<string, string | number | boolean | undefined | null>;
 
+/** A mutation result as the console holds it: the data, plus the receipt when the CLI sent one. */
+export type Mutated<T> = T & { audit_range?: [number, number] };
+
 export type SessionSource = () => string | null;
 
 export class ApiClient {
@@ -71,13 +74,24 @@ export class ApiClient {
     return this.unwrap<T>(response);
   }
 
-  async post<T>(path: string, body: unknown = {}): Promise<T> {
+  /**
+   * A mutation's result, with the CLI's receipt merged in: since 1.4.0 the
+   * envelope carries `audit_range` beside `data`, and the console keeps it
+   * so a confirmation can name what was recorded.
+   */
+  async post<T>(path: string, body: unknown = {}): Promise<Mutated<T>> {
     const response = await this.fetchImpl(this.url(path), {
       method: "POST",
       headers: this.headers(true),
       body: JSON.stringify(body),
     });
-    return this.unwrap<T>(response);
+    const payload = await this.safeJson(response);
+    const data = this.unwrapPayload<T>(payload, response);
+    const range = (payload as { audit_range?: unknown } | null)?.audit_range;
+    if (data && typeof data === "object" && Array.isArray(range)) {
+      return { ...(data as object), audit_range: range } as Mutated<T>;
+    }
+    return data as Mutated<T>;
   }
 
   /** Fetch a text body (the Markdown export). */
@@ -91,7 +105,10 @@ export class ApiClient {
   }
 
   private async unwrap<T>(response: Response): Promise<T> {
-    const payload = await this.safeJson(response);
+    return this.unwrapPayload<T>(await this.safeJson(response), response);
+  }
+
+  private unwrapPayload<T>(payload: unknown, response: Response): T {
     if (!response.ok) throw ApiError.fromPayload(payload, response.status);
     if (payload && typeof payload === "object" && "data" in payload) {
       return (payload as { data: T }).data;

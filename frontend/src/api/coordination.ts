@@ -51,7 +51,10 @@ export class Coordination {
   assignTask = (id: string, body: unknown) =>
     this.api.post<{ revision: number; assignees: string[] }>(`/api/tasks/${id}/assign`, body);
   claimTask = (id: string, body: unknown) =>
-    this.api.post<{ revision: number; status: string }>(`/api/tasks/${id}/claim`, body);
+    this.api.post<{ revision: number; status: string; reaped_session?: string | null }>(
+      `/api/tasks/${id}/claim`,
+      body,
+    );
   setTaskStatus = (id: string, body: unknown) =>
     this.api.post<{ revision: number; status: string }>(`/api/tasks/${id}/status`, body);
   releaseTask = (id: string, body: unknown) =>

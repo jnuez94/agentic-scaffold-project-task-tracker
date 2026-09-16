@@ -7,6 +7,7 @@ import { ApiError } from "../api/errors.ts";
 import { ErrorBanner } from "../components/Feedback.tsx";
 import { useApp } from "../state/AppContext.tsx";
 import { SETUP_PENDING } from "../lib/copy.ts";
+import { receiptSuffix } from "../lib/receipt.ts";
 
 export function AddEvidenceForm({
   taskId,
@@ -32,13 +33,13 @@ export function AddEvidenceForm({
     setBusy(true);
     setError(undefined);
     try {
-      await coordination.addEvidence({
+      const added = await coordination.addEvidence({
         task: taskId,
         uri,
         type,
         actor: identity.actorId,
       });
-      announce(`Evidence added to ${taskId}.`);
+      announce(`Evidence added to ${taskId}.${receiptSuffix(added)}`);
       setUri("");
       onAdded();
     } catch (caught) {

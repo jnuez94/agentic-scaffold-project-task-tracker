@@ -23,6 +23,7 @@ import { describeAge, recoveryCaution, secondsSinceSeen, tasksClaimedBy } from "
 import { useApp } from "../state/AppContext.tsx";
 import { useFocusTrap } from "../state/useFocusTrap.ts";
 import { FormField } from "../components/FormField.tsx";
+import { receiptSuffix } from "../lib/receipt.ts";
 
 interface Recovered {
   id: string;
@@ -89,7 +90,8 @@ export function SessionRecovery({
         : [];
       setRecovered(list);
       announce(
-        `Session ${session.id} recovered. ${list.length} task${list.length === 1 ? "" : "s"} blocked.`,
+        `Session ${session.id} recovered. ${list.length} task${list.length === 1 ? "" : "s"} blocked.` +
+          receiptSuffix(result),
       );
       onRecovered();
     } catch (caught) {

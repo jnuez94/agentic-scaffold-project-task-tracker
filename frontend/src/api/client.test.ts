@@ -144,3 +144,32 @@ describe("ApiClient.withoutSession", () => {
     expect(fetchImpl.mock.calls[0]?.[0]).toBe("/base/api/meta");
   });
 });
+
+describe("ApiClient.post receipts", () => {
+  it("merges the envelope's audit_range into an object result", async () => {
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValue(jsonResponse({ ok: true, data: { revision: 2 }, audit_range: [1806, 1806] }));
+    const client = new ApiClient(() => null, "", fetchImpl);
+    await expect(client.post("/api/tasks/T-1/claim", {})).resolves.toEqual({
+      revision: 2,
+      audit_range: [1806, 1806],
+    });
+  });
+
+  it("returns the data untouched when the envelope carries no receipt", async () => {
+    const fetchImpl = vi.fn().mockResolvedValue(jsonResponse({ ok: true, data: { revision: 2 } }));
+    const client = new ApiClient(() => null, "", fetchImpl);
+    await expect(client.post("/api/tasks/T-1/claim", {})).resolves.toEqual({ revision: 2 });
+  });
+
+  it("still raises the stable code on a refused mutation", async () => {
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValue(jsonResponse({ ok: false, error: { code: "status_mismatch", message: "x" } }, 409));
+    const client = new ApiClient(() => null, "", fetchImpl);
+    await expect(client.post("/api/decisions/D-1/status", {})).rejects.toMatchObject({
+      code: "status_mismatch",
+    });
+  });
+});

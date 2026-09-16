@@ -43,6 +43,19 @@ class ReadEndpointTests(LiveServerTestCase):
         self.assertEqual(len(payload["data"]), 1)
         self.assertIn("id", payload["data"][0])
 
+    def test_a_mutation_envelope_carries_its_audit_receipt(self) -> None:
+        status, payload = self.post_json(
+            "/api/agents", {"id": "receipt-agent", "name": "Receipt", "role": "tester"}
+        )
+        self.assertEqual(status, 200)
+        first, last = payload["audit_range"]
+        self.assertIsInstance(first, int)
+        self.assertLessEqual(first, last)
+
+    def test_a_read_envelope_carries_no_receipt(self) -> None:
+        _, payload = self.get_json("/api/meta")
+        self.assertNotIn("audit_range", payload)
+
     def test_unknown_route_is_404_with_a_stable_code(self) -> None:
         status, payload = self.get_json("/api/nope")
         self.assertEqual(status, 404)

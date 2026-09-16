@@ -20,6 +20,7 @@ import {
 } from "../lib/dependency.ts";
 import { describeThrown } from "../lib/copy.ts";
 import { useApp } from "../state/AppContext.tsx";
+import { receiptSuffix } from "../lib/receipt.ts";
 
 export function DependencyForm({
   taskId,
@@ -57,14 +58,15 @@ export function DependencyForm({
     setError(undefined);
     setPending(true);
     try {
-      await coordination.addDependency(
+      const added = await coordination.addDependency(
         buildDependencyRequest(draft, { taskId, actorId: identity.actorId! }),
       );
       // Outcome and consequence, per the UI-32 ruling: what changed, and what
       // it now means for the task.
       announce(
         `${taskId} now records ${draft.dependsOn.trim()} as ${draft.type}. ` +
-          `${draft.type === "blocks" ? "It cannot proceed until that task is done." : "Recorded as context."}`,
+          `${draft.type === "blocks" ? "It cannot proceed until that task is done." : "Recorded as context."}` +
+          receiptSuffix(added),
       );
       setDraft({ dependsOn: "", type: draft.type, rationale: "" });
       onAdded();

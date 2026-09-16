@@ -59,8 +59,14 @@ class ResponseParser:
         )
 
     @classmethod
-    def data(cls, result: CommandResult) -> Any:
-        """Return the ``data`` payload of a successful JSON command."""
+    def envelope(cls, result: CommandResult) -> dict[str, Any]:
+        """Return the whole success envelope of a JSON command.
+
+        Since 1.4.0 a mutation's envelope carries ``audit_range`` beside
+        ``data`` — the receipt of what it wrote. Callers that only want the
+        payload use :meth:`data`; the console's request layer keeps the
+        receipt so the browser can name it.
+        """
 
         if not result.succeeded:
             raise cls.error_from(result)
@@ -75,7 +81,13 @@ class ResponseParser:
                 },
                 exit_code=5,
             )
-        return payload.get("data")
+        return payload
+
+    @classmethod
+    def data(cls, result: CommandResult) -> Any:
+        """Return the ``data`` payload of a successful JSON command."""
+
+        return cls.envelope(result).get("data")
 
     @classmethod
     def text(cls, result: CommandResult) -> str:

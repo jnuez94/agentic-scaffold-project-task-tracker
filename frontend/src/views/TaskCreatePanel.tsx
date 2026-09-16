@@ -42,6 +42,7 @@ import {
 } from "../lib/taskDraft.ts";
 import { useApp } from "../state/AppContext.tsx";
 import { TaskCreateDetails } from "./TaskCreateDetails.tsx";
+import { receiptSuffix } from "../lib/receipt.ts";
 
 export function TaskCreatePanel({
   existingIds,
@@ -105,7 +106,10 @@ export function TaskCreatePanel({
         buildCreateRequest(draft, identity.actorId!),
       );
       const id = created.id ?? draft.id.trim();
-      announce(`${id} filed. It is in todo${draft.assignee ? ` and assigned to ${draft.assignee}` : " and unassigned"}.`);
+      announce(
+        `${id} filed. It is in todo${draft.assignee ? ` and assigned to ${draft.assignee}` : " and unassigned"}.` +
+          receiptSuffix(created),
+      );
       onCreated(id);
     } catch (caught) {
       const failure =

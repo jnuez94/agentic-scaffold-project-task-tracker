@@ -37,6 +37,7 @@ import {
   AssignmentResult,
   CurrentAssignees,
 } from "./AssigneeFields.tsx";
+import { receiptSuffix } from "../lib/receipt.ts";
 
 export function AssigneeEditor({
   task,
@@ -107,7 +108,8 @@ export function AssigneeEditor({
       );
       announce(
         `Assignees updated. Now: ${(saved.assignees ?? result).join(", ") || "nobody"}. ` +
-          `Revision ${saved.revision}.`,
+          `Revision ${saved.revision}.` +
+          receiptSuffix(saved),
       );
       setDraft(EMPTY_DRAFT);
       onSaved();

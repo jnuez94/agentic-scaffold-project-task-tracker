@@ -102,7 +102,12 @@ class CoordinationCLI:
     def run(self, args: Sequence[str], session: str | None = None) -> Any:
         """Run a JSON command and return its ``data`` payload."""
 
-        return self.parser.data(self.invoke(args, session))
+        return self.run_envelope(args, session).get("data")
+
+    def run_envelope(self, args: Sequence[str], session: str | None = None) -> dict[str, Any]:
+        """Run a JSON command and return its whole success envelope."""
+
+        return self.parser.envelope(self.invoke(args, session))
 
     def run_text(self, args: Sequence[str], session: str | None = None) -> str:
         """Run a command whose success output is plain text (``export``)."""

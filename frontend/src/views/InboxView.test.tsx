@@ -46,7 +46,7 @@ function inboxFetch(inbox: Inbox, markStatus = 200) {
   return { impl: impl as unknown as typeof fetch, calls };
 }
 
-function Harness({ onMarked }: { onMarked: (cursor: number) => void }) {
+function Harness({ onMarked }: { onMarked: (mark: { cursor: number }) => void }) {
   const { coordination } = useApp();
   const inbox = useInbox(coordination, "alice");
   return <InboxView inbox={inbox} nameFor={(id) => id} onMarked={onMarked} />;
@@ -100,7 +100,7 @@ describe("InboxView", () => {
 
     await userEvent.click(screen.getByRole("button", { name: "Mark all as read" }));
 
-    await waitFor(() => expect(onMarked).toHaveBeenCalledWith(40));
+    await waitFor(() => expect(onMarked).toHaveBeenCalledWith(expect.objectContaining({ cursor: 40 })));
     const mark = calls.find((call) => call.url.includes("mark-read"));
     expect(mark?.method).toBe("POST");
   });

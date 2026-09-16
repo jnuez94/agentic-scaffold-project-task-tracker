@@ -27,6 +27,7 @@ import { describeThrown } from "../lib/copy.ts";
 import { tasksClaimedBy } from "../lib/staleness.ts";
 import { useApp } from "../state/AppContext.tsx";
 import { useResource } from "../state/useResource.ts";
+import { receiptSuffix } from "../lib/receipt.ts";
 
 export function EndSessionControl({
   sessionId,
@@ -53,11 +54,12 @@ export function EndSessionControl({
     setFailure(undefined);
     setPending(true);
     try {
-      await coordination.endSession(sessionId);
+      const ended = await coordination.endSession(sessionId);
       // Outcome and consequence (UI-32). "Orderly" is the point: this is the
       // finishing-for-the-day action, not an intervention.
       announce(
-        `Session ${sessionId} ended. Nothing was blocked and no claims were touched.`,
+        `Session ${sessionId} ended. Nothing was blocked and no claims were touched.` +
+          receiptSuffix(ended),
       );
       onEnded();
     } catch (caught) {

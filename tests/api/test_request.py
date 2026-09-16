@@ -20,8 +20,15 @@ class RecordingCLI:
         self.calls: list[tuple[list[str], str | None]] = []
 
     def run(self, args: Sequence[str], session: str | None = None) -> Any:
+        return self.run_envelope(args, session).get("data")
+
+    def run_envelope(self, args: Sequence[str], session: str | None = None) -> dict[str, Any]:
         self.calls.append((list(args), session))
-        return {"ran": list(args)}
+        envelope: dict[str, Any] = {"ok": True, "data": {"ran": list(args)}}
+        # Mutations carry a receipt since 1.4.0; reads do not.
+        if "list" not in args:
+            envelope["audit_range"] = [7, 8]
+        return envelope
 
     def run_text(self, args: Sequence[str], session: str | None = None) -> str:
         self.calls.append((list(args), session))
@@ -160,6 +167,19 @@ class RunTests(unittest.TestCase):
     def test_run_text_returns_the_string(self) -> None:
         request, _ = make_request()
         self.assertEqual(request.run_text(ArgumentBuilder("export")), "# report")
+
+
+class ReceiptTests(unittest.TestCase):
+    def test_a_mutation_leaves_its_audit_range_on_the_request(self) -> None:
+        request, _ = make_request()
+        data = request.run(ArgumentBuilder("task", "create"))
+        self.assertEqual(data, {"ran": ["task", "create"]})
+        self.assertEqual(request.receipt, {"audit_range": [7, 8]})
+
+    def test_a_read_leaves_no_receipt(self) -> None:
+        request, _ = make_request()
+        request.run(ArgumentBuilder("task", "list"))
+        self.assertEqual(request.receipt, {})
 
 
 if __name__ == "__main__":

@@ -8,6 +8,7 @@
  * record into a guess. No per-message state, no notifications.
  */
 
+import type { InboxMark } from "../api/contract.ts";
 import type { InboxState } from "../state/useInbox.ts";
 import { EmptyState, ErrorBanner, SkeletonRows } from "../components/Feedback.tsx";
 import { FIRST_RUN_LINE, OWN_TEAM_RULE, unreadCountLabel } from "../lib/inbox.ts";
@@ -22,7 +23,7 @@ export function InboxView({
   inbox: InboxState;
   nameFor: (id: string) => string;
   /** Called with the mark the CLI returned, for the announcement. */
-  onMarked: (cursor: number) => void;
+  onMarked: (mark: InboxMark) => void;
 }) {
   const { resource, reading, marking, markError, markAllRead, actorId } = inbox;
 
@@ -31,7 +32,7 @@ export function InboxView({
 
   const mark = async () => {
     const result = await markAllRead();
-    if (result) onMarked(result.cursor);
+    if (result) onMarked(result);
   };
 
   return (

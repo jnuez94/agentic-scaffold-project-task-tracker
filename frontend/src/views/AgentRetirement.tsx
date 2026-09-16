@@ -21,6 +21,7 @@ import { Icon } from "../components/icons.tsx";
 import { outstandingAssignments, retireErrorCopy } from "../lib/retirement.ts";
 import { useApp } from "../state/AppContext.tsx";
 import { useFocusTrap } from "../state/useFocusTrap.ts";
+import { receiptSuffix } from "../lib/receipt.ts";
 
 export function AgentRetirement({
   agent,
@@ -61,14 +62,14 @@ export function AgentRetirement({
     setError(null);
     try {
       // One call. Agents carry no revision, so there is no stale-revision path.
-      await coordination.updateAgent(agent.id, {
+      const updated = await coordination.updateAgent(agent.id, {
         status: retiring ? "inactive" : "active",
         actor: identity.actorId,
       });
       announce(
         retiring
-          ? `${agent.name} is retired. It can no longer start sessions or claim work.`
-          : `${agent.name} is active again.`,
+          ? `${agent.name} is retired. It can no longer start sessions or claim work.${receiptSuffix(updated)}`
+          : `${agent.name} is active again.${receiptSuffix(updated)}`,
       );
       onChanged();
       onClose();

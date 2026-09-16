@@ -18,6 +18,7 @@
  * Spec: docs/ux-reassign-work-spec.md sections 5 and 6.
  */
 
+import { errorCopy, hasErrorCopy } from "./errorCopy.ts";
 import type { Agent, TaskDetail, TaskListRow } from "../api/contract.ts";
 import { isSelectableActor } from "./labels.ts";
 
@@ -133,21 +134,10 @@ export function buildAssignRequest(
  * stable surface and messages are not.
  */
 export function assignErrorCopy(code: string, message: string, subject?: string): string {
-  switch (code) {
-    case "task_claim_owner_mismatch":
-      return (
-        `${subject ?? "That assignee"} holds the active claim and cannot be removed. ` +
-        "Release the claim or recover the session that holds it, then try again."
-      );
-    case "stale_task_revision":
-      return "This task changed while you were editing. Reload latest; your draft will be preserved.";
-    case "not_found":
-      return `${subject ?? "That agent"} no longer exists as an agent. Refresh the agent list.`;
-    default:
-      // Reachable only if the panel let through something it should have
-      // prevented, so show what the CLI actually said rather than paraphrasing.
-      return message;
-  }
+  // One mapping owns the copy (UI-38). A code it does not know is reachable
+  // only if the panel let through something it should have prevented, so the
+  // CLI's own message is shown rather than a paraphrase.
+  return hasErrorCopy(code) ? errorCopy(code, { subject, surface: "assign" }) : message;
 }
 
 /**

@@ -37,6 +37,18 @@ class Router:
         body: Mapping[str, Any] | None = None,
         session: str | None = None,
     ) -> Any:
+        return self.dispatch_with_receipt(method, path, query, body, session)[0]
+
+    def dispatch_with_receipt(
+        self,
+        method: str,
+        path: str,
+        query: Mapping[str, Sequence[str]] | None = None,
+        body: Mapping[str, Any] | None = None,
+        session: str | None = None,
+    ) -> tuple[Any, dict[str, Any]]:
+        """Dispatch and also return what the CLI wrote — ``audit_range`` on a mutation."""
+
         allowed: set[str] = set()
         for route_method, pattern, handler in self.routes:
             match = pattern.match(path)
@@ -45,15 +57,14 @@ class Router:
             if route_method != method:
                 allowed.add(route_method)
                 continue
-            return handler(
-                Request(
-                    context=self.context,
-                    params=match.groupdict(),
-                    query=query or {},
-                    body=body or {},
-                    session=session,
-                )
+            request = Request(
+                context=self.context,
+                params=match.groupdict(),
+                query=query or {},
+                body=body or {},
+                session=session,
             )
+            return handler(request), request.receipt
         if allowed:
             raise CoordinationError(
                 "method_not_allowed",

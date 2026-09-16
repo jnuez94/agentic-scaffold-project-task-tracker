@@ -34,6 +34,7 @@ import {
 import { agentOptionLabel, isSelectableActor } from "../lib/labels.ts";
 import { useApp } from "../state/AppContext.tsx";
 import { useResource } from "../state/useResource.ts";
+import { receiptSuffix } from "../lib/receipt.ts";
 
 export function EscalationForm({
   relatedTask,
@@ -96,7 +97,10 @@ export function EscalationForm({
         buildEscalationRequest(draft, identity.actorId!),
       );
       const id = created.id ?? draft.id.trim();
-      announce(`Escalation ${id} raised to ${draft.owner}. It is open until they record a resolution.`);
+      announce(
+        `Escalation ${id} raised to ${draft.owner}. It is open until they record a resolution.` +
+          receiptSuffix(created),
+      );
       onRaised(id);
     } catch (caught) {
       const failure =

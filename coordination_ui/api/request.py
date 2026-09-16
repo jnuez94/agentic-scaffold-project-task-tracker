@@ -22,6 +22,10 @@ class Request:
     query: Mapping[str, Sequence[str]] = field(default_factory=dict)
     body: Mapping[str, Any] = field(default_factory=dict)
     session: str | None = None
+    # What the CLI wrote on this request, for the HTTP envelope: ``audit_range``
+    # when a mutation ran. Mutable inside a frozen request on purpose — it is
+    # an outcome of dispatch, not an input to it.
+    receipt: dict[str, Any] = field(default_factory=dict, compare=False)
 
     # -- collaborators ------------------------------------------------------
 
@@ -86,7 +90,10 @@ class Request:
 
     def run(self, builder: Any, *, with_session: bool = False) -> Any:
         args = builder.args if hasattr(builder, "args") else list(builder)
-        return self.cli.run(args, self.session if with_session else None)
+        envelope = self.cli.run_envelope(args, self.session if with_session else None)
+        if "audit_range" in envelope:
+            self.receipt["audit_range"] = envelope["audit_range"]
+        return envelope.get("data")
 
     def run_text(self, builder: Any) -> str:
         args = builder.args if hasattr(builder, "args") else list(builder)

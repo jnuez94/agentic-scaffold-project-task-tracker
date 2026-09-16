@@ -32,6 +32,7 @@ import { ConversationView } from "./ConversationView.tsx";
 import { InboxView } from "./InboxView.tsx";
 import { MessageInspector } from "./MessageInspector.tsx";
 import { RECORD_CONFIGS } from "./recordConfigs.tsx";
+import { receiptSuffix } from "../lib/receipt.ts";
 
 const REQUEST_LIMIT = 500;
 
@@ -154,7 +155,7 @@ export function MessagesView({
             <InboxView
               inbox={inbox}
               nameFor={nameFor}
-              onMarked={(cursor) => announce(`Inbox marked read at ${cursor}.`)}
+              onMarked={(mark) => announce(`Inbox marked read at ${mark.cursor}.${receiptSuffix(mark)}`)}
             />
           ) : null}
 

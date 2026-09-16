@@ -8,6 +8,7 @@
 
 import type { ReactNode } from "react";
 import type { ApiError } from "../api/errors.ts";
+import { errorCopy } from "../lib/errorCopy.ts";
 
 export function EmptyState({ title, hint }: { title: string; hint?: ReactNode }) {
   return (
@@ -33,19 +34,7 @@ export function SkeletonRows({ rows = 5, columns = 4 }: { rows?: number; columns
 }
 
 function recoveryFor(error: ApiError): string {
-  if (error.isSessionRequired) return "Start or select an active session in the header, then retry.";
-  if (error.isBusy) return "The database was busy. Wait a moment and retry.";
-  if (error.code === "network_error") {
-    return "Check that `python3 -m coordination_ui` is still running, then retry.";
-  }
-  if (error.code === "invalid_actor") return "Select an actor in the header, then retry.";
-  if (error.code === "inactive_actor") {
-    return "This actor is retired and cannot act. Select an active actor in the header.";
-  }
-  if (error.code === "cursor_not_monotonic") {
-    return "Your inbox moved on; reload to see the newer position.";
-  }
-  return "Review the details below, correct the input, and try again.";
+  return errorCopy(error.code);
 }
 
 export function ErrorBanner({

@@ -32,6 +32,7 @@ import {
 } from "../lib/reviewDraft.ts";
 import { useApp } from "../state/AppContext.tsx";
 import { useResource } from "../state/useResource.ts";
+import { receiptSuffix } from "../lib/receipt.ts";
 
 export function ReviewForm({
   detail,
@@ -79,7 +80,8 @@ export function ReviewForm({
       const id = created.id ?? draft.id.trim();
       announce(
         `Review ${id} recorded on ${detail.id}: ${DECISION_LABELS[draft.decision]}. ` +
-          DECISION_CONSEQUENCE[draft.decision],
+          DECISION_CONSEQUENCE[draft.decision] +
+          receiptSuffix(created),
       );
       setDraft(emptyReview(detail, [...existingIds, id]));
       onRecorded();

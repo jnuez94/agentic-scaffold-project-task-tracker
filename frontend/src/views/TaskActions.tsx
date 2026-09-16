@@ -14,6 +14,7 @@ import { ErrorBanner } from "../components/Feedback.tsx";
 import { availableActions, type TaskAction } from "../lib/transitions.ts";
 import { useApp } from "../state/AppContext.tsx";
 import { SETUP_PENDING } from "../lib/copy.ts";
+import { claimAnnouncement, transitionAnnouncement } from "../lib/taskAnnouncements.ts";
 
 
 export function TaskActions({
@@ -47,8 +48,12 @@ export function TaskActions({
     setBusy(action.target);
     setError(undefined);
     try {
-      await dispatch(action);
-      announce(`${task.id} moved to ${action.target}.`);
+      const result = await dispatch(action);
+      announce(
+        action.kind === "claim"
+          ? claimAnnouncement(task.id, result)
+          : transitionAnnouncement(task.id, action.target, result),
+      );
       setNote("");
       onDone();
     } catch (caught) {
