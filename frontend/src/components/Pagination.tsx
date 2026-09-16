@@ -25,7 +25,13 @@ import { usePagingAnnouncement } from "../state/usePagingAnnouncement.ts";
  */
 export interface PagerCopy {
   rangeLabel?: (page: number, size: number, total: number) => string;
-  truncatedNotice?: ReactNode;
+  /**
+   * The notice, or a control in its place. A function receives `announce`,
+   * which routes the next label change through the pager's live region — so
+   * a control that grows the window is announced the way paging is, and data
+   * arriving on its own still is not.
+   */
+  truncatedNotice?: ReactNode | ((tools: { announce: () => void }) => ReactNode);
 }
 
 const TRUNCATED_NOTICE = "The request limit was reached, so more rows may exist that are not loaded.";
@@ -79,7 +85,11 @@ export function Pagination({
       </div>
 
       {truncated ? (
-        <p className="pagination-truncated small">{copy?.truncatedNotice ?? TRUNCATED_NOTICE}</p>
+        <p className="pagination-truncated small">
+          {typeof copy?.truncatedNotice === "function"
+            ? copy.truncatedNotice({ announce: markPaging })
+            : (copy?.truncatedNotice ?? TRUNCATED_NOTICE)}
+        </p>
       ) : null}
 
       <div className="pagination-controls">

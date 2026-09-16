@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from ...cli import ArgumentBuilder
+from ...cli import ArgumentBuilder, ArgumentError
 from .. import enums
 from ..audit_window import AuditWindow
 from ..enums import MAX_LIST_LIMIT, MIN_LIST_LIMIT
@@ -66,17 +66,21 @@ def get_audit(request: Request) -> Any:
     AuditWindow. The filters are the CLI's own flags; a filtered request
     returns the newest ``limit`` matches across the whole log, the same
     answer the direct query used to give, so a record's Activity tab is
-    complete however old the record is.
+    complete however old the record is. ``before`` pages back: the window
+    preceding that audit id.
     """
 
     requested = request.q_int("limit")
     limit = max(MIN_LIST_LIMIT, min(requested or DEFAULT_AUDIT_LIMIT, MAX_LIST_LIMIT))
+    before = request.q_int("before")
+    if before is not None and before < 1:
+        raise ArgumentError("query parameter 'before' must be a positive integer")
     filters: dict[str, str] = {}
     for name, flag in AUDIT_FILTERS:
         value = request.q_identifier(name) if name in ("actor", "session") else request.q(name)
         if value:
             filters[flag] = value
-    return AuditWindow(request.run, limit, filters).rows()
+    return AuditWindow(request.run, limit, filters, before=before).rows()
 
 
 def get_export(request: Request) -> TextResponse:

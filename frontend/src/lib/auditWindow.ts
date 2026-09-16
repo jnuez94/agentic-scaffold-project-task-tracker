@@ -41,7 +41,8 @@ export function facetValues(rows: readonly AuditEntry[], field: AuditFacet): str
  * which is right for lists that are occasionally capped. This window is
  * always the newest N of a log that is always longer, so the label states the
  * window instead of hedging about it: "of the newest 500", and when narrowed,
- * "37 matching, within the newest 500".
+ * "37 matching, within the newest 500". The window grows as older pages are
+ * loaded, so the count carries a thousands separator once it needs one.
  */
 export function auditRangeLabel(
   page: number,
@@ -54,8 +55,9 @@ export function auditRangeLabel(
   }
   const { first, last } = pageBounds(page, size, total);
   const prefix = total <= size ? "" : `Showing ${first}–${last} of `;
-  if (!options.narrowed) return prefix ? `${prefix}the newest ${total}` : `The newest ${total}`;
-  return `${prefix}${total} matching, within the newest ${options.window}`;
+  const count = total.toLocaleString("en-US");
+  if (!options.narrowed) return prefix ? `${prefix}the newest ${count}` : `The newest ${count}`;
+  return `${prefix}${count} matching, within the newest ${options.window.toLocaleString("en-US")}`;
 }
 
 /** The loaded rows matching both selects; the same array when neither is set. */

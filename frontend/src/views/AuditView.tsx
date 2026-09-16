@@ -1,11 +1,11 @@
 /**
  * The audit log.
  *
- * A loaded window like every other list: `/api/audit` returns the newest
- * REQUEST_LIMIT entries and no total, so the table says "N loaded", the
- * selects list the values present in that window, and the filter box narrows
- * it. This view used to read SQLite directly and was the one list that could
- * say "of M"; that path is gone, and so is the exception.
+ * A loaded window like every other list, with one difference: it grows
+ * backwards. `/api/audit` returns the newest REQUEST_LIMIT entries and no
+ * total; the pickers list the values present in what is loaded, the filter
+ * box narrows it, and "Load older" appends the page before the oldest row
+ * until the beginning of the log is reached (UI-64).
  */
 
 import { useMemo, useState } from "react";
@@ -16,8 +16,9 @@ import { CLEAR_FILTER_HINT } from "../lib/copy.ts";
 import { filterRows } from "../lib/filters.ts";
 import { isTruncated } from "../lib/pagination.ts";
 import { useApp } from "../state/AppContext.tsx";
-import { useResource } from "../state/useResource.ts";
+import { useAuditWindow } from "../state/useAuditWindow.ts";
 import { AUDIT_COLUMNS, AUDIT_DEFAULT_ORDER } from "./auditColumns.tsx";
+import { AuditLoadOlder } from "./AuditLoadOlder.tsx";
 
 const REQUEST_LIMIT = 500;
 
@@ -26,8 +27,8 @@ export function AuditView({ filter }: { filter: string }) {
   const [objectType, setObjectType] = useState("");
   const [action, setAction] = useState("");
 
-  const audit = useResource(() => coordination.audit({ limit: REQUEST_LIMIT }), []);
-  const loaded = useMemo(() => audit.data ?? [], [audit.data]);
+  const audit = useAuditWindow((query) => coordination.audit(query), REQUEST_LIMIT);
+  const loaded = audit.rows;
 
   const objectTypes = useMemo(() => facetValues(loaded, "object_type"), [loaded]);
   const actions = useMemo(() => facetValues(loaded, "action"), [loaded]);
@@ -87,7 +88,7 @@ export function AuditView({ filter }: { filter: string }) {
         idPrefix="audit"
         filtered={narrowed}
         truncated={isTruncated(loaded.length, REQUEST_LIMIT)}
-        loading={audit.loading}
+        loading={audit.loading && !audit.loaded}
         loaded={audit.loaded}
         emptyTitle={narrowed ? "No loaded entries match this filter" : "No audit entries"}
         emptyHint={
@@ -96,16 +97,20 @@ export function AuditView({ filter }: { filter: string }) {
             : "Mutations made through the CLI or this console are recorded here."
         }
         // The one list where truncation is the permanent state, so the shared
-        // hedge ("may exist") would misstate a certainty. The CLI pointer is
-        // temporary: UI-64 replaces it with a control.
+        // hedge ("may exist") would misstate a certainty. The notice's slot
+        // holds the way back instead: load the page before the oldest row.
         pagerCopy={{
           rangeLabel: (page, size, total) =>
             auditRangeLabel(page, size, total, { window: loaded.length, narrowed }),
-          truncatedNotice: (
-            <>
-              Older entries are not loaded.{" "}
-              <code className="mono">coordination audit list --since</code> reaches them.
-            </>
+          truncatedNotice: ({ announce }) => (
+            <AuditLoadOlder
+              exhausted={audit.exhausted}
+              loading={audit.loading}
+              onLoad={() => {
+                announce();
+                audit.loadOlder();
+              }}
+            />
           ),
         }}
       />

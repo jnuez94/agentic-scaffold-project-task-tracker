@@ -23,12 +23,23 @@ class AuditWindow:
     forward in pages of the CLI's maximum, keeping only the newest ``limit``:
     one call per 500 matches, so a single record's history is one call and
     complete, however old the record is.
+
+    ``before`` names an audit id and asks for the window preceding it, which
+    is how a client pages back through the log: the head is then ``before``
+    rather than the cursor, and the filtered walk keeps only rows below it.
     """
 
-    def __init__(self, run: Runner, limit: int, filters: Mapping[str, str]) -> None:
+    def __init__(
+        self,
+        run: Runner,
+        limit: int,
+        filters: Mapping[str, str],
+        before: int | None = None,
+    ) -> None:
         self.run = run
         self.limit = limit
         self.filters = dict(filters)
+        self.before = before
 
     def rows(self) -> list[dict[str, Any]]:
         rows = self._newest_matching() if self.filters else self._newest_unfiltered()
@@ -37,17 +48,29 @@ class AuditWindow:
     # -- the two recipes ----------------------------------------------------
 
     def _newest_unfiltered(self) -> list[dict[str, Any]]:
-        totals = self.run(ArgumentBuilder("summary").option("--section", "totals"))
-        head = int(totals.get("audit_cursor") or 0)
-        return self._page(since=max(0, head - self.limit), limit=self.limit)
+        if self.before is None:
+            totals = self.run(ArgumentBuilder("summary").option("--section", "totals"))
+            head = int(totals.get("audit_cursor") or 0)
+        else:
+            head = self.before - 1
+        since = max(0, head - self.limit)
+        # Capped to the ids that exist below the head, so a window at the
+        # beginning of the log cannot spill into rows past ``before``.
+        count = min(self.limit, head - since)
+        return self._page(since=since, limit=count) if count > 0 else []
 
     def _newest_matching(self) -> list[dict[str, Any]]:
         since = 0
         kept: list[dict[str, Any]] = []
         while True:
             page = self._page(since=since, limit=PAGE_SIZE)
-            kept = (kept + page)[-self.limit :]
-            if len(page) < PAGE_SIZE:
+            usable = (
+                page
+                if self.before is None
+                else [row for row in page if int(row["id"]) < self.before]
+            )
+            kept = (kept + usable)[-self.limit :]
+            if len(page) < PAGE_SIZE or len(usable) < len(page):
                 return kept
             since = int(page[-1]["id"])
 

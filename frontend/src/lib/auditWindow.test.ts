@@ -61,6 +61,15 @@ describe("auditRangeLabel", () => {
     expect(auditRangeLabel(1, 50, 37, narrowed)).toBe("37 matching, within the newest 500");
   });
 
+  it("separates thousands once the window has grown that far", () => {
+    expect(auditRangeLabel(1, 10, 1000, { window: 1000, narrowed: false })).toBe(
+      "Showing 1–10 of the newest 1,000",
+    );
+    expect(auditRangeLabel(1, 10, 12, { window: 1500, narrowed: true })).toBe(
+      "Showing 1–10 of 12 matching, within the newest 1,500",
+    );
+  });
+
   it("never carries the shared hedges", () => {
     for (const label of [
       auditRangeLabel(1, 10, 500, full),

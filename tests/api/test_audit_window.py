@@ -89,6 +89,18 @@ class UnfilteredWindowTests(unittest.TestCase):
     def test_an_empty_log_is_an_empty_window(self) -> None:
         self.assertEqual(AuditWindow(log(0), 10, {}).rows(), [])
 
+    def test_before_pages_back_without_asking_for_the_head(self) -> None:
+        cli = log(1200)
+        rows = AuditWindow(cli, 5, {}, before=700).rows()
+        self.assertEqual(ids(rows), [699, 698, 697, 696, 695])
+        self.assertEqual([call[0] for call in cli.calls], ["audit"])
+        self.assertEqual(options_of(cli.calls[0]), {"--since": "694", "--limit": "5"})
+
+    def test_before_near_the_beginning_returns_only_what_exists(self) -> None:
+        cli = log(1200)
+        self.assertEqual(ids(AuditWindow(cli, 5, {}, before=3).rows()), [2, 1])
+        self.assertEqual(AuditWindow(cli, 5, {}, before=1).rows(), [])
+
 
 class FilteredWindowTests(unittest.TestCase):
     def test_returns_the_newest_matches_across_the_whole_log(self) -> None:
@@ -124,6 +136,14 @@ class FilteredWindowTests(unittest.TestCase):
 
     def test_no_match_is_an_empty_window(self) -> None:
         self.assertEqual(AuditWindow(log(30), 10, {"--object-id": "nope"}).rows(), [])
+
+    def test_before_keeps_only_matches_below_it_and_stops_walking(self) -> None:
+        cli = log(1200)
+        rows = AuditWindow(cli, 3, {"--actor": "alice"}, before=600).rows()
+        self.assertEqual(ids(rows), [599, 598, 596])
+        # alice has 800 matches, two pages without a bound; page one already
+        # reaches past id 600, so the walk stops there instead of reading on.
+        self.assertEqual(len(cli.calls), 1)
 
 
 if __name__ == "__main__":

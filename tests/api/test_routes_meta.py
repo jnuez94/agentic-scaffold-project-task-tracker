@@ -155,6 +155,17 @@ class AuditTests(MetaTestCase):
         # The CLI rejects --limit above 500; the route clamps rather than relays.
         self.assertGreater(len(self.get("/api/audit", limit="9999")), 0)
 
+    def test_audit_before_pages_back_from_an_id(self) -> None:
+        everything = self.get("/api/audit")
+        older = self.get("/api/audit", before=str(everything[1]["id"]))
+        self.assertEqual(older, everything[2:])
+
+    def test_audit_rejects_a_non_positive_before(self) -> None:
+        from coordination_ui.cli import CoordinationError
+
+        with self.assertRaises(CoordinationError):
+            self.get("/api/audit", before="0")
+
     def test_audit_rejects_a_malformed_actor(self) -> None:
         from coordination_ui.cli import CoordinationError
 

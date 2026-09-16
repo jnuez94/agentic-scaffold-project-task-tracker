@@ -117,10 +117,35 @@ describe("AuditView", () => {
 
     await screen.findByText("T-500");
     expect(screen.getByText("Showing 1–10 of the newest 500")).toBeTruthy();
-    expect(screen.getByText(/Older entries are not loaded/)).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Load older" })).toBeTruthy();
     // The shared hedge is overridden on this view and nowhere else.
     expect(screen.queryByText(/may exist/)).toBeNull();
     expect(screen.queryByText(/500\+/)).toBeNull();
+  });
+
+  it("loads the page before the oldest row and states the beginning of the log", async () => {
+    // Newest 500 are ids 1000..501; the page before 501 has only three rows.
+    const first = Array.from({ length: 500 }, (_, index) => entry({ id: 1000 - index, object_id: `T-${1000 - index}` }));
+    const older = [500, 499, 498].map((id) => entry({ id, object_id: `T-${id}` }));
+    const auditCalls: string[] = [];
+    const impl = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      const isAudit = url.includes("/api/audit");
+      if (isAudit) auditCalls.push(url);
+      const data = !isAudit ? [] : url.includes("before=") ? older : first;
+      return new Response(JSON.stringify({ ok: true, data }), { status: 200 });
+    });
+    render(wrap(impl as unknown as typeof fetch, <AuditView filter="" />));
+    await screen.findByText("T-1000");
+
+    await userEvent.click(screen.getByRole("button", { name: "Load older" }));
+
+    await screen.findByText("Showing 1–10 of the newest 503");
+    expect(auditCalls[1]).toContain("before=501");
+    const end = screen.getByRole("button", { name: "Beginning of the log" });
+    expect((end as HTMLButtonElement).disabled).toBe(true);
+    // Still on page one: appending must not move the operator.
+    expect(screen.getByText("T-1000")).toBeTruthy();
   });
 
   it("names the narrowing within the window once a picker is set", async () => {
