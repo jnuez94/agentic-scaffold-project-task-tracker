@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { AuditEntry } from "../api/contract.ts";
 import { filterRows } from "./filters.ts";
-import { AUDIT_FILTER_FIELDS, auditRangeLabel, facetValues, narrowAudit } from "./auditWindow.ts";
+import { AUDIT_FILTER_FIELDS, auditRangeLabel } from "./auditWindow.ts";
 
 const entry = (overrides: Partial<AuditEntry> = {}): AuditEntry => ({
   id: 1,
@@ -21,30 +21,6 @@ const ROWS = [
   entry({ id: 1, action: "create", object_type: "task", object_id: "T-1", detail: "seeded" }),
 ];
 
-describe("facetValues", () => {
-  it("lists each value once, sorted, from the loaded rows only", () => {
-    expect(facetValues(ROWS, "object_type")).toEqual(["agent", "task"]);
-    expect(facetValues(ROWS, "action")).toEqual(["claim", "create"]);
-  });
-
-  it("drops empty values rather than offering a blank option", () => {
-    expect(facetValues([entry({ actor: "" }), entry({ actor: "bob" })], "actor")).toEqual(["bob"]);
-  });
-});
-
-describe("narrowAudit", () => {
-  it("returns the same array when nothing is selected", () => {
-    expect(narrowAudit(ROWS, { objectType: "", action: "" })).toBe(ROWS);
-  });
-
-  it("narrows by object type, by action, and by both together", () => {
-    const ids = (rows: AuditEntry[]) => rows.map((row) => row.id);
-    expect(ids(narrowAudit(ROWS, { objectType: "task", action: "" }))).toEqual([3, 1]);
-    expect(ids(narrowAudit(ROWS, { objectType: "", action: "create" }))).toEqual([2, 1]);
-    expect(ids(narrowAudit(ROWS, { objectType: "task", action: "create" }))).toEqual([1]);
-  });
-});
-
 describe("auditRangeLabel", () => {
   const full = { window: 500, narrowed: false };
   const narrowed = { window: 500, narrowed: true };
@@ -54,11 +30,22 @@ describe("auditRangeLabel", () => {
     expect(auditRangeLabel(1, 50, 37, { window: 37, narrowed: false })).toBe("The newest 37");
   });
 
-  it("names the narrowing within the window", () => {
+  it("names what the request narrowed to", () => {
+    expect(auditRangeLabel(1, 10, 500, { ...full, noun: "task events" })).toBe(
+      "Showing 1–10 of the newest 500 task events",
+    );
+    expect(auditRangeLabel(1, 50, 4, { window: 4, narrowed: false, noun: "claim events" })).toBe(
+      "The newest 4 claim events",
+    );
+  });
+
+  it("names the filter box's narrowing within the window", () => {
     expect(auditRangeLabel(2, 10, 37, narrowed)).toBe(
       "Showing 11–20 of 37 matching, within the newest 500",
     );
-    expect(auditRangeLabel(1, 50, 37, narrowed)).toBe("37 matching, within the newest 500");
+    expect(auditRangeLabel(1, 50, 37, { ...narrowed, noun: "task events" })).toBe(
+      "37 matching, within the newest 500 task events",
+    );
   });
 
   it("separates thousands once the window has grown that far", () => {

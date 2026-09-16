@@ -83,6 +83,28 @@ describe("useAuditWindow", () => {
     expect(result.current.exhausted).toBe(true);
   });
 
+  it("starts a fresh window when the request params change, with one request", async () => {
+    const { load, calls } = logOf(1000, 3);
+    const { result, rerender } = renderHook(
+      ({ params }: { params: Record<string, string> }) => useAuditWindow(load, 3, params),
+      { initialProps: { params: {} } },
+    );
+    await waitFor(() => expect(result.current.loaded).toBe(true));
+    act(() => result.current.loadOlder());
+    await waitFor(() => expect(result.current.rows).toHaveLength(6));
+
+    rerender({ params: { object_type: "task" } });
+    await waitFor(() => expect(calls).toHaveLength(3));
+    await waitFor(() => expect(result.current.rows).toHaveLength(3));
+    expect(calls[2]).toEqual({ limit: 3, object_type: "task" });
+    // The key names the window the rows answer, and only once they have landed.
+    expect(result.current.windowKey).toBe(JSON.stringify({ object_type: "task" }));
+
+    // The same pickers again, as a new object, are the same window: no request.
+    rerender({ params: { object_type: "task" } });
+    expect(calls).toHaveLength(3);
+  });
+
   it("surfaces a failed load as an error and keeps what it had", async () => {
     let fail = false;
     const load = vi.fn(async (query: AuditQuery) => {

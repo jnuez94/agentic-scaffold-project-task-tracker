@@ -71,24 +71,48 @@ describe("AuditView", () => {
     expect(bodyRows().map((text) => text.includes("T-2"))).toEqual([true, false, false]);
   });
 
-  it("offers only the object types and actions present in the loaded rows", async () => {
+  it("offers the whole vocabulary, not just what the window contains", async () => {
     const { impl } = auditFetch(WINDOW);
     render(wrap(impl, <AuditView filter="" />));
     await screen.findByText("T-2");
 
     const options = (label: string) =>
       Array.from(screen.getByLabelText<HTMLSelectElement>(label).options).map((o) => o.value);
-    expect(options("Object type")).toEqual(["", "agent", "task"]);
-    expect(options("Action")).toEqual(["", "claim", "create"]);
+    expect(options("Object type")).toContain("decision");
+    expect(options("Action")).toContain("recover_claim");
+    expect(options("Object type")[0]).toBe("");
   });
 
-  it("narrows by action over the loaded rows without another request", async () => {
-    const { impl, auditCalls } = auditFetch(WINDOW);
-    render(wrap(impl, <AuditView filter="" />));
+  it("makes a picker drive the request, exactly once, and states the reload", async () => {
+    // The narrowed window is smaller than the first one, so an announcement
+    // that read the old rows would say the wrong number.
+    const auditCalls: string[] = [];
+    const impl = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      const isAudit = url.includes("/api/audit");
+      if (isAudit) auditCalls.push(url);
+      const data = !isAudit ? [] : url.includes("action=claim") ? [WINDOW[0]] : WINDOW;
+      return new Response(JSON.stringify({ ok: true, data }), { status: 200 });
+    });
+    render(wrap(impl as unknown as typeof fetch, <AuditView filter="" />));
     await screen.findByText("T-2");
 
     await userEvent.selectOptions(screen.getByLabelText("Action"), "claim");
 
+    await waitFor(() => expect(auditCalls).toHaveLength(2));
+    expect(auditCalls[1]).toContain("action=claim");
+    expect(auditCalls[1]).toContain("limit=500");
+    await screen.findByText("Reloaded: the newest 1 claim events. Page 1.");
+    expect(screen.getByText("The newest 1 claim events")).toBeTruthy();
+    expect(screen.queryByText("bob")).toBeNull();
+  });
+
+  it("keeps the filter box client-side over what is loaded", async () => {
+    const { impl, auditCalls } = auditFetch(WINDOW);
+    const { rerender } = render(wrap(impl, <AuditView filter="" />));
+    await screen.findByText("T-2");
+
+    rerender(wrap(impl, <AuditView filter="claim" />));
     await waitFor(() => expect(screen.queryByText("bob")).toBeNull());
     expect(screen.getByText("T-2")).toBeTruthy();
     expect(auditCalls).toHaveLength(1);
@@ -148,13 +172,16 @@ describe("AuditView", () => {
     expect(screen.getByText("T-1000")).toBeTruthy();
   });
 
-  it("names the narrowing within the window once a picker is set", async () => {
+  it("names the filter box's narrowing within the requested window", async () => {
     const { impl } = auditFetch(WINDOW);
-    render(wrap(impl, <AuditView filter="" />));
+    const { rerender } = render(wrap(impl, <AuditView filter="" />));
     await screen.findByText("T-2");
 
-    await userEvent.selectOptions(screen.getByLabelText("Action"), "claim");
-    await screen.findByText("1 matching, within the newest 3");
+    await userEvent.selectOptions(screen.getByLabelText("Object type"), "task");
+    await screen.findByText("The newest 3 task events");
+
+    rerender(wrap(impl, <AuditView filter="T-2" />));
+    await screen.findByText("1 matching, within the newest 3 task events");
   });
 
   it("carries the ruled header wording", async () => {

@@ -15,7 +15,7 @@ import { ApiError } from "../api/errors.ts";
 import { describeThrown } from "../lib/copy.ts";
 
 /** A type literal rather than an interface, so it satisfies the client's Query index signature. */
-export type AuditQuery = { limit: number; before?: number };
+export type AuditQuery = { limit: number; before?: number; [param: string]: string | number | undefined };
 
 export interface AuditWindow {
   rows: AuditEntry[];
@@ -26,23 +26,40 @@ export interface AuditWindow {
   loaded: boolean;
   /** The last page came back short: there is nothing older to load. */
   exhausted: boolean;
+  /**
+   * Which request the held rows answer, as the params' JSON. Changes only
+   * when a fresh window lands, so a view can react to "a reload finished"
+   * rather than guessing from loading flags that flip across renders.
+   */
+  windowKey: string;
   loadOlder: () => void;
   /** Back to the newest window, discarding what was loaded behind it. */
   refresh: () => void;
 }
 
+/**
+ * `params` are the request's own narrowing — the pickers. A change starts a
+ * fresh window: one request, rows replaced rather than appended, and the
+ * exhausted flag reset with them.
+ */
 export function useAuditWindow(
   load: (query: AuditQuery) => Promise<AuditEntry[]>,
   pageSize: number,
+  params: Record<string, string> = {},
 ): AuditWindow {
   const [rows, setRows] = useState<AuditEntry[]>([]);
   const [error, setError] = useState<ApiError | undefined>(undefined);
   const [loading, setLoading] = useState(false);
   const [loaded, setLoaded] = useState(false);
   const [exhausted, setExhausted] = useState(false);
+  const [windowKey, setWindowKey] = useState("");
 
   const loadRef = useRef(load);
   loadRef.current = load;
+  // Compared by value: a new object with the same pickers is the same window.
+  const paramsKey = JSON.stringify(params);
+  const paramsRef = useRef(params);
+  paramsRef.current = params;
   const rowsRef = useRef(rows);
   rowsRef.current = rows;
   // A slow earlier request must not land on top of a newer one.
@@ -60,13 +77,17 @@ export function useAuditWindow(
     (before?: number) => {
       const current = ++requestId.current;
       setLoading(true);
+      const query: AuditQuery = { ...paramsRef.current, limit: pageSize };
+      const key = JSON.stringify(paramsRef.current);
+      if (before !== undefined) query.before = before;
       loadRef
-        .current(before === undefined ? { limit: pageSize } : { limit: pageSize, before })
+        .current(query)
         .then((page) => {
           if (!mounted.current || current !== requestId.current) return;
           setRows((previous) => (before === undefined ? page : [...previous, ...page]));
           setExhausted(page.length < pageSize);
           setError(undefined);
+          if (before === undefined) setWindowKey(key);
         })
         .catch((caught: unknown) => {
           if (!mounted.current || current !== requestId.current) return;
@@ -87,7 +108,7 @@ export function useAuditWindow(
 
   useEffect(() => {
     run();
-  }, [run]);
+  }, [run, paramsKey]);
 
   const loadOlder = useCallback(() => {
     const oldest = rowsRef.current[rowsRef.current.length - 1];
@@ -97,5 +118,5 @@ export function useAuditWindow(
 
   const refresh = useCallback(() => run(), [run]);
 
-  return { rows, error, loading, loaded, exhausted, loadOlder, refresh };
+  return { rows, error, loading, loaded, exhausted, windowKey, loadOlder, refresh };
 }
