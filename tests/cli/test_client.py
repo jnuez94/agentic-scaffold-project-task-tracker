@@ -74,9 +74,11 @@ class InvocationTests(unittest.TestCase):
     def test_the_operation_log_cannot_break_error_parsing(self) -> None:
         # 1.4.0's COORDINATION_LOG=stderr adds a JSON line to the error stream.
         # Inherited by the child, it turned every failure into cli_failure.
-        with patch.dict(os.environ, {"COORDINATION_LOG": "stderr"}):
-            with self.assertRaises(CoordinationError) as caught:
-                self.cli.run(["task", "show", "MISSING"])
+        with (
+            patch.dict(os.environ, {"COORDINATION_LOG": "stderr"}),
+            self.assertRaises(CoordinationError) as caught,
+        ):
+            self.cli.run(["task", "show", "MISSING"])
         self.assertEqual(caught.exception.code, "not_found")
 
     def test_missing_actor_is_reported_as_invalid_arguments(self) -> None:
