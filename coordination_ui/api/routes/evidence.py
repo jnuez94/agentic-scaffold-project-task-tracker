@@ -16,7 +16,7 @@ from ..request import Request
 def list_evidence(request: Request) -> Any:
     builder = ArgumentBuilder("evidence", "list")
     builder.option("--task", request.path_id())
-    return request.run(request.paging(builder))
+    return request.run(request.paging(request.structured(builder, "evidence")))
 
 
 def add_evidence(request: Request) -> Any:

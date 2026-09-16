@@ -20,7 +20,7 @@ def list_sessions(request: Request) -> Any:
     harness = request.q("harness")
     if harness:
         builder.option("--harness", harness)
-    return request.run(request.paging(builder))
+    return request.run(request.paging(request.structured(builder, "session")))
 
 
 def start_session(request: Request) -> Any:

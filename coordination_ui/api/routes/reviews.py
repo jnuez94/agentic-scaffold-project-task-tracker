@@ -14,7 +14,7 @@ def list_reviews(request: Request) -> Any:
     task = request.q_identifier("task")
     if task:
         builder.option("--task", task)
-    return request.run(request.paging(builder))
+    return request.run(request.paging(request.structured(builder, "review")))
 
 
 def add_review(request: Request) -> Any:
@@ -38,7 +38,8 @@ def add_review(request: Request) -> Any:
 
 
 def list_decisions(request: Request) -> Any:
-    return request.run(request.paging(ArgumentBuilder("decision", "list")))
+    builder = request.structured(ArgumentBuilder("decision", "list"), "decision")
+    return request.run(request.paging(builder))
 
 
 def add_decision(request: Request) -> Any:

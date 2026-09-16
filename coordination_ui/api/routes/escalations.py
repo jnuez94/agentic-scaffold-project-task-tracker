@@ -14,7 +14,7 @@ def list_escalations(request: Request) -> Any:
     status = request.q_choice("status", ESCALATION_STATUSES)
     if status:
         builder.option("--status", status)
-    return request.run(request.paging(builder))
+    return request.run(request.paging(request.structured(builder, "escalation")))
 
 
 def add_escalation(request: Request) -> Any:

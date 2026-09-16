@@ -9,7 +9,8 @@ import { ApiError } from "./errors.ts";
 
 export const SESSION_HEADER = "X-Coordination-Session";
 
-export type Query = Record<string, string | number | boolean | undefined | null>;
+/** A list value repeats the parameter: `status=todo&status=review`, as the CLI's repeatable flags do. */
+export type Query = Record<string, string | number | boolean | string[] | undefined | null>;
 
 /** A mutation result as the console holds it: the data, plus the receipt when the CLI sent one. */
 export type Mutated<T> = T & { audit_range?: [number, number] };
@@ -52,6 +53,10 @@ export class ApiClient {
     const params = new URLSearchParams();
     for (const [key, value] of Object.entries(query)) {
       if (value === undefined || value === null || value === "") continue;
+      if (Array.isArray(value)) {
+        for (const item of value) params.append(key, item);
+        continue;
+      }
       params.set(key, String(value));
     }
     const search = params.toString();

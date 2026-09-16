@@ -20,7 +20,7 @@ def list_messages(request: Request) -> Any:
     task = request.q_identifier("task")
     if task:
         builder.option("--task", task)
-    return request.run(request.paging(builder))
+    return request.run(request.paging(request.structured(builder, "message")))
 
 
 def send_message(request: Request) -> Any:

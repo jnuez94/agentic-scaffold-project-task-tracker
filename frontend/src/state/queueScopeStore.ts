@@ -48,24 +48,22 @@ export function isServerStatus(scope: QueueScope): scope is TaskStatus {
 }
 
 /**
- * The status to send to the CLI, or undefined to load the unfiltered window.
+ * The statuses to send to the CLI; an empty list loads the unfiltered window.
  *
- * "Open work" has no server-side spelling — `task list` takes one status at a
+ * "Open work" has a server-side spelling since 1.4.0: `--status` is
+ * repeatable, so everything-not-done is one request and the 500-row cap
+ * counts open work rather than all tasks. Before that the scope was narrowed
+ * over the loaded window, and a board with 400 done tasks showed 100 open ones.
+ *
+ * Historically: "Open work" had no server-side spelling — `task list` took one status at a
  * time and cannot express everything-not-done — so it loads the window and
  * narrows it in the browser, which is the same loaded-rows contract the filter
  * box already uses.
  */
-export function requestStatus(scope: QueueScope): TaskStatus | undefined {
-  return isServerStatus(scope) ? scope : undefined;
-}
-
-/** Narrow already-loaded rows for the scopes the server could not apply. */
-export function scopeRows<T extends { status: string }>(
-  rows: readonly T[],
-  scope: QueueScope,
-): T[] {
-  if (scope !== OPEN_SCOPE) return [...rows];
-  return rows.filter((row) => row.status !== "done");
+export function requestStatus(scope: QueueScope): TaskStatus[] {
+  if (scope === ALL_SCOPE) return [];
+  if (scope === OPEN_SCOPE) return TASK_STATUSES.filter((status) => status !== "done");
+  return [scope];
 }
 
 export class QueueScopeStore {

@@ -8,6 +8,7 @@ enforces all three independently.
 
 from __future__ import annotations
 
+import re
 from typing import Any
 
 from ...cli import ArgumentBuilder, ArgumentError, CoordinationError, require_choice
@@ -24,15 +25,31 @@ CONTENT_FIELDS = (
 )
 
 
+TAG_TOKEN = re.compile(r"^[^\s,]+$")
+
+
 def list_tasks(request: Request) -> Any:
+    """``task list``. ``status`` is repeatable since 1.4.0 — tasks in any of
+    the given statuses match — so "everything not done" is one request rather
+    than a loaded window narrowed afterwards."""
+
     builder = ArgumentBuilder("task", "list")
-    status = request.q_choice("status", TASK_STATUSES)
-    if status:
+    for status in request.q_all("status"):
+        if status not in TASK_STATUSES:
+            raise ArgumentError(
+                f"query parameter 'status' must be one of {', '.join(TASK_STATUSES)}",
+                {"parameter": "status", "allowed": list(TASK_STATUSES)},
+            )
         builder.option("--status", status)
     assignee = request.q_identifier("assignee")
     if assignee:
         builder.option("--assignee", assignee)
-    return request.run(request.paging(builder))
+    tag = request.q("tag")
+    if tag:
+        if not TAG_TOKEN.match(tag):
+            raise ArgumentError("query parameter 'tag' is one token: no commas or whitespace")
+        builder.option("--tag", tag)
+    return request.run(request.paging(request.structured(builder, "task")))
 
 
 def show_task(request: Request) -> Any:

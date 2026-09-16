@@ -26,6 +26,13 @@ describe("ApiClient.url", () => {
     );
   });
 
+  it("repeats a parameter for a list value, and omits an empty list", () => {
+    expect(client.url("/api/tasks", { status: ["todo", "review"] })).toBe(
+      "/api/tasks?status=todo&status=review",
+    );
+    expect(client.url("/api/tasks", { status: [] })).toBe("/api/tasks");
+  });
+
   it("encodes values", () => {
     expect(client.url("/api/messages", { recipient: "a b&c" })).toContain("a+b%26c");
   });

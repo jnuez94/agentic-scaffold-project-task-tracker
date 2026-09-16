@@ -14,7 +14,7 @@ def list_artifacts(request: Request) -> Any:
     status = request.q_choice("status", ARTIFACT_STATUSES)
     if status:
         builder.option("--status", status)
-    return request.run(request.paging(builder))
+    return request.run(request.paging(request.structured(builder, "artifact")))
 
 
 def add_artifact(request: Request) -> Any:

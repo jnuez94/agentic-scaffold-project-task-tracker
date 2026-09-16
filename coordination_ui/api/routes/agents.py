@@ -26,7 +26,7 @@ def list_agents(request: Request) -> Any:
     actor_type = request.q_choice("actor_type", ACTOR_TYPES)
     if actor_type:
         builder.option("--actor-type", actor_type)
-    return request.run(request.paging(builder))
+    return request.run(request.paging(request.structured(builder, "agent")))
 
 
 def create_agent(request: Request) -> Any:

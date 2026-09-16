@@ -3,11 +3,9 @@ import {
   ALL_SCOPE,
   DEFAULT_SCOPE,
   isQueueScope,
-  isServerStatus,
   OPEN_SCOPE,
   QueueScopeStore,
   requestStatus,
-  scopeRows,
 } from "./queueScopeStore.ts";
 
 class MemoryStorage {
@@ -23,7 +21,6 @@ class MemoryStorage {
   }
 }
 
-const row = (status: string, id = status) => ({ id, status });
 
 describe("queue scope", () => {
   it("defaults to open work, which is the whole point of UI-37", () => {
@@ -44,46 +41,16 @@ describe("queue scope", () => {
 });
 
 describe("requestStatus", () => {
-  it("sends a real status to the CLI", () => {
-    expect(requestStatus("blocked")).toBe("blocked");
-    expect(isServerStatus("blocked")).toBe(true);
+  it("sends one status for a status scope", () => {
+    expect(requestStatus("blocked")).toEqual(["blocked"]);
   });
 
-  it("sends nothing for open work, which the CLI cannot express", () => {
-    // `task list --status` takes one value; everything-not-done is four.
-    expect(requestStatus(OPEN_SCOPE)).toBeUndefined();
-    expect(isServerStatus(OPEN_SCOPE)).toBe(false);
+  it("spells open work as every status but done, in one request", () => {
+    expect(requestStatus(OPEN_SCOPE)).toEqual(["todo", "in_progress", "review", "blocked"]);
   });
 
   it("sends nothing for all states", () => {
-    expect(requestStatus(ALL_SCOPE)).toBeUndefined();
-  });
-});
-
-describe("scopeRows", () => {
-  const rows = [row("todo"), row("done"), row("in_progress"), row("done", "d2"), row("blocked")];
-
-  it("drops done rows under open work", () => {
-    expect(scopeRows(rows, OPEN_SCOPE).map((r) => r.status)).toEqual([
-      "todo",
-      "in_progress",
-      "blocked",
-    ]);
-  });
-
-  it("keeps review and blocked, which are open even though nobody is typing", () => {
-    expect(scopeRows([row("review"), row("blocked")], OPEN_SCOPE)).toHaveLength(2);
-  });
-
-  it("leaves every other scope untouched, since the server already filtered", () => {
-    expect(scopeRows(rows, ALL_SCOPE)).toHaveLength(5);
-    expect(scopeRows(rows, "done")).toHaveLength(5);
-  });
-
-  it("does not mutate the rows it was given", () => {
-    const original = [...rows];
-    scopeRows(rows, OPEN_SCOPE);
-    expect(rows).toEqual(original);
+    expect(requestStatus(ALL_SCOPE)).toEqual([]);
   });
 });
 

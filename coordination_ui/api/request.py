@@ -7,6 +7,7 @@ from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
 
 from ..cli import ArgumentError, CoordinationCLI, validate_identifier
+from .descriptors import parse_order_by, parse_updated_since, parse_where
 from .enums import MAX_LIST_LIMIT, MIN_LIST_LIMIT
 
 if TYPE_CHECKING:  # pragma: no cover - typing only
@@ -46,6 +47,11 @@ class Request:
             return default
         return values[0]
 
+    def q_all(self, name: str) -> list[str]:
+        """Every non-empty value of a repeatable query parameter."""
+
+        return [value for value in self.query.get(name, ()) if value != ""]
+
     def q_int(self, name: str, default: int | None = None) -> int | None:
         raw = self.q(name)
         if raw is None:
@@ -73,6 +79,23 @@ class Request:
     def q_identifier(self, name: str) -> str | None:
         raw = self.q(name)
         return None if raw is None else validate_identifier(raw, name)
+
+    def structured(self, builder: Any, entity: str) -> Any:
+        """Append 1.4.0's ``--where``, ``--order-by`` and ``--updated-since``.
+
+        Each clause is checked against the entity's descriptor first, so only
+        a column and operator the contract lists for it ever reaches argv.
+        The audit and inbox lists do not take these and never call this.
+        """
+
+        for clause in self.q_all("where"):
+            builder.option("--where", parse_where(entity, clause))
+        for term in self.q_all("order_by"):
+            builder.option("--order-by", parse_order_by(entity, term))
+        since = self.q("updated_since")
+        if since:
+            builder.option("--updated-since", parse_updated_since(entity, since))
+        return builder
 
     def paging(self, builder: Any) -> Any:
         """Append ``--limit`` / ``--offset`` when present, clamped to contract bounds."""

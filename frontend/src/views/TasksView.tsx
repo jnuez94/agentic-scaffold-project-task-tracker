@@ -18,7 +18,7 @@ import { useApp } from "../state/AppContext.tsx";
 import { BOUNDS } from "../state/layoutStore.ts";
 import type { Layout } from "../state/useLayout.ts";
 import { useQueueScope } from "../state/useQueueScope.ts";
-import { OPEN_SCOPE, requestStatus, scopeRows } from "../state/queueScopeStore.ts";
+import { OPEN_SCOPE, requestStatus } from "../state/queueScopeStore.ts";
 import { useBoardWatch } from "../state/useBoardWatch.ts";
 import { useResource } from "../state/useResource.ts";
 import { TaskInspector } from "./TaskInspector.tsx";
@@ -61,13 +61,12 @@ export function TasksView({
     [scope, assignee],
   );
 
-  // "Open work" is narrowed here rather than in the request: `task list` takes
-  // one status at a time and cannot express everything-not-done. Narrowing the
-  // loaded window is the same contract the filter box already works under, and
-  // the truncation notice below still reports when that window was capped.
+  // The scope is the request's since 1.4.0 (`--status` repeats), so the
+  // loaded window is open work and the truncation notice below is about open
+  // work. Only the filter box narrows what was loaded.
   const scoped = useMemo(
-    () => filterRows(scopeRows(tasks.data ?? [], scope), FILTER_FIELDS, filter),
-    [tasks.data, scope, filter],
+    () => filterRows(tasks.data ?? [], FILTER_FIELDS, filter),
+    [tasks.data, filter],
   );
 
   // Sessions, only so the stale-claim clause of needsAttention can fire. Kept
