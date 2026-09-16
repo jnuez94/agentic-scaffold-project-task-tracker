@@ -2,7 +2,8 @@
  * Generic entity browser driven by RECORD_CONFIGS.
  */
 
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { ApiError } from "../api/errors.ts";
 import { DataTable } from "../components/DataTable.tsx";
 import { ErrorBanner } from "../components/Feedback.tsx";
 import { filterRows } from "../lib/filters.ts";
@@ -24,6 +25,8 @@ export function RecordsView<T = Record<string, unknown>>({
   reloadKey = 0,
   onSelect,
   selectedKey,
+  detail = null,
+  onDetail,
 }: {
   route: RouteName;
   filter: string;
@@ -32,6 +35,14 @@ export function RecordsView<T = Record<string, unknown>>({
   /** Receives the already-loaded row, so a detail view needs no extra query. */
   onSelect?: (row: T) => void;
   selectedKey?: string | null;
+  /**
+   * The record named in the route, `#/decisions/DEC-1` (UI-69). Resolved
+   * from the loaded rows when one matches, through `show` when none does;
+   * an unknown id gets the not-found treatment.
+   */
+  detail?: string | null;
+  /** Called with the inspected id, or null when the inspector closes. */
+  onDetail?: (id: string | null) => void;
 }) {
   const { coordination, identity } = useApp();
   const config = RECORD_CONFIGS[route];
@@ -43,6 +54,10 @@ export function RecordsView<T = Record<string, unknown>>({
   const [inspecting, setInspecting] = useState<Record<string, unknown> | null>(
     null,
   );
+  const [missing, setMissing] = useState<ApiError | null>(null);
+  // What the route said last time, so "the route cleared its detail" can be
+  // told apart from "this view has no routing at all".
+  const previousDetail = useRef<string | null>(detail);
   const rowTrigger = useRef<HTMLElement | null>(null);
   const launcher = useRef<HTMLButtonElement | null>(null);
 
@@ -53,6 +68,51 @@ export function RecordsView<T = Record<string, unknown>>({
     statusValue,
     reloadKey,
   );
+
+  // Resolve the route's record. A row already loaded costs no request — that
+  // is every open-from-a-row case — and only an id the window does not hold
+  // is asked for by name. A cleared detail closes the inspector.
+  useEffect(() => {
+    const changed = previousDetail.current !== detail;
+    previousDetail.current = detail;
+    if (!detail) {
+      if (changed && inspecting) setInspecting(null);
+      if (changed) setMissing(null);
+      return;
+    }
+    if (inspecting && String(inspecting["id"]) === detail) return;
+    const loaded = ((records.data ?? []) as Record<string, unknown>[]).find(
+      (row) => String(row["id"]) === detail,
+    );
+    if (loaded) {
+      setInspecting(loaded);
+      setMissing(null);
+      return;
+    }
+    if (!records.loaded) return;
+    let stale = false;
+    coordination
+      .show(route, detail)
+      .then((row) => {
+        if (stale) return;
+        setInspecting(row);
+        setMissing(null);
+      })
+      .catch((caught: unknown) => {
+        if (stale) return;
+        // The route names a record that did not resolve: nothing is inspected,
+        // so a record opened earlier must not stand in for it.
+        setInspecting(null);
+        setMissing(
+          caught instanceof ApiError ? caught : new ApiError("network_error", String(caught), 0),
+        );
+      });
+    return () => {
+      stale = true;
+    };
+    // `inspecting` is read, not depended on: resolving it must not re-run when it lands.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [detail, records.data, records.loaded, route, coordination]);
 
   const tableColumns = useMemo(
     () =>
@@ -126,6 +186,15 @@ export function RecordsView<T = Record<string, unknown>>({
         {records.error ? (
           <ErrorBanner error={records.error} onRetry={records.refresh} />
         ) : null}
+        {missing ? (
+          <ErrorBanner
+            error={missing}
+            onDismiss={() => {
+              setMissing(null);
+              onDetail?.(null);
+            }}
+          />
+        ) : null}
 
         <DataTable
           rows={rows as never[]}
@@ -151,6 +220,7 @@ export function RecordsView<T = Record<string, unknown>>({
                 ? (row) => {
                     rowTrigger.current = document.activeElement as HTMLElement;
                     setInspecting(row);
+                    onDetail?.(String(row["id"]));
                   }
                 : undefined
           }
@@ -177,6 +247,7 @@ export function RecordsView<T = Record<string, unknown>>({
         actorId={identity.actorId}
         onCloseInspector={() => {
           setInspecting(null);
+          onDetail?.(null);
           rowTrigger.current?.focus();
         }}
         onCloseAction={() => {

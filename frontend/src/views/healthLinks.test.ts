@@ -8,8 +8,12 @@ describe("findingHref", () => {
     expect(findingHref("task", "UX-1")).toBe("#/tasks/UX-1");
   });
 
+  it("sends an escalation finding to its own inspector", () => {
+    expect(findingHref("escalation", "ESC-1")).toBe("#/escalations/ESC-1");
+  });
+
   it("sends a session finding to the sessions route", () => {
-    expect(findingHref("session", "david-fe-20260725")).toBe("#/sessions");
+    expect(findingHref("session", "david-fe-20260725")).toBe("#/sessions/david-fe-20260725");
   });
 
   it("leaves a finding with nowhere useful to go unlinked", () => {

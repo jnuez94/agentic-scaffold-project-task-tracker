@@ -9,9 +9,10 @@
  * The broadcast trigger is not here; it is global in the toolbar (UI-12).
  */
 
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { CSSProperties } from "react";
 import type { Agent, Message } from "../api/contract.ts";
+import { ApiError } from "../api/errors.ts";
 import { DataTable } from "../components/DataTable.tsx";
 import { ErrorBanner, SkeletonRows } from "../components/Feedback.tsx";
 import { ResizeHandle } from "../components/ResizeHandle.tsx";
@@ -42,6 +43,8 @@ export function MessagesView({
   layout,
   reloadKey,
   inbox,
+  detail = null,
+  onDetail,
 }: {
   filter: string;
   agents: Agent[];
@@ -50,12 +53,17 @@ export function MessagesView({
   reloadKey: number;
   /** The acting actor's inbox, owned by the shell so the nav can count it too. */
   inbox: InboxState;
+  /** The message named in the route, `#/messages/m-1` (UI-69). */
+  detail?: string | null;
+  onDetail?: (id: string | null) => void;
 }) {
   const { coordination, identity, announce } = useApp();
   const [chosen, setView] = useMessageView();
   // An inbox has an owner: without an actor the presentation is absent, not empty.
   const view = resolveMessageView(chosen, inbox.enabled);
   const [selected, setSelected] = useState<Message | null>(null);
+  const [missing, setMissing] = useState<ApiError | null>(null);
+  const previousDetail = useRef<string | null>(detail);
   const lastTrigger = useRef<HTMLElement | null>(null);
   const orientation = useRef<HTMLDivElement>(null);
 
@@ -86,7 +94,47 @@ export function MessagesView({
   const select = (message: Message, element: HTMLElement) => {
     lastTrigger.current = element;
     setSelected(message);
+    onDetail?.(message.id);
   };
+
+  // A deep link resolves from the loaded rows, or through `message show`
+  // when the window does not hold it; a cleared detail closes the inspector.
+  useEffect(() => {
+    const changed = previousDetail.current !== detail;
+    previousDetail.current = detail;
+    if (!detail) {
+      if (changed && selected) setSelected(null);
+      if (changed) setMissing(null);
+      return;
+    }
+    if (selected?.id === detail) return;
+    const loaded = (resource.data ?? []).find((message) => message.id === detail);
+    if (loaded) {
+      setSelected(loaded);
+      setMissing(null);
+      return;
+    }
+    if (!resource.loaded) return;
+    let stale = false;
+    coordination
+      .show("messages", detail)
+      .then((row) => {
+        if (stale) return;
+        setSelected(row as unknown as Message);
+        setMissing(null);
+      })
+      .catch((caught: unknown) => {
+        if (stale) return;
+        setSelected(null);
+        setMissing(
+          caught instanceof ApiError ? caught : new ApiError("network_error", String(caught), 0),
+        );
+      });
+    return () => {
+      stale = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [detail, resource.data, resource.loaded, coordination]);
 
   return (
     <div className="messages-screen">
@@ -162,6 +210,15 @@ export function MessagesView({
           {view !== "inbox" && resource.error ? (
             <ErrorBanner error={resource.error} onRetry={resource.refresh} />
           ) : null}
+          {missing ? (
+            <ErrorBanner
+              error={missing}
+              onDismiss={() => {
+                setMissing(null);
+                onDetail?.(null);
+              }}
+            />
+          ) : null}
           {view !== "inbox" && !resource.loaded && resource.loading ? (
             <SkeletonRows rows={6} columns={3} />
           ) : null}
@@ -193,6 +250,7 @@ export function MessagesView({
               onSelect={(row) => {
                 lastTrigger.current = document.activeElement as HTMLElement;
                 setSelected(row);
+                onDetail?.((row as Message).id);
               }}
               emptyTitle={filter ? NO_MESSAGES_MATCH : config.emptyTitle}
               emptyHint={filter ? CLEAR_FILTER_HINT : config.emptyHint}
@@ -215,6 +273,7 @@ export function MessagesView({
               message={selected}
               onClose={() => {
                 setSelected(null);
+                onDetail?.(null);
                 lastTrigger.current?.focus();
               }}
             />

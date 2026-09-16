@@ -15,10 +15,12 @@
  * Spec: docs/ux-entity-inspectors-spec.md
  */
 
-import { useEffect, useRef, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Field, MetricRow, Tags } from "../components/Fields.tsx";
 import { Icon } from "../components/icons.tsx";
 import { PathList } from "../components/PathList.tsx";
+import { TabBar } from "../components/TabBar.tsx";
+import { RecordActivity } from "./RecordActivity.tsx";
 import { absoluteTime, relativeTime } from "../lib/format.ts";
 import { text } from "../lib/rowValue.ts";
 import {
@@ -29,12 +31,20 @@ import {
   type Row,
 } from "./inspectorConfigs.tsx";
 
+type InspectorTab = "details" | "activity";
+
+const TABS = [
+  { id: "details", label: "Details" },
+  { id: "activity", label: "Activity" },
+] as const;
+
 export function RecordInspector({
   config,
   row,
   onClose,
   actions,
   onCopied,
+  withActivity = false,
 }: {
   config: InspectorConfig;
   row: Row;
@@ -46,9 +56,16 @@ export function RecordInspector({
    * stays a presentational component its tests can render standalone.
    */
   onCopied?: (message: string) => void;
+  /**
+   * Offer the record's timeline as a second tab (UI-69). The Details tab
+   * still issues no request; Activity loads only when chosen, and needs the
+   * app context, which is why it is opt-in for standalone rendering.
+   */
+  withActivity?: boolean;
 }) {
   const heading = useRef<HTMLHeadingElement>(null);
   const id = text(row["id"]);
+  const [tab, setTab] = useState<InspectorTab>("details");
 
   useEffect(() => {
     heading.current?.focus();
@@ -91,6 +108,16 @@ export function RecordInspector({
         }))}
       />
 
+      {withActivity ? (
+        <TabBar
+          tabs={TABS}
+          active={tab}
+          onChange={setTab}
+          label={`${config.kind} sections`}
+          idPrefix="record"
+        />
+      ) : null}
+
       {/* Focusable so a keyboard user can scroll it, which a plain div is not.
           Given focus, it must also say what it is: a bare tabbable div announces
           nothing on arrival. role plus a name makes it a real region rather than
@@ -98,19 +125,24 @@ export function RecordInspector({
       <div
         className="inspector-body"
         tabIndex={0}
-        role="region"
-        aria-label={`${config.kind} details`}
+        role={withActivity ? "tabpanel" : "region"}
+        id={withActivity ? `record-panel-${tab}` : undefined}
+        aria-labelledby={withActivity ? `record-tab-${tab}` : undefined}
+        aria-label={withActivity ? undefined : `${config.kind} details`}
       >
-        {visibleFields(config.fields, row).map((field) => (
-          <Field
-            key={field.key}
-            label={field.label}
-            className={field.constraint ? "constraint-field" : undefined}
-          >
-            {renderField(field, row[field.key], onCopied)}
-          </Field>
-        ))}
-
+        {tab === "activity" ? (
+          <RecordActivity objectType={config.kind} objectId={id} />
+        ) : (
+          visibleFields(config.fields, row).map((field) => (
+            <Field
+              key={field.key}
+              label={field.label}
+              className={field.constraint ? "constraint-field" : undefined}
+            >
+              {renderField(field, row[field.key], onCopied)}
+            </Field>
+          ))
+        )}
       </div>
 
       {/* Outside the scrolling body on purpose. These act on the record, and
@@ -165,7 +197,8 @@ function renderValue(
     case "tags":
       return <Tags value={String(value)} />;
     case "agentLink":
-      return <a href={`#/agents`} className="mono">{String(value)}</a>;
+      // Agents have a deep link since UI-69: the inspector resolves it by id.
+      return <a href={`#/agents/${encodeURIComponent(String(value))}`} className="mono">{String(value)}</a>;
     case "taskLink":
       return <a href={`#/tasks/${String(value)}`} className="mono">{String(value)}</a>;
     case "taskLinks":

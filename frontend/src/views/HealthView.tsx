@@ -17,11 +17,10 @@ import { SessionRecovery } from "./SessionRecovery.tsx";
 
 /**
  * Where a finding's record lives, so the id can be a link rather than a string
- * the operator has to copy and hunt for on another route. `task` rows deep-link
- * straight into the inspector; `session` rows can only reach the Sessions list,
- * because sessions have no detail route.
+ * the operator has to copy and hunt for on another route. Every kind here has
+ * a detail route since UI-69, so each finding lands in its own inspector.
  */
-type FindingLink = "task" | "session" | null;
+type FindingLink = "task" | "session" | "escalation" | null;
 
 const SECTIONS: { key: keyof Health; title: string; hint: string; link: FindingLink }[] = [
   { key: "unowned_tasks", title: "Unowned tasks", hint: "Assign an owner or close as invalid.", link: "task" },
@@ -35,7 +34,7 @@ const SECTIONS: { key: keyof Health; title: string; hint: string; link: FindingL
   // the promise is kept at the same commit it is made.
   { key: "active_blockers", title: "Blocked tasks", hint: "Open each task to see what is blocking it, then resolve the blocker or escalate.", link: "task" },
   { key: "done_without_evidence", title: "Done without evidence", hint: "Reopen or attach evidence.", link: "task" },
-  { key: "open_escalations", title: "Open escalations", hint: "Route to the owner with the authority to decide.", link: null },
+  { key: "open_escalations", title: "Open escalations", hint: "Route to the owner with the authority to decide.", link: "escalation" },
 ];
 
 export function HealthView() {
@@ -191,16 +190,11 @@ export function HealthView() {
   );
 }
 
-/**
- * The hash a finding id should point at, or null when it has nowhere to go.
- *
- * Escalations are deliberately unlinked: the route lists them but there is no
- * per-escalation view to land on, and a link that goes nowhere useful is worse
- * than plain text.
- */
+/** The hash a finding id should point at, or null when it has nowhere to go. */
 export function findingHref(link: FindingLink, id: string): string | null {
   if (!id || id.startsWith("row-")) return null;
   if (link === "task") return buildHash("tasks", id);
-  if (link === "session") return buildHash("sessions");
+  if (link === "session") return buildHash("sessions", id);
+  if (link === "escalation") return buildHash("escalations", id);
   return null;
 }

@@ -62,6 +62,7 @@ export function RecordPanels({
           row={inspecting}
           onClose={onCloseInspector}
           onCopied={announce}
+          withActivity
           actions={
             <>
               {/* Reuses the row action's own predicate, so the control appears

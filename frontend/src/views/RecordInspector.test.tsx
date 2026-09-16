@@ -182,3 +182,20 @@ describe("RecordInspector — read-only", () => {
     }
   });
 });
+
+describe("RecordInspector — Activity tab (UI-69)", () => {
+  it("offers Details and Activity when asked, opening on Details without a request", () => {
+    render(
+      <RecordInspector config={INSPECTOR_CONFIGS.decisions!} row={DECISION} onClose={() => {}} withActivity />,
+    );
+    expect(screen.getByRole("tab", { name: "Details" }).getAttribute("aria-selected")).toBe("true");
+    expect(screen.getByRole("tab", { name: "Activity" })).toBeTruthy();
+    expect(screen.getByText("Toby owns SEC-1 alone.")).toBeTruthy();
+  });
+
+  it("stays a plain details region when not asked", () => {
+    show("decisions", DECISION);
+    expect(screen.queryByRole("tab")).toBeNull();
+    expect(screen.getByRole("region", { name: "decision details" })).toBeTruthy();
+  });
+});

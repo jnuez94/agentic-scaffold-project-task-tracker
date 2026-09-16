@@ -67,6 +67,8 @@ export function RoutedView({
           layout={layout}
           reloadKey={broadcastNonce}
           inbox={inbox}
+          detail={route.detail}
+          onDetail={(id) => navigate("messages", id)}
         />
       ) : RECORD_CONFIGS[route.name] ? (
         /* Keyed by route, and that key is the whole fix for a stop-ship crash.
@@ -81,7 +83,13 @@ export function RoutedView({
            different route is a different component: fresh resource, and with it
            fresh status filter, sort, pagination, and selection. None of those
            belong to the route the operator just left. */
-        <RecordsView key={route.name} route={route.name} filter={filter} />
+        <RecordsView
+          key={route.name}
+          route={route.name}
+          filter={filter}
+          detail={route.detail}
+          onDetail={(id) => navigate(route.name, id)}
+        />
       ) : null}
     </RouteErrorBoundary>
   );

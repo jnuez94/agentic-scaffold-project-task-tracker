@@ -26,6 +26,9 @@ export class Coordination {
   constructor(private readonly api: ApiClient) {}
 
   meta = () => this.api.get<Meta>("/api/meta");
+  /** `<entity> show ID` for any record route (1.4.0); tasks keep their own typed call. */
+  show = (route: string, id: string) =>
+    this.api.get<Record<string, unknown>>(`/api/${route}/${encodeURIComponent(id)}`);
   doctor = () => this.api.get<Record<string, unknown>>("/api/doctor");
   summary = () => this.api.get<Summary>("/api/summary");
   health = (query?: Query) => this.api.get<Health>("/api/health", query);

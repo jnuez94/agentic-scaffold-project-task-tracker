@@ -18,6 +18,7 @@ from . import (
     meta,
     reviews,
     sessions,
+    show,
     tasks,
 )
 
@@ -32,6 +33,7 @@ ROUTE_MODULES = (
     inbox,
     artifacts,
     escalations,
+    show,
 )
 
 ROUTES: tuple[RouteSpec, ...] = tuple(

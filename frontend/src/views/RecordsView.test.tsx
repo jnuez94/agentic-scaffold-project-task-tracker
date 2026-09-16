@@ -169,4 +169,69 @@ describe("RecordsView across a route change", () => {
       ).toContain("accepted"),
     );
   });
+
+  it("resolves a deep link from the loaded rows without asking show", async () => {
+    const { impl, calls } = routedFetch({ "/api/decisions": async () => ok([DECISION]) });
+    render(
+      wrap(impl, <RecordsView key="decisions" route="decisions" filter="" detail="DEC-1" onDetail={() => {}} />),
+    );
+    await screen.findByRole("complementary", { name: /decision DEC-1/ });
+    expect(calls.some((url) => url.includes("/api/decisions/DEC-1"))).toBe(false);
+  });
+
+  it("resolves a deep link through show when the window does not hold the row", async () => {
+    const { impl, calls } = routedFetch({
+      "/api/decisions/DEC-9": async () => new Response(JSON.stringify({ ok: true, data: { ...DECISION, id: "DEC-9" } }), { status: 200 }),
+      "/api/decisions": async () => ok([DECISION]),
+    });
+    render(
+      wrap(impl, <RecordsView key="decisions" route="decisions" filter="" detail="DEC-9" onDetail={() => {}} />),
+    );
+    await screen.findByRole("complementary", { name: /decision DEC-9/ });
+    expect(calls.some((url) => url.includes("/api/decisions/DEC-9"))).toBe(true);
+  });
+
+  it("gives an unknown id the not-found treatment and clears the route on dismiss", async () => {
+    const { impl } = routedFetch({
+      "/api/decisions/NOPE": async () =>
+        new Response(JSON.stringify({ ok: false, error: { code: "not_found", message: "Not found: decision NOPE" } }), { status: 404 }),
+      "/api/decisions": async () => ok([DECISION]),
+    });
+    const onDetail = vi.fn();
+    render(
+      wrap(impl, <RecordsView key="decisions" route="decisions" filter="" detail="NOPE" onDetail={onDetail} />),
+    );
+    await screen.findByText("Not found: decision NOPE");
+    expect(screen.queryByRole("complementary")).toBeNull();
+    await userEvent.click(screen.getByRole("button", { name: "Dismiss error" }));
+    expect(onDetail).toHaveBeenCalledWith(null);
+  });
+
+  it("puts the opened row's id in the route and clears it on close", async () => {
+    const { impl } = routedFetch({ "/api/decisions": async () => ok([DECISION]) });
+    const onDetail = vi.fn();
+    render(wrap(impl, <RecordsView key="decisions" route="decisions" filter="" onDetail={onDetail} />));
+    await userEvent.click(await screen.findByText("DEC-1"));
+    expect(onDetail).toHaveBeenLastCalledWith("DEC-1");
+    await userEvent.click(screen.getByRole("button", { name: "Close inspector" }));
+    expect(onDetail).toHaveBeenLastCalledWith(null);
+  });
+
+  it("closes a record opened earlier when the route then names one that does not resolve", async () => {
+    const { impl } = routedFetch({
+      "/api/decisions/NOPE": async () =>
+        new Response(JSON.stringify({ ok: false, error: { code: "not_found", message: "Not found: decision NOPE" } }), { status: 404 }),
+      "/api/decisions": async () => ok([DECISION]),
+    });
+    const { rerender } = render(
+      wrap(impl, <RecordsView key="decisions" route="decisions" filter="" detail="DEC-1" onDetail={() => {}} />),
+    );
+    await screen.findByRole("complementary", { name: /decision DEC-1/ });
+
+    rerender(
+      wrap(impl, <RecordsView key="decisions" route="decisions" filter="" detail="NOPE" onDetail={() => {}} />),
+    );
+    await screen.findByText("Not found: decision NOPE");
+    expect(screen.queryByRole("complementary")).toBeNull();
+  });
 });

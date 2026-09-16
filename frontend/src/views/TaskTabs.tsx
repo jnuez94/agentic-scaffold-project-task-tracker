@@ -8,16 +8,14 @@
 
 import { useState } from "react";
 import type { TaskDetail } from "../api/contract.ts";
-import { EmptyState, ErrorBanner } from "../components/Feedback.tsx";
+import { EmptyState } from "../components/Feedback.tsx";
 import { DependencyList } from "./DependencyList.tsx";
 import { ReviewsPanel } from "./ReviewsPanel.tsx";
 import { EnumPill } from "../components/Pill.tsx";
 import { absoluteTime, relativeTime } from "../lib/format.ts";
-import { humanize } from "../lib/labels.ts";
-import { useApp } from "../state/AppContext.tsx";
-import { useResource } from "../state/useResource.ts";
 import { AddEvidenceForm } from "./AddEvidenceForm.tsx";
 import { DependencyForm } from "./DependencyForm.tsx";
+import { RecordActivity } from "./RecordActivity.tsx";
 import { TaskMessagesPanel } from "./TaskMessagesPanel.tsx";
 
 export type TaskTab =
@@ -67,7 +65,7 @@ export function TaskTabPanel({
   }
   if (tab === "reviews") return <ReviewsPanel detail={detail} onChanged={() => { refresh(); onChanged(); }} />;
   if (tab === "messages") return <TaskMessagesPanel taskId={detail.id} nameFor={nameFor} />;
-  return <ActivityPanel taskId={detail.id} />;
+  return <RecordActivity objectType="task" objectId={detail.id} />;
 }
 
 function EvidencePanel({ detail, onAdded }: { detail: TaskDetail; onAdded: () => void }) {
@@ -148,36 +146,5 @@ function DependenciesPanel({ detail, onChanged }: { detail: TaskDetail; onChange
       />
       {form}
     </>
-  );
-}
-
-
-function ActivityPanel({ taskId }: { taskId: string }) {
-  const { coordination } = useApp();
-  const audit = useResource(() => coordination.audit({ object_id: taskId, limit: 50 }), [taskId]);
-
-  if (audit.error) return <ErrorBanner error={audit.error} onRetry={audit.refresh} />;
-  const entries = audit.data ?? [];
-  if (audit.loaded && entries.length === 0) {
-    return <EmptyState title="No recorded activity" />;
-  }
-  return (
-    <ul className="timeline">
-      {entries.map((entry) => (
-        <li key={entry.id}>
-          <span className="timeline-dot" aria-hidden="true" />
-          <div>
-            <div className="small">
-              <strong>{humanize(entry.action)}</strong> by <span className="mono">{entry.actor}</span>
-            </div>
-            <div className="small muted" title={absoluteTime(entry.created_at)}>
-              {relativeTime(entry.created_at)}
-              {entry.session_id ? ` · session ${entry.session_id}` : ""}
-            </div>
-            {entry.detail ? <div className="small muted">{entry.detail}</div> : null}
-          </div>
-        </li>
-      ))}
-    </ul>
   );
 }
