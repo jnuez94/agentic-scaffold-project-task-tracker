@@ -8,14 +8,31 @@
  * own rule so an operator does not have to infer why it is styled differently.
  */
 
-import type { Health, Task, TaskListRow } from "../api/contract.ts";
+import type { Doctor, Health, OutOfBandEdit, Task, TaskListRow } from "../api/contract.ts";
 import { absoluteTime, relativeTime } from "../lib/format.ts";
-import { implementerOf, informationalSections } from "../lib/healthInformational.ts";
+import {
+  doctorSection,
+  implementerOf,
+  informationalSections,
+  OUT_OF_BAND_KEY,
+  OUT_OF_BAND_RULE,
+  outOfBandHref,
+} from "../lib/healthInformational.ts";
 import { describe, identify } from "../lib/healthRows.ts";
 import { buildHash } from "../state/useHashRoute.ts";
 
-export function HealthInformational({ health, tasks }: { health: Health; tasks: TaskListRow[] }) {
-  const sections = informationalSections(health);
+export function HealthInformational({
+  health,
+  tasks,
+  doctor,
+}: {
+  health: Health;
+  tasks: TaskListRow[];
+  /** `doctor`'s record-consistency findings join the group as a second section. */
+  doctor?: Doctor;
+}) {
+  const fromDoctor = doctorSection(doctor);
+  const sections = [...informationalSections(health), ...(fromDoctor ? [fromDoctor] : [])];
   if (sections.length === 0) return null;
 
   return (
@@ -35,11 +52,20 @@ export function HealthInformational({ health, tasks }: { health: Health; tasks: 
               {section.truncated ? "+" : ""}
             </span>
           </h3>
+          {section.key === OUT_OF_BAND_KEY ? <p className="small muted">{OUT_OF_BAND_RULE}</p> : null}
           <ul className="record-list">
             {section.rows.map((row, index) => (
-              <li key={identify(row, index)}>
+              <li
+                key={
+                  section.key === OUT_OF_BAND_KEY
+                    ? `${(row as OutOfBandEdit).table}/${(row as OutOfBandEdit).id}`
+                    : identify(row, index)
+                }
+              >
                 {section.key === "tasks_awaiting_review" ? (
                   <AwaitingReview task={row as Task} tasks={tasks} />
+                ) : section.key === OUT_OF_BAND_KEY ? (
+                  <OutOfBandRow edit={row as OutOfBandEdit} />
                 ) : (
                   <GenericRow row={row} index={index} />
                 )}
@@ -65,6 +91,33 @@ function AwaitingReview({ task, tasks }: { task: Task; tasks: TaskListRow[] }) {
         {implementer ?? "unassigned"}
         {" · updated "}
         <span title={absoluteTime(task.updated_at)}>{relativeTime(task.updated_at)}</span>
+      </span>
+    </>
+  );
+}
+
+function OutOfBandRow({ edit }: { edit: OutOfBandEdit }) {
+  const href = outOfBandHref(edit);
+  return (
+    <>
+      {href ? (
+        <a className="mono" href={href}>
+          {edit.id}
+        </a>
+      ) : (
+        <span className="mono">{edit.id}</span>
+      )}
+      <span className="small muted">
+        {" · "}
+        {edit.table}
+        {" · changed "}
+        <span title={absoluteTime(edit.updated_at)}>{relativeTime(edit.updated_at)}</span>
+        {" · last audited "}
+        {edit.last_audit_at ? (
+          <span title={absoluteTime(edit.last_audit_at)}>{relativeTime(edit.last_audit_at)}</span>
+        ) : (
+          "never"
+        )}
       </span>
     </>
   );

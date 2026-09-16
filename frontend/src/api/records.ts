@@ -55,6 +55,29 @@ export interface Inbox {
   messages: InboxMessage[];
 }
 
+/** A row `doctor` found written around the runtime: its updated_at is newer than its last audit row. */
+export interface OutOfBandEdit {
+  table: string;
+  id: string;
+  updated_at: string;
+  last_audit_at: string | null;
+}
+
+/**
+ * `doctor` (1.4.0 fields shown; the rest are diagnostics the launcher prints).
+ * record_consistency is a consistency check between cooperating tools; it
+ * never fails doctor or health.
+ */
+export interface Doctor {
+  healthy: boolean;
+  integrity_check: string;
+  record_consistency: "ok" | "findings";
+  out_of_band_edits: OutOfBandEdit[];
+  out_of_band_edit_count: number;
+  out_of_band_edits_truncated: boolean;
+  [diagnostic: string]: unknown;
+}
+
 export interface InboxMark {
   agent: string;
   previous_cursor: number;

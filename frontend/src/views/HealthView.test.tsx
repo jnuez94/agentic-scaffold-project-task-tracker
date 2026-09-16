@@ -64,10 +64,24 @@ function healthPayload(overrides: Partial<Health> = {}): Health {
   return { ...empty, ...overrides };
 }
 
-function healthFetch(health: Health, tasks: TaskListRow[]) {
+const DOCTOR_OK = {
+  healthy: true,
+  record_consistency: "ok",
+  out_of_band_edits: [],
+  out_of_band_edit_count: 0,
+  out_of_band_edits_truncated: false,
+};
+
+function healthFetch(health: Health, tasks: TaskListRow[], doctor: unknown = DOCTOR_OK) {
   const impl = vi.fn(async (input: RequestInfo | URL) => {
     const url = String(input);
-    const data = url.includes("/api/health") ? health : url.includes("/api/tasks") ? tasks : [];
+    const data = url.includes("/api/health")
+      ? health
+      : url.includes("/api/tasks")
+        ? tasks
+        : url.includes("/api/doctor")
+          ? doctor
+          : [];
     return new Response(JSON.stringify({ ok: true, data }), { status: 200 });
   });
   return impl as unknown as typeof fetch;
@@ -155,5 +169,28 @@ describe("HealthView with informational sections", () => {
     render(wrap(healthFetch(healthPayload(), []), <HealthView />));
     await screen.findByText("No findings");
     expect(screen.queryByText("Informational")).toBeNull();
+  });
+
+  it("adds doctor's out-of-band findings as a second informational section, linked and not alarming", async () => {
+    const doctor = {
+      ...DOCTOR_OK,
+      record_consistency: "findings",
+      out_of_band_edits: [{ table: "tasks", id: "T-9", updated_at: "2026-09-16T00:00:00+00:00", last_audit_at: null }],
+      out_of_band_edit_count: 1,
+    };
+    render(wrap(healthFetch(healthPayload(), [], doctor), <HealthView />));
+
+    const group = await screen.findByRole("region", { name: "Informational" });
+    expect(within(group).getByText(/Records written outside the runtime/)).toBeTruthy();
+    expect(within(group).getByRole("link", { name: "T-9" }).getAttribute("href")).toBe("#/tasks/T-9");
+    expect(within(group).getByText(/last audited never/)).toBeTruthy();
+    expect(group.textContent).not.toMatch(/tamper/i);
+    expect(screen.getByText("No findings")).toBeTruthy();
+  });
+
+  it("shows no doctor section when record consistency is ok", async () => {
+    render(wrap(healthFetch(healthPayload(), []), <HealthView />));
+    await screen.findByText("No findings");
+    expect(screen.queryByText(/Records written outside the runtime/)).toBeNull();
   });
 });

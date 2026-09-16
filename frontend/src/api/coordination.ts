@@ -8,6 +8,7 @@ import type {
   Artifact,
   AuditEntry,
   Decision,
+  Doctor,
   Escalation,
   Evidence,
   Health,
@@ -29,7 +30,7 @@ export class Coordination {
   /** `<entity> show ID` for any record route (1.4.0); tasks keep their own typed call. */
   show = (route: string, id: string) =>
     this.api.get<Record<string, unknown>>(`/api/${route}/${encodeURIComponent(id)}`);
-  doctor = () => this.api.get<Record<string, unknown>>("/api/doctor");
+  doctor = () => this.api.get<Doctor>("/api/doctor");
   summary = (query?: Query) => this.api.get<Summary>("/api/summary", query);
   health = (query?: Query) => this.api.get<Health>("/api/health", query);
   audit = (query?: Query) => this.api.get<AuditEntry[]>("/api/audit", query);

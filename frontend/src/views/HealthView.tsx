@@ -43,6 +43,9 @@ export function HealthView() {
   // Loaded so the recovery dialog can name the tasks it will block rather than
   // describing them in the abstract.
   const tasks = useResource(() => coordination.tasks({ limit: 500 }), []);
+  // doctor's record-consistency findings (1.4.0) join the informational group.
+  // A doctor failure is not a health failure: the group simply lacks the section.
+  const doctor = useResource(() => coordination.doctor(), []);
   const [recovering, setRecovering] = useState<Session | null>(null);
   const launcher = useRef<HTMLButtonElement | null>(null);
 
@@ -166,7 +169,7 @@ export function HealthView() {
 
       {/* UI-65: the sections that never make a project unhealthy, rendered
           below and quieter than the ones that do. */}
-      <HealthInformational health={data} tasks={tasks.data ?? []} />
+      <HealthInformational health={data} tasks={tasks.data ?? []} doctor={doctor.data} />
 
       {recovering ? (
         <>

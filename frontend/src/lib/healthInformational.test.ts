@@ -1,6 +1,13 @@
 import { describe, expect, it } from "vitest";
 import type { Task, TaskListRow } from "../api/contract.ts";
-import { implementerOf, informationalSections, longestWaitingFirst } from "./healthInformational.ts";
+import type { Doctor } from "../api/contract.ts";
+import {
+  doctorSection,
+  implementerOf,
+  informationalSections,
+  longestWaitingFirst,
+  outOfBandHref,
+} from "./healthInformational.ts";
 
 const task = (id: string, updated_at: string): Task => ({
   id,
@@ -85,5 +92,40 @@ describe("implementerOf", () => {
   it("has no name for an unassigned task or one outside the loaded window", () => {
     expect(implementerOf("T-1", [row({})])).toBeNull();
     expect(implementerOf("T-404", [row({})])).toBeNull();
+  });
+});
+
+describe("doctorSection", () => {
+  const doctor = (overrides: Partial<Doctor>): Doctor => ({
+    healthy: true,
+    integrity_check: "ok",
+    record_consistency: "ok",
+    out_of_band_edits: [],
+    out_of_band_edit_count: 0,
+    out_of_band_edits_truncated: false,
+    ...overrides,
+  });
+
+  it("is absent when doctor found nothing, or was not read", () => {
+    expect(doctorSection(undefined)).toBeNull();
+    expect(doctorSection(doctor({}))).toBeNull();
+  });
+
+  it("lists the rows written around the runtime, marking the cap", () => {
+    const edit = { table: "tasks", id: "T-1", updated_at: "2026-09-16T00:00:00+00:00", last_audit_at: null };
+    const section = doctorSection(
+      doctor({ record_consistency: "findings", out_of_band_edits: [edit], out_of_band_edit_count: 1, out_of_band_edits_truncated: true }),
+    );
+    expect(section?.title).toBe("Records written outside the runtime");
+    expect(section?.rows).toEqual([edit]);
+    expect(section?.truncated).toBe(true);
+  });
+});
+
+describe("outOfBandHref", () => {
+  it("opens the record where a route exists and nothing where none does", () => {
+    expect(outOfBandHref({ table: "tasks", id: "T-1" })).toBe("#/tasks/T-1");
+    expect(outOfBandHref({ table: "decisions", id: "DEC-1" })).toBe("#/decisions/DEC-1");
+    expect(outOfBandHref({ table: "task_evidence", id: "7" })).toBeNull();
   });
 });
