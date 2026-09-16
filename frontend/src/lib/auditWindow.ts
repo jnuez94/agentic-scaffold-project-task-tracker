@@ -10,6 +10,7 @@
  */
 
 import type { AuditEntry } from "../api/contract.ts";
+import { pageBounds } from "./pagination.ts";
 
 /** Fields the loaded-row filter box searches. */
 export const AUDIT_FILTER_FIELDS = [
@@ -31,6 +32,30 @@ export interface AuditNarrowing {
 /** Distinct values of one field across the loaded rows, sorted, empties dropped. */
 export function facetValues(rows: readonly AuditEntry[], field: AuditFacet): string[] {
   return [...new Set(rows.map((row) => row[field]).filter(Boolean))].sort();
+}
+
+/**
+ * Range copy for the audit view.
+ *
+ * The shared label hedges about truncation with a plus sign and "may exist",
+ * which is right for lists that are occasionally capped. This window is
+ * always the newest N of a log that is always longer, so the label states the
+ * window instead of hedging about it: "of the newest 500", and when narrowed,
+ * "37 matching, within the newest 500".
+ */
+export function auditRangeLabel(
+  page: number,
+  size: number,
+  total: number,
+  options: { window: number; narrowed: boolean },
+): string {
+  if (total === 0) {
+    return options.narrowed ? "No loaded entries match this filter" : "No entries loaded";
+  }
+  const { first, last } = pageBounds(page, size, total);
+  const prefix = total <= size ? "" : `Showing ${first}–${last} of `;
+  if (!options.narrowed) return prefix ? `${prefix}the newest ${total}` : `The newest ${total}`;
+  return `${prefix}${total} matching, within the newest ${options.window}`;
 }
 
 /** The loaded rows matching both selects; the same array when neither is set. */

@@ -7,6 +7,7 @@
  * on the server.
  */
 
+import type { ReactNode } from "react";
 import {
   clampPage,
   pageCount,
@@ -15,6 +16,19 @@ import {
   type PageSize,
 } from "../lib/pagination.ts";
 import { usePagingAnnouncement } from "../state/usePagingAnnouncement.ts";
+
+/**
+ * Wording a table can substitute for the shared range label and truncation
+ * notice. The shared copy hedges — a plus sign, "may exist" — because for
+ * most lists truncation is the edge case. The audit log is the one list where
+ * it is the permanent state, so hedging there misstates a certainty.
+ */
+export interface PagerCopy {
+  rangeLabel?: (page: number, size: number, total: number) => string;
+  truncatedNotice?: ReactNode;
+}
+
+const TRUNCATED_NOTICE = "The request limit was reached, so more rows may exist that are not loaded.";
 
 export interface PaginationProps {
   page: number;
@@ -26,6 +40,7 @@ export interface PaginationProps {
   onSize: (size: PageSize) => void;
   /** Distinguishes the two selects when several tables share a document. */
   idPrefix: string;
+  copy?: PagerCopy;
 }
 
 export function Pagination({
@@ -37,11 +52,14 @@ export function Pagination({
   onPage,
   onSize,
   idPrefix,
+  copy,
 }: PaginationProps) {
   const last = pageCount(total, size);
   const current = clampPage(page, total, size);
   const onlyOnePage = total <= size;
-  const label = rangeLabel(current, size, total, { filtered, truncated });
+  const label = copy?.rangeLabel
+    ? copy.rangeLabel(current, size, total)
+    : rangeLabel(current, size, total, { filtered, truncated });
 
   // The visible range is no longer a live region. It re-announced on every
   // data change, including the refresh each mutation triggers, which is what
@@ -61,9 +79,7 @@ export function Pagination({
       </div>
 
       {truncated ? (
-        <p className="pagination-truncated small">
-          The request limit was reached, so more rows may exist that are not loaded.
-        </p>
+        <p className="pagination-truncated small">{copy?.truncatedNotice ?? TRUNCATED_NOTICE}</p>
       ) : null}
 
       <div className="pagination-controls">

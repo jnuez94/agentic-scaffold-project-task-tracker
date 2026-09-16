@@ -116,7 +116,29 @@ describe("AuditView", () => {
     render(wrap(impl, <AuditView filter="" />));
 
     await screen.findByText("T-500");
-    expect(screen.getByText(/500\+ loaded/)).toBeTruthy();
+    expect(screen.getByText("Showing 1–10 of the newest 500")).toBeTruthy();
+    expect(screen.getByText(/Older entries are not loaded/)).toBeTruthy();
+    // The shared hedge is overridden on this view and nowhere else.
+    expect(screen.queryByText(/may exist/)).toBeNull();
+    expect(screen.queryByText(/500\+/)).toBeNull();
+  });
+
+  it("names the narrowing within the window once a picker is set", async () => {
+    const { impl } = auditFetch(WINDOW);
+    render(wrap(impl, <AuditView filter="" />));
+    await screen.findByText("T-2");
+
+    await userEvent.selectOptions(screen.getByLabelText("Action"), "claim");
+    await screen.findByText("1 matching, within the newest 3");
+  });
+
+  it("carries the ruled header wording", async () => {
+    const { impl } = auditFetch(WINDOW);
+    render(wrap(impl, <AuditView filter="" />));
+    await screen.findByText("T-2");
+    expect(
+      screen.getByText(/the type and action pickers and the filter box narrow them/),
+    ).toBeTruthy();
   });
 
   it("has an empty state that does not blame a filter when nothing was loaded", async () => {

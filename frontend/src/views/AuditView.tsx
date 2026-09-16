@@ -11,7 +11,7 @@
 import { useMemo, useState } from "react";
 import { DataTable } from "../components/DataTable.tsx";
 import { ErrorBanner } from "../components/Feedback.tsx";
-import { AUDIT_FILTER_FIELDS, facetValues, narrowAudit } from "../lib/auditWindow.ts";
+import { AUDIT_FILTER_FIELDS, auditRangeLabel, facetValues, narrowAudit } from "../lib/auditWindow.ts";
 import { CLEAR_FILTER_HINT } from "../lib/copy.ts";
 import { filterRows } from "../lib/filters.ts";
 import { isTruncated } from "../lib/pagination.ts";
@@ -43,7 +43,7 @@ export function AuditView({ filter }: { filter: string }) {
         <h1>Audit log</h1>
         <p className="small muted">
           Every audited mutation, newest first. The newest {REQUEST_LIMIT} entries are loaded;
-          the selects and the filter narrow those.
+          the type and action pickers and the filter box narrow them.
         </p>
       </div>
 
@@ -95,6 +95,19 @@ export function AuditView({ filter }: { filter: string }) {
             ? CLEAR_FILTER_HINT
             : "Mutations made through the CLI or this console are recorded here."
         }
+        // The one list where truncation is the permanent state, so the shared
+        // hedge ("may exist") would misstate a certainty. The CLI pointer is
+        // temporary: UI-64 replaces it with a control.
+        pagerCopy={{
+          rangeLabel: (page, size, total) =>
+            auditRangeLabel(page, size, total, { window: loaded.length, narrowed }),
+          truncatedNotice: (
+            <>
+              Older entries are not loaded.{" "}
+              <code className="mono">coordination audit list --since</code> reaches them.
+            </>
+          ),
+        }}
       />
     </section>
   );

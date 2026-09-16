@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { AuditEntry } from "../api/contract.ts";
 import { filterRows } from "./filters.ts";
-import { AUDIT_FILTER_FIELDS, facetValues, narrowAudit } from "./auditWindow.ts";
+import { AUDIT_FILTER_FIELDS, auditRangeLabel, facetValues, narrowAudit } from "./auditWindow.ts";
 
 const entry = (overrides: Partial<AuditEntry> = {}): AuditEntry => ({
   id: 1,
@@ -42,6 +42,35 @@ describe("narrowAudit", () => {
     expect(ids(narrowAudit(ROWS, { objectType: "task", action: "" }))).toEqual([3, 1]);
     expect(ids(narrowAudit(ROWS, { objectType: "", action: "create" }))).toEqual([2, 1]);
     expect(ids(narrowAudit(ROWS, { objectType: "task", action: "create" }))).toEqual([1]);
+  });
+});
+
+describe("auditRangeLabel", () => {
+  const full = { window: 500, narrowed: false };
+  const narrowed = { window: 500, narrowed: true };
+
+  it("states the window rather than hedging about it", () => {
+    expect(auditRangeLabel(1, 10, 500, full)).toBe("Showing 1–10 of the newest 500");
+    expect(auditRangeLabel(1, 50, 37, { window: 37, narrowed: false })).toBe("The newest 37");
+  });
+
+  it("names the narrowing within the window", () => {
+    expect(auditRangeLabel(2, 10, 37, narrowed)).toBe(
+      "Showing 11–20 of 37 matching, within the newest 500",
+    );
+    expect(auditRangeLabel(1, 50, 37, narrowed)).toBe("37 matching, within the newest 500");
+  });
+
+  it("never carries the shared hedges", () => {
+    for (const label of [
+      auditRangeLabel(1, 10, 500, full),
+      auditRangeLabel(3, 10, 37, narrowed),
+      auditRangeLabel(1, 10, 0, full),
+      auditRangeLabel(1, 10, 0, narrowed),
+    ]) {
+      expect(label).not.toContain("+");
+      expect(label).not.toMatch(/may exist/);
+    }
   });
 });
 

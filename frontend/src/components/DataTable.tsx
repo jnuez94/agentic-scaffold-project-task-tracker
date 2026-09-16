@@ -9,7 +9,7 @@
 
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { EmptyState, SkeletonRows } from "./Feedback.tsx";
-import { Pagination } from "./Pagination.tsx";
+import { Pagination, type PagerCopy } from "./Pagination.tsx";
 import { SortableHead } from "./SortableHead.tsx";
 import { clampPage, pageSlice } from "../lib/pagination.ts";
 import { usePageSize } from "../state/usePageSize.ts";
@@ -56,6 +56,8 @@ export interface DataTableProps<T> {
    * the records, not of the table.
    */
   rowClass?: (row: T) => string | undefined;
+  /** Range and truncation wording, for the one table where the shared copy is wrong. */
+  pagerCopy?: PagerCopy;
 }
 
 export function DataTable<T>({
@@ -75,6 +77,7 @@ export function DataTable<T>({
   filtered = false,
   idPrefix = "table",
   rowClass,
+  pagerCopy,
 }: DataTableProps<T>) {
   const [sort, setSort] = useState<SortState | null>(null);
   const [page, setPage] = useState(1);
@@ -173,6 +176,7 @@ export function DataTable<T>({
             setPage(1);
           }}
           idPrefix={idPrefix}
+          copy={pagerCopy}
         />
       ) : null}
     </div>
