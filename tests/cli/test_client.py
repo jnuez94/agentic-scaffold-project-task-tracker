@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import os
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 from coordination_ui.cli import CoordinationCLI, CoordinationError
 
@@ -68,6 +70,14 @@ class InvocationTests(unittest.TestCase):
         self.assertEqual(caught.exception.code, "not_found")
         self.assertEqual(caught.exception.exit_code, 3)
         self.assertEqual(caught.exception.http_status, 404)
+
+    def test_the_operation_log_cannot_break_error_parsing(self) -> None:
+        # 1.4.0's COORDINATION_LOG=stderr adds a JSON line to the error stream.
+        # Inherited by the child, it turned every failure into cli_failure.
+        with patch.dict(os.environ, {"COORDINATION_LOG": "stderr"}):
+            with self.assertRaises(CoordinationError) as caught:
+                self.cli.run(["task", "show", "MISSING"])
+        self.assertEqual(caught.exception.code, "not_found")
 
     def test_missing_actor_is_reported_as_invalid_arguments(self) -> None:
         with self.assertRaises(CoordinationError) as caught:

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 import subprocess
 from collections.abc import Sequence
 from pathlib import Path
@@ -59,10 +60,17 @@ class CoordinationCLI:
         """
 
         command = self.build_command(args, session)
+        # The parser reads stderr as one JSON value. Since 1.4.0 the CLI's
+        # operation log, when COORDINATION_LOG=stderr is exported, adds a JSON
+        # line per invocation to the same stream, and an operator's shell may
+        # well export it. Pinned off for the child only; the operator's
+        # environment is untouched.
+        env = {**os.environ, "COORDINATION_LOG": "off"}
         try:
             completed = subprocess.run(  # noqa: S603 - fixed local executable, no shell
                 command,
                 cwd=str(self.cwd),
+                env=env,
                 capture_output=True,
                 text=True,
                 timeout=self.timeout,
