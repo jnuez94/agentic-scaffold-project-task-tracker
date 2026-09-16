@@ -14,6 +14,7 @@ import { filterRows } from "../lib/filters.ts";
 import { isTruncated, rangeLabel } from "../lib/pagination.ts";
 import { anyPicked, whereClauses, type PickerValues } from "../lib/recordPickers.ts";
 import { orderByTerm } from "../lib/requestOrder.ts";
+import { timeInStateLine } from "../lib/timeInState.ts";
 import type { SortState } from "../lib/sorting.ts";
 import { queueEmptyState } from "../lib/queueEmpty.ts";
 import { isRecoverable } from "../lib/staleness.ts";
@@ -122,6 +123,16 @@ export function TasksView({
     { enabled: tasks.loaded },
   );
 
+  // UI-55: the one aggregate worth a line — how long open work has sat where
+  // it is — fetched by section so nothing unrendered is computed, and refreshed
+  // with the queue so the two cannot disagree for long.
+  const aggregates = useResource(
+    () => coordination.summary({ section: "time_in_state" }),
+    [tasks.data],
+    { enabled: tasks.loaded },
+  );
+  const stateLine = timeInStateLine(aggregates.data?.time_in_state);
+
   const empty = queueEmptyState({
     scope,
     filtered: Boolean(filter),
@@ -221,6 +232,10 @@ export function TasksView({
           onSelect={setReason}
           scopeHint={scope === OPEN_SCOPE ? undefined : "Counted across the loaded rows."}
         />
+
+        {stateLine ? (
+          <p className="small muted queue-aggregates">{stateLine}</p>
+        ) : null}
 
         <QueueToolbar
           scope={scope}
