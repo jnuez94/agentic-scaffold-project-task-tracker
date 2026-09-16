@@ -15,6 +15,7 @@
 
 import { RouteErrorBoundary } from "../components/RouteErrorBoundary.tsx";
 import type { Agent } from "../api/contract.ts";
+import type { InboxState } from "../state/useInbox.ts";
 import type { Layout } from "../state/useLayout.ts";
 import type { Route, RouteName } from "../state/useHashRoute.ts";
 import { AuditView } from "./AuditView.tsx";
@@ -32,6 +33,7 @@ export function RoutedView({
   agents,
   layout,
   broadcastNonce,
+  inbox,
 }: {
   route: Route;
   navigate: (name: RouteName, detail?: string | null) => void;
@@ -40,6 +42,7 @@ export function RoutedView({
   layout: Layout;
   /** Bumped after a successful broadcast, so Messages reloads. */
   broadcastNonce: number;
+  inbox: InboxState;
 }) {
   return (
     <RouteErrorBoundary resetKey={route.name}>
@@ -63,6 +66,7 @@ export function RoutedView({
           agents={agents}
           layout={layout}
           reloadKey={broadcastNonce}
+          inbox={inbox}
         />
       ) : RECORD_CONFIGS[route.name] ? (
         /* Keyed by route, and that key is the whole fix for a stop-ship crash.

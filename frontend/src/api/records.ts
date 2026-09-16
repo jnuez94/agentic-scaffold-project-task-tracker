@@ -39,6 +39,29 @@ export interface Message {
   created_at: string;
 }
 
+/** A Message row as `inbox list` returns it: with the audit id of its send. */
+export interface InboxMessage extends Message {
+  audit_id: number;
+}
+
+/**
+ * An agent's inbox (1.4.0): messages to it or to `team` above its cursor — a
+ * read position the agent asserts about itself. Listing never moves it.
+ */
+export interface Inbox {
+  agent: string;
+  cursor: number;
+  head: number;
+  messages: InboxMessage[];
+}
+
+export interface InboxMark {
+  agent: string;
+  previous_cursor: number;
+  cursor: number;
+  head: number;
+}
+
 export interface Artifact {
   id: string;
   uri: string;

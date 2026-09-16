@@ -13,6 +13,7 @@ from . import (
     artifacts,
     escalations,
     evidence,
+    inbox,
     messages,
     meta,
     reviews,
@@ -28,6 +29,7 @@ ROUTE_MODULES = (
     evidence,
     reviews,
     messages,
+    inbox,
     artifacts,
     escalations,
 )

@@ -39,6 +39,12 @@ function recoveryFor(error: ApiError): string {
     return "Check that `python3 -m coordination_ui` is still running, then retry.";
   }
   if (error.code === "invalid_actor") return "Select an actor in the header, then retry.";
+  if (error.code === "inactive_actor") {
+    return "This actor is retired and cannot act. Select an active actor in the header.";
+  }
+  if (error.code === "cursor_not_monotonic") {
+    return "Your inbox moved on; reload to see the newer position.";
+  }
   return "Review the details below, correct the input, and try again.";
 }
 

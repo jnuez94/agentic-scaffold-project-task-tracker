@@ -34,8 +34,8 @@ describe("isMessageView", () => {
 
 describe("ViewPreferenceStore", () => {
   it("defaults to Conversation", () => {
-    expect(new ViewPreferenceStore(new MemoryStorage()).load()).toBe("conversation");
-    expect(DEFAULT_MESSAGE_VIEW).toBe("conversation");
+    expect(new ViewPreferenceStore(new MemoryStorage()).load()).toBe("inbox");
+    expect(DEFAULT_MESSAGE_VIEW).toBe("inbox");
   });
 
   it("round-trips a choice", () => {
@@ -47,7 +47,7 @@ describe("ViewPreferenceStore", () => {
   it("falls back safely when storage holds something invalid", () => {
     const storage = new MemoryStorage();
     storage.setItem("coordination-console.messageView", "gallery");
-    expect(new ViewPreferenceStore(storage).load()).toBe("conversation");
+    expect(new ViewPreferenceStore(storage).load()).toBe("inbox");
   });
 
   it("refuses to persist an invalid value", () => {
@@ -59,13 +59,13 @@ describe("ViewPreferenceStore", () => {
 
   it("tolerates storage that throws", () => {
     const store = new ViewPreferenceStore(new BrokenStorage());
-    expect(store.load()).toBe("conversation");
+    expect(store.load()).toBe("inbox");
     expect(() => store.save("ledger")).not.toThrow();
   });
 
   it("works with no storage at all", () => {
     const store = new ViewPreferenceStore(null);
-    expect(store.load()).toBe("conversation");
+    expect(store.load()).toBe("inbox");
     expect(() => store.save("ledger")).not.toThrow();
   });
 });

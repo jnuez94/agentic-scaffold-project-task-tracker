@@ -187,3 +187,22 @@
   width: 100%;
   min-height: var(--control-height-compact);
 }
+
+/* The unread count beside Messages (UI-68). Quiet on its own row, inverted on
+   the active one so it stays legible against the violet. */
+.nav-count {
+  margin-left: auto;
+  font: var(--code-sm);
+  color: var(--text-200);
+  background: var(--surface-800);
+  border: 1px solid var(--line-700);
+  border-radius: 999px;
+  padding: 0 6px;
+  line-height: 18px;
+}
+
+.nav-link.active .nav-count {
+  color: var(--violet-600);
+  background: #fff;
+  border-color: #fff;
+}

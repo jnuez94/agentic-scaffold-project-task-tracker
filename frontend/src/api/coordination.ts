@@ -11,6 +11,8 @@ import type {
   Escalation,
   Evidence,
   Health,
+  Inbox,
+  InboxMark,
   Message,
   Meta,
   Review,
@@ -69,6 +71,8 @@ export class Coordination {
 
   messages = (query?: Query) => this.api.get<Message[]>("/api/messages", query);
   sendMessage = (body: unknown) => this.api.post<{ id: string }>("/api/messages", body);
+  inbox = (query: Query) => this.api.get<Inbox>("/api/inbox", query);
+  markInboxRead = (body: unknown) => this.api.post<InboxMark>("/api/inbox/mark-read", body);
 
   artifacts = (query?: Query) => this.api.get<Artifact[]>("/api/artifacts", query);
   addArtifact = (body: unknown) => this.api.post<{ id: string }>("/api/artifacts", body);

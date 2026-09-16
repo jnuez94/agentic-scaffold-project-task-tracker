@@ -8,10 +8,20 @@
 
 import type { StorageLike } from "./identityStore.ts";
 
-export const MESSAGE_VIEWS = ["conversation", "ledger"] as const;
+export const MESSAGE_VIEWS = ["inbox", "conversation", "ledger"] as const;
 export type MessageView = (typeof MESSAGE_VIEWS)[number];
 
-export const DEFAULT_MESSAGE_VIEW: MessageView = "conversation";
+/**
+ * Inbox first (UI-68): the question an operator opens Messages with is what
+ * is addressed to them. Without an actor there is no inbox, and the view
+ * falls back to the transcript — see `resolveMessageView`.
+ */
+export const DEFAULT_MESSAGE_VIEW: MessageView = "inbox";
+
+/** The view that can actually be shown: an inbox needs an owner. */
+export function resolveMessageView(view: MessageView, hasActor: boolean): MessageView {
+  return view === "inbox" && !hasActor ? "conversation" : view;
+}
 
 const STORAGE_KEY = "coordination-console.messageView";
 

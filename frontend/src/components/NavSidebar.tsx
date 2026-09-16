@@ -54,11 +54,17 @@ export function NavSidebar({
   meta,
   theme,
   onTheme,
+  badges = {},
 }: {
   active: RouteName;
   meta: Meta | undefined;
   theme: Theme;
   onTheme: (theme: Theme) => void;
+  /**
+   * A count beside a destination — today the unread inbox on Messages
+   * (UI-68). Null means no chip: nothing unread, or no actor to own an inbox.
+   */
+  badges?: Partial<Record<RouteName, string | null>>;
 }) {
   return (
     <nav className="nav" aria-label="Sections">
@@ -96,6 +102,12 @@ export function NavSidebar({
                     <Icon name={item.icon} />
                   </span>
                   {item.label}
+                  {badges[item.route] ? (
+                    <span className="nav-count">
+                      {badges[item.route]}
+                      <span className="visually-hidden"> unread</span>
+                    </span>
+                  ) : null}
                 </a>
               </li>
             ))}

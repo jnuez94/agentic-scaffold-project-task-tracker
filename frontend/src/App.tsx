@@ -21,6 +21,8 @@ import { useRouteEntryScroll } from "./state/useRouteEntryScroll.ts";
 import { useAgentsAfterBootstrap } from "./state/useAgentsAfterBootstrap.ts";
 import { useLayout } from "./state/useLayout.ts";
 import { useBroadcastLauncher } from "./state/useBroadcastLauncher.ts";
+import { useInbox } from "./state/useInbox.ts";
+import { unreadChip } from "./lib/inbox.ts";
 import { useMeasuredHeight } from "./state/useMeasuredHeight.ts";
 import { useResource } from "./state/useResource.ts";
 import { RECORD_CONFIGS } from "./views/recordConfigs.tsx";
@@ -67,10 +69,15 @@ export function App() {
     mutationsEnabled,
   );
 
+  // The acting actor's inbox (UI-68): loaded here so the nav can carry its
+  // count and the Messages route can show it without a second request.
+  const inbox = useInbox(coordination, identity.actorId, broadcast.sentNonce);
+
   const refreshAll = () => {
     meta.refresh();
     agents.refresh();
     session.refresh();
+    inbox.resource.refresh();
   };
 
   const placeholder =
@@ -100,6 +107,7 @@ export function App() {
           meta={meta.data}
           theme={theme}
           onTheme={setTheme}
+          badges={{ messages: unreadChip(inbox.reading) }}
         />
 
         <ResizeHandle
@@ -174,6 +182,7 @@ export function App() {
               agents={agentList}
               layout={layout}
               broadcastNonce={broadcast.sentNonce}
+              inbox={inbox}
             />
           </main>
 

@@ -26,7 +26,10 @@ import { BOUNDS } from "../state/layoutStore.ts";
 import type { Layout } from "../state/useLayout.ts";
 import { useResource } from "../state/useResource.ts";
 import { useMessageView } from "../state/useMessageView.ts";
+import type { InboxState } from "../state/useInbox.ts";
+import { resolveMessageView } from "../state/viewPreference.ts";
 import { ConversationView } from "./ConversationView.tsx";
+import { InboxView } from "./InboxView.tsx";
 import { MessageInspector } from "./MessageInspector.tsx";
 import { RECORD_CONFIGS } from "./recordConfigs.tsx";
 
@@ -37,15 +40,20 @@ export function MessagesView({
   agents,
   layout,
   reloadKey,
+  inbox,
 }: {
   filter: string;
   agents: Agent[];
   layout: Layout;
   /** Bumped by the global broadcast launcher after a successful send. */
   reloadKey: number;
+  /** The acting actor's inbox, owned by the shell so the nav can count it too. */
+  inbox: InboxState;
 }) {
-  const { coordination, identity } = useApp();
-  const [view, setView] = useMessageView();
+  const { coordination, identity, announce } = useApp();
+  const [chosen, setView] = useMessageView();
+  // An inbox has an owner: without an actor the presentation is absent, not empty.
+  const view = resolveMessageView(chosen, inbox.enabled);
   const [selected, setSelected] = useState<Message | null>(null);
   const lastTrigger = useRef<HTMLElement | null>(null);
   const orientation = useRef<HTMLDivElement>(null);
@@ -103,6 +111,15 @@ export function MessagesView({
 
             <div className="queue-toolbar">
               <div className="view-switch" role="group" aria-label="Message presentation">
+                {inbox.enabled ? (
+                  <button
+                    className={view === "inbox" ? "active" : ""}
+                    aria-pressed={view === "inbox"}
+                    onClick={() => setView("inbox")}
+                  >
+                    Inbox
+                  </button>
+                ) : null}
                 <button
                   className={view === "conversation" ? "active" : ""}
                   aria-pressed={view === "conversation"}
@@ -118,9 +135,11 @@ export function MessagesView({
                   Ledger
                 </button>
               </div>
-              <p className="queue-count small muted">
-                {loadedCountLabel(rows.length, Boolean(filter))}
-              </p>
+              {view !== "inbox" ? (
+                <p className="queue-count small muted">
+                  {loadedCountLabel(rows.length, Boolean(filter))}
+                </p>
+              ) : null}
               {/* Conversation only: in the paginated, sortable Ledger "newest"
                   depends on the current sort, so the action would be a lie. */}
               {view === "conversation" && rows.length > 0 ? (
@@ -131,10 +150,20 @@ export function MessagesView({
             </div>
           </div>
 
-          {resource.error ? (
+          {view === "inbox" ? (
+            <InboxView
+              inbox={inbox}
+              nameFor={nameFor}
+              onMarked={(cursor) => announce(`Inbox marked read at ${cursor}.`)}
+            />
+          ) : null}
+
+          {view !== "inbox" && resource.error ? (
             <ErrorBanner error={resource.error} onRetry={resource.refresh} />
           ) : null}
-          {!resource.loaded && resource.loading ? <SkeletonRows rows={6} columns={3} /> : null}
+          {view !== "inbox" && !resource.loaded && resource.loading ? (
+            <SkeletonRows rows={6} columns={3} />
+          ) : null}
 
           {resource.loaded && view === "conversation" ? (
             <ConversationView
