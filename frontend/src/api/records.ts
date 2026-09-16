@@ -100,6 +100,11 @@ export interface Health {
   active_blockers: Task[];
   done_without_evidence: Task[];
   open_escalations: Escalation[];
+  /** Informational since 1.4.0: normal workflow worth surfacing; never affects `healthy`. */
+  tasks_awaiting_review: Task[];
+  /** Every computed section, grouped by kind; the top-level keys remain for existing readers. */
+  anomalies: Record<string, unknown[]>;
+  informational: Record<string, unknown[]>;
   truncated_sections: string[];
 }
 

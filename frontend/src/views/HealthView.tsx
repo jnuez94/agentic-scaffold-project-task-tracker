@@ -3,14 +3,16 @@
  */
 
 import { useRef, useState } from "react";
-import type { Health, Session, Task } from "../api/contract.ts";
+import type { Health, Session } from "../api/contract.ts";
 import { blockingReason } from "../lib/escalationDraft.ts";
 import { stashEscalationIntent } from "../lib/escalationIntent.ts";
 import { EmptyState, ErrorBanner, SkeletonRows } from "../components/Feedback.tsx";
 import { relativeTime } from "../lib/format.ts";
+import { asSession, asTask, describe, identify } from "../lib/healthRows.ts";
 import { useApp } from "../state/AppContext.tsx";
 import { buildHash } from "../state/useHashRoute.ts";
 import { useResource } from "../state/useResource.ts";
+import { HealthInformational } from "./HealthInformational.tsx";
 import { SessionRecovery } from "./SessionRecovery.tsx";
 
 /**
@@ -76,12 +78,12 @@ export function HealthView() {
           <p className="health-title">
             {data.healthy
               ? "No findings"
-              : `${findings.length} section${findings.length === 1 ? "" : "s"} need attention`}
+              : `${findings.length} section${findings.length === 1 ? " needs" : "s need"} attention`}
           </p>
           <p className="small muted">
             {data.healthy
-              ? "Every health section returned zero rows."
-              : "Healthy is true only when every section is empty."}
+              ? "Every anomaly section returned zero rows."
+              : "Healthy is true only when every anomaly section is empty."}
           </p>
         </div>
       </div>
@@ -163,6 +165,10 @@ export function HealthView() {
         ))
       )}
 
+      {/* UI-65: the sections that never make a project unhealthy, rendered
+          below and quieter than the ones that do. */}
+      <HealthInformational health={data} tasks={tasks.data ?? []} />
+
       {recovering ? (
         <>
           <div className="sheet-scrim" onClick={() => setRecovering(null)} aria-hidden="true" />
@@ -197,38 +203,4 @@ export function findingHref(link: FindingLink, id: string): string | null {
   if (link === "task") return buildHash("tasks", id);
   if (link === "session") return buildHash("sessions");
   return null;
-}
-
-/** A health row is only a session if it carries what recovery needs. */
-function asTask(row: unknown): Task | null {
-  if (!row || typeof row !== "object") return null;
-  const candidate = row as Partial<Task>;
-  return typeof candidate.id === "string" && typeof candidate.status === "string" ? (row as Task) : null;
-}
-
-function asSession(row: unknown): Session | null {
-  if (!row || typeof row !== "object") return null;
-  const record = row as Record<string, unknown>;
-  if (typeof record["id"] !== "string" || typeof record["last_seen_at"] !== "string") return null;
-  return record as unknown as Session;
-}
-
-function identify(row: unknown, index: number): string {
-  if (row && typeof row === "object") {
-    const record = row as Record<string, unknown>;
-    for (const key of ["id", "task_id", "session_id"]) {
-      if (typeof record[key] === "string") return record[key];
-    }
-  }
-  return `row-${index}`;
-}
-
-function describe(row: unknown): string {
-  if (row && typeof row === "object") {
-    const record = row as Record<string, unknown>;
-    if (typeof record["title"] === "string") return record["title"];
-    if (typeof record["issue"] === "string") return record["issue"];
-    if (typeof record["harness"] === "string") return `harness ${record["harness"]}`;
-  }
-  return "";
 }

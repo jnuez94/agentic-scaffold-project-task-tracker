@@ -289,3 +289,30 @@
   padding: 0;
   min-height: auto;
 }
+
+/* The informational group is deliberately quieter than the attention
+   sections (UI-65): no tint, no glyph, a muted rule and heading, so a full
+   review queue does not read as a fault. Tokens only, so every theme keeps
+   the same relationship between the two halves. */
+.health-informational {
+  margin-top: var(--space-8);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--line-700);
+}
+
+.health-informational h2 {
+  font: var(--heading-md);
+  color: var(--text-200);
+  margin: 0 0 var(--space-1);
+}
+
+.health-informational .health-section {
+  margin-top: var(--space-4);
+  margin-bottom: 0;
+}
+
+.health-informational .health-section h3 {
+  font: var(--body-strong);
+  color: var(--text-200);
+  margin: 0 0 var(--space-1);
+}
