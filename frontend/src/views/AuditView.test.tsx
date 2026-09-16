@@ -66,7 +66,7 @@ describe("AuditView", () => {
 
     await screen.findByText("T-2");
     expect(auditCalls).toHaveLength(1);
-    expect(auditCalls[0]).toContain("/api/audit?limit=500");
+    expect(auditCalls[0]).toContain("limit=500");
     expect(screen.getByRole("table")).toBeTruthy();
     expect(bodyRows().map((text) => text.includes("T-2"))).toEqual([true, false, false]);
   });
@@ -105,6 +105,34 @@ describe("AuditView", () => {
     await screen.findByText("Reloaded: the newest 1 claim events. Page 1.");
     expect(screen.getByText("The newest 1 claim events")).toBeTruthy();
     expect(screen.queryByText("bob")).toBeNull();
+  });
+
+  it("hides heartbeats by default, in the request, and says so", async () => {
+    const { impl, auditCalls } = auditFetch(WINDOW);
+    render(wrap(impl, <AuditView filter="" />));
+    await screen.findByText("T-2");
+
+    expect(auditCalls[0]).toContain("exclude_action=heartbeat");
+    expect(screen.getByText(/Heartbeats are hidden\./)).toBeTruthy();
+
+    await userEvent.click(screen.getByLabelText("Show heartbeats"));
+
+    await waitFor(() => expect(auditCalls).toHaveLength(2));
+    expect(auditCalls[1]).not.toContain("exclude_action");
+    expect(screen.queryByText(/Heartbeats are hidden\./)).toBeNull();
+  });
+
+  it("does not exclude heartbeats when the action picker asks for them", async () => {
+    const { impl, auditCalls } = auditFetch(WINDOW);
+    render(wrap(impl, <AuditView filter="" />));
+    await screen.findByText("T-2");
+
+    await userEvent.selectOptions(screen.getByLabelText("Action"), "heartbeat");
+
+    await waitFor(() => expect(auditCalls).toHaveLength(2));
+    expect(auditCalls[1]).toContain("action=heartbeat");
+    expect(auditCalls[1]).not.toContain("exclude_action");
+    expect(screen.queryByText(/Heartbeats are hidden\./)).toBeNull();
   });
 
   it("keeps the filter box client-side over what is loaded", async () => {
@@ -164,7 +192,8 @@ describe("AuditView", () => {
 
     await userEvent.click(screen.getByRole("button", { name: "Load older" }));
 
-    await screen.findByText("Showing 1–10 of the newest 503");
+    // Twice: the range paragraph and the pager's live region announcing it.
+    await screen.findAllByText("Showing 1–10 of the newest 503");
     expect(auditCalls[1]).toContain("before=501");
     const end = screen.getByRole("button", { name: "Beginning of the log" });
     expect((end as HTMLButtonElement).disabled).toBe(true);

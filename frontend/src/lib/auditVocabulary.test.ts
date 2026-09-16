@@ -4,7 +4,10 @@ import {
   AUDIT_OBJECT_TYPES,
   auditRequestParams,
   auditWindowNoun,
+  heartbeatsHidden,
 } from "./auditVocabulary.ts";
+
+const shown = { showHeartbeats: true };
 
 describe("audit vocabulary", () => {
   it("is sorted and free of duplicates, so the pickers read as a fixed set", () => {
@@ -25,20 +28,36 @@ describe("audit vocabulary", () => {
 
 describe("auditRequestParams", () => {
   it("sends only the pickers that are set", () => {
-    expect(auditRequestParams({ objectType: "", action: "" })).toEqual({});
-    expect(auditRequestParams({ objectType: "task", action: "" })).toEqual({ object_type: "task" });
-    expect(auditRequestParams({ objectType: "task", action: "claim" })).toEqual({
+    expect(auditRequestParams({ objectType: "", action: "", ...shown })).toEqual({});
+    expect(auditRequestParams({ objectType: "task", action: "", ...shown })).toEqual({
+      object_type: "task",
+    });
+    expect(auditRequestParams({ objectType: "task", action: "claim", ...shown })).toEqual({
       object_type: "task",
       action: "claim",
     });
+  });
+
+  it("excludes heartbeats by default, in the request", () => {
+    expect(auditRequestParams({ objectType: "", action: "", showHeartbeats: false })).toEqual({
+      exclude_action: "heartbeat",
+    });
+  });
+
+  it("does not exclude what the action picker asked for", () => {
+    const filters = { objectType: "", action: "heartbeat", showHeartbeats: false };
+    expect(auditRequestParams(filters)).toEqual({ action: "heartbeat" });
+    expect(heartbeatsHidden(filters)).toBe(false);
   });
 });
 
 describe("auditWindowNoun", () => {
   it("names the narrowing in the order type, action", () => {
-    expect(auditWindowNoun({ objectType: "", action: "" })).toBe("");
-    expect(auditWindowNoun({ objectType: "task", action: "" })).toBe("task events");
-    expect(auditWindowNoun({ objectType: "", action: "claim" })).toBe("claim events");
-    expect(auditWindowNoun({ objectType: "task", action: "claim" })).toBe("task claim events");
+    expect(auditWindowNoun({ objectType: "", action: "", ...shown })).toBe("");
+    expect(auditWindowNoun({ objectType: "task", action: "", ...shown })).toBe("task events");
+    expect(auditWindowNoun({ objectType: "", action: "claim", ...shown })).toBe("claim events");
+    expect(auditWindowNoun({ objectType: "task", action: "claim", ...shown })).toBe(
+      "task claim events",
+    );
   });
 });

@@ -47,6 +47,20 @@ export const AUDIT_ACTIONS = [
 export interface AuditRequestFilters {
   objectType: string;
   action: string;
+  /**
+   * Heartbeats are a session saying it is alive: legitimately recorded, not
+   * something a person reads, and on a busy board most of the newest rows.
+   * Hidden by default (UI-60); the exclusion happens in the route so the
+   * window stays 500 coordination events rather than 500 rows of pings.
+   */
+  showHeartbeats: boolean;
+}
+
+export const HEARTBEAT = "heartbeat";
+
+/** Whether the request will leave heartbeats out. Asking for them by action overrides the default. */
+export function heartbeatsHidden(filters: AuditRequestFilters): boolean {
+  return !filters.showHeartbeats && filters.action !== HEARTBEAT;
 }
 
 /** The request parameters a picker state becomes; empty pickers send nothing. */
@@ -54,6 +68,7 @@ export function auditRequestParams(filters: AuditRequestFilters): Record<string,
   const params: Record<string, string> = {};
   if (filters.objectType) params["object_type"] = filters.objectType;
   if (filters.action) params["action"] = filters.action;
+  if (heartbeatsHidden(filters)) params["exclude_action"] = HEARTBEAT;
   return params;
 }
 

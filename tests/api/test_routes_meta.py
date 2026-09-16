@@ -166,6 +166,24 @@ class AuditTests(MetaTestCase):
         with self.assertRaises(CoordinationError):
             self.get("/api/audit", before="0")
 
+    def test_audit_can_exclude_heartbeats_and_keep_the_window_full(self) -> None:
+        self.temp.seed_session("s-hb", "alice")
+        for _ in range(3):
+            self.temp.run("session", "heartbeat", "s-hb")
+        everything = self.get("/api/audit")
+        self.assertIn("heartbeat", {row["action"] for row in everything})
+
+        quiet = self.get("/api/audit", exclude_action="heartbeat")
+        self.assertNotIn("heartbeat", {row["action"] for row in quiet})
+        self.assertIn("start", {row["action"] for row in quiet})
+        self.assertEqual(len(quiet), len(everything) - 3)
+
+    def test_audit_rejects_a_malformed_exclusion(self) -> None:
+        from coordination_ui.cli import CoordinationError
+
+        with self.assertRaises(CoordinationError):
+            self.get("/api/audit", exclude_action="--actor")
+
     def test_audit_rejects_a_malformed_actor(self) -> None:
         from coordination_ui.cli import CoordinationError
 

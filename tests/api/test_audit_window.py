@@ -60,6 +60,8 @@ def log(count: int) -> FakeLog:
                 "id": index,
                 "actor": "alice" if index % 3 else "bob",
                 "object_id": f"T-{index % 7}",
+                # Every fourth row is a heartbeat, so a 500-row page keeps 375.
+                "action": "heartbeat" if index % 4 == 0 else "status",
             }
             for index in range(1, count + 1)
         ]
@@ -100,6 +102,42 @@ class UnfilteredWindowTests(unittest.TestCase):
         cli = log(1200)
         self.assertEqual(ids(AuditWindow(cli, 5, {}, before=3).rows()), [2, 1])
         self.assertEqual(AuditWindow(cli, 5, {}, before=1).rows(), [])
+
+
+class ExcludedActionTests(unittest.TestCase):
+    def test_the_window_is_limit_surviving_rows_not_limit_rows(self) -> None:
+        cli = log(1200)
+        rows = AuditWindow(cli, 5, {}, exclude_actions=("heartbeat",)).rows()
+        self.assertEqual(ids(rows), [1199, 1198, 1197, 1195, 1194])
+        self.assertTrue(all(row["action"] != "heartbeat" for row in rows))
+
+    def test_walks_back_a_page_at_a_time_until_enough_survive(self) -> None:
+        # 500 survivors need 667 rows: page one (701..1200) keeps 375, page
+        # two (201..700) supplies the rest. Two list calls after summary.
+        cli = log(1200)
+        rows = AuditWindow(cli, 500, {}, exclude_actions=("heartbeat",)).rows()
+        self.assertEqual(len(rows), 500)
+        self.assertEqual([call[0] for call in cli.calls], ["summary", "audit", "audit"])
+        self.assertEqual(options_of(cli.calls[1]), {"--since": "700", "--limit": "500"})
+        self.assertEqual(options_of(cli.calls[2]), {"--since": "200", "--limit": "500"})
+        self.assertEqual(ids(rows)[-1], 534)
+
+    def test_stops_at_the_beginning_of_the_log(self) -> None:
+        cli = log(10)
+        rows = AuditWindow(cli, 20, {}, exclude_actions=("heartbeat",)).rows()
+        self.assertEqual(ids(rows), [10 - i for i in range(10) if (10 - i) % 4])
+        self.assertEqual(len(cli.calls), 2)
+
+    def test_composes_with_before(self) -> None:
+        cli = log(1200)
+        rows = AuditWindow(cli, 3, {}, before=9, exclude_actions=("heartbeat",)).rows()
+        self.assertEqual(ids(rows), [7, 6, 5])
+
+    def test_applies_to_the_filtered_walk_too(self) -> None:
+        cli = log(1200)
+        rows = AuditWindow(cli, 3, {"--actor": "bob"}, exclude_actions=("heartbeat",)).rows()
+        # bob is every third row; 1200 and 1188 are heartbeats and drop out.
+        self.assertEqual(ids(rows), [1197, 1194, 1191])
 
 
 class FilteredWindowTests(unittest.TestCase):

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from typing import Any
 
 from ...cli import ArgumentBuilder, ArgumentError
@@ -26,6 +27,10 @@ AUDIT_FILTERS = (
 )
 
 DEFAULT_AUDIT_LIMIT = 100
+
+# An audit action token as the CLI writes them: lower-case words joined by
+# underscores. Anything else is a malformed request, not a filter.
+ACTION_TOKEN = re.compile(r"^[a-z_]{1,64}$")
 
 
 def get_meta(request: Request) -> Any:
@@ -67,7 +72,9 @@ def get_audit(request: Request) -> Any:
     returns the newest ``limit`` matches across the whole log, the same
     answer the direct query used to give, so a record's Activity tab is
     complete however old the record is. ``before`` pages back: the window
-    preceding that audit id.
+    preceding that audit id. ``exclude_action`` drops one action from the
+    window after the CLI answers, so the view's default can be ``limit``
+    coordination events rather than ``limit`` rows of heartbeats.
     """
 
     requested = request.q_int("limit")
@@ -75,12 +82,21 @@ def get_audit(request: Request) -> Any:
     before = request.q_int("before")
     if before is not None and before < 1:
         raise ArgumentError("query parameter 'before' must be a positive integer")
+    excluded = request.q("exclude_action")
+    if excluded is not None and not ACTION_TOKEN.match(excluded):
+        raise ArgumentError("query parameter 'exclude_action' must be an audit action token")
     filters: dict[str, str] = {}
     for name, flag in AUDIT_FILTERS:
         value = request.q_identifier(name) if name in ("actor", "session") else request.q(name)
         if value:
             filters[flag] = value
-    return AuditWindow(request.run, limit, filters, before=before).rows()
+    return AuditWindow(
+        request.run,
+        limit,
+        filters,
+        before=before,
+        exclude_actions=(excluded,) if excluded else (),
+    ).rows()
 
 
 def get_export(request: Request) -> TextResponse:

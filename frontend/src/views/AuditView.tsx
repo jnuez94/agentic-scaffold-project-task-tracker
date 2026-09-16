@@ -18,6 +18,7 @@ import {
   AUDIT_OBJECT_TYPES,
   auditRequestParams,
   auditWindowNoun,
+  heartbeatsHidden,
 } from "../lib/auditVocabulary.ts";
 import { AUDIT_FILTER_FIELDS, auditRangeLabel } from "../lib/auditWindow.ts";
 import { CLEAR_FILTER_HINT } from "../lib/copy.ts";
@@ -33,8 +34,13 @@ export function AuditView({ filter }: { filter: string }) {
   const { coordination } = useApp();
   const [objectType, setObjectType] = useState("");
   const [action, setAction] = useState("");
+  const [showHeartbeats, setShowHeartbeats] = useState(false);
 
-  const pickers = useMemo(() => ({ objectType, action }), [objectType, action]);
+  const pickers = useMemo(
+    () => ({ objectType, action, showHeartbeats }),
+    [objectType, action, showHeartbeats],
+  );
+  const hidingHeartbeats = heartbeatsHidden(pickers);
   const params = useMemo(() => auditRequestParams(pickers), [pickers]);
   const noun = auditWindowNoun(pickers);
   const audit = useAuditWindow((query) => coordination.audit(query), REQUEST_LIMIT, params);
@@ -70,6 +76,7 @@ export function AuditView({ filter }: { filter: string }) {
         <p className="small muted">
           Every audited mutation, newest first. The newest {REQUEST_LIMIT} entries are loaded;
           the type and action pickers and the filter box narrow them.
+          {hidingHeartbeats ? " Heartbeats are hidden." : ""}
         </p>
       </div>
 
@@ -100,6 +107,16 @@ export function AuditView({ filter }: { filter: string }) {
             ))}
           </select>
         </div>
+        {/* UI-60: a default-view exclusion, visible and reversible. Asking
+            for heartbeats by action overrides it without touching this. */}
+        <label className="control control-check">
+          <input
+            type="checkbox"
+            checked={showHeartbeats}
+            onChange={(event) => setShowHeartbeats(event.target.checked)}
+          />
+          Show heartbeats
+        </label>
         {audit.loading && audit.loaded ? (
           <p className="queue-count small muted">Loading…</p>
         ) : null}
