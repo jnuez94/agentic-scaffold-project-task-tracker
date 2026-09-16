@@ -2,40 +2,11 @@
 
 | Field | Value |
 | --- | --- |
-| Status | Implemented in `UI-28`; UX review accepted as `UX-UI28-QA-1` |
-| Owner | `michael-ux` — UX Designer |
-| Tracked by | `UX-16`; implementation in `UI-28` |
-| Candidate | Behaviour probed against `d4e1adc` on a throwaway database |
 | Companion | `ux-visual-interaction-spec.md` §5.3, §5.6, §9 |
 
-## 1. Why this exists
+## 1. What the CLI allows and refuses
 
-`SEC-1` is assigned to `codex-security`, `security-file-review-f`, and `toby`.
-`codex-security` is **inactive**, and `SEC-1`'s own note says its parent scan
-must be reclaimed before the work can continue. The console cannot change that.
-An operator looking at the blocker on the release critical path today has to
-leave the application and use the CLI.
-
-This is not a hypothetical convenience feature. It is the one workflow standing
-between an operator and an escalation that is currently open
-(`ESC-SEC1-OWNER-1`).
-
-The capability is already plumbed and dead-ends at the UI, the same pattern as
-stale-session recovery before `UI-22`:
-
-| Layer | State |
-| --- | --- |
-| CLI | `coordination task assign <id> --actor --add --remove --if-revision` |
-| HTTP API | `POST /api/tasks/{id}/assign` — `coordination_ui/api/routes/tasks.py:136` |
-| Typed client | `assignTask(id, body)` — `frontend/src/api/coordination.ts:49` |
-| UI | **No caller anywhere in `frontend/src`** |
-
-No new data shape, schema, CLI, or API change is required by anything below.
-
-## 2. Verified behaviour
-
-Probed against a throwaway coordination database, not inferred from the
-contract document. These results drive the whole design.
+These are the rules of `task assign`, and they drive the whole design.
 
 | # | Action | Result |
 | --- | --- | --- |
@@ -50,16 +21,15 @@ contract document. These results drive the whole design.
 
 Three of these are the design problem:
 
-- **(1)** is how `SEC-1` got into its current state. A picker that offers
-  retired identities without saying so reproduces the bug the console is
-  already carrying.
+- **(1)** lets work be handed to an identity that cannot act. A picker that
+  offers retired identities without saying so makes that failure easy.
 - **(7)** silently manufactures a health finding. `unowned_tasks` is a
   first-class section on Health, and the console would be creating those
   findings without ever saying it was about to.
 - **(2)** is a refusal the operator cannot predict from the UI, because
   assignee and claim owner are different things displayed in different places.
 
-## 3. Users and the job
+## 2. Users and the job
 
 **Local operator**, reassigning because an assignee is retired, unavailable,
 wrong, or because work needs an additional owner. They need to see who holds
@@ -70,37 +40,23 @@ This is explicitly **not** claiming. Assignment says who is responsible; a
 claim says who is actively working under a session. The visual spec §9 already
 requires distinguishing them, and this feature must not blur it.
 
-## 4. Entry points
+## 3. Entry points
 
 1. **Task inspector → Overview → Assignees** — a `Change assignees` control
    beside the field. This is the primary path: the operator is already looking
    at the task and its current owners.
-2. **Health → Unowned tasks** — the finding already deep-links to the task
-   (`UI-24`). No separate entry; the link lands on the inspector where the
-   control lives.
+2. **Health → Unowned tasks** — the finding already deep-links to the task. No
+   separate entry; the link lands on the inspector where the control lives.
 
-**Correction (2026-07-28).** This section originally read: *"Not offered from
-the queue row. Reassignment needs the current revision and the claim state, both
-of which the inspector already has loaded."* The stated reason was factually
-wrong, and David caught it while implementing `UI-36`. The task-list response
-carries `revision`, `assignees`, `claimed_by`, `claim_session_id` and `status` —
-everything reassignment needs. The row has the data; the inspector holds no
-information the row lacks.
+Reassignment is not offered from the queue row. That is a deliberate friction,
+not a data limitation: the row carries every value reassignment needs —
+`revision`, `assignees`, `claimed_by`, `claim_session_id` and `status` — but
+reassignment is an accountability change, and the inspector is where the
+operator can see who currently holds the claim, what the task is blocked on,
+and what they are taking from or giving to someone. A row-level control would
+offer the same mutation with none of that context in view.
 
-The decision to keep reassignment in the inspector still stands, but on a
-different and honest basis: **it is a deliberate friction, not a data
-limitation.** Reassignment is an accountability change, and the inspector is
-where the operator can see who currently holds the claim, what the task is
-blocked on, and what they are taking from or giving to someone. A row-level
-control offers the same mutation with none of that context in view.
-
-`UI-36` may therefore offer assignment from the row — the constraint was never
-technical. What it must not do is offer it *without* the context that makes the
-choice informed. Surfacing current assignee and claim owner in the row-level
-affordance, and routing anything ambiguous to the inspector, is the shape that
-keeps the friction where it earns its keep.
-
-## 5. The panel
+## 4. The panel
 
 Opens inline in the inspector, not as a modal. The operator must keep seeing
 the task while deciding.
@@ -110,16 +66,16 @@ the task while deciding.
 │ Change assignees                          ✕  │
 │                                              │
 │ Currently assigned                           │
-│  ⬤ Toby · toby                        Remove │
-│  ⬤ Security File Review F ·  …        Remove │
-│  ○ Toby · codex-security — retired    Remove │
+│  ⬤ Priya · priya-be                   Remove │
+│  ⬤ Release Bot · release-bot          Remove │
+│  ○ Sam · sam-qa — retired             Remove │
 │                                              │
 │ Add someone                                  │
 │  [ Choose an agent…                      ▾ ] │
 │                                              │
 │ ── Result ─────────────────────────────────  │
-│ toby, security-file-review-f                 │
-│ Removing: codex-security (retired)           │
+│ priya-be, release-bot                        │
+│ Removing: sam-qa (retired)                   │
 │                                              │
 │ Acting as Local Operator · session …         │
 │ Revision 10                                  │
@@ -130,10 +86,10 @@ the task while deciding.
 
 ### Current assignees
 
-Each row uses the `agentOptionLabel` treatment from `UI-21`: `Name · id`, with
+Each row uses the console's actor-picker treatment: `Name · id`, with
 `— retired` appended for inactive agents. The id is what disambiguates, and
-this feature is where that matters most — `SEC-1` carries two agents whose
-display name is "Toby".
+this feature is where that matters most — two agents can share a display name
+and differ only by id.
 
 Status is shown with a glyph plus text, never colour alone (§4).
 
@@ -142,7 +98,7 @@ Status is shown with a glyph plus text, never colour alone (§4).
 When an assignee holds the active claim, their `Remove` is disabled with an
 inline explanation rather than a failed submit:
 
-> **`david` holds the active claim on this task.**
+> **`priya-be` holds the active claim on this task.**
 > Releasing or recovering the claim comes first — reassigning cannot take work
 > away from a session that is still holding it.
 
@@ -152,15 +108,15 @@ simply stops wasting the operator's attempt.
 
 ### Adding someone
 
-A `<select>` grouped exactly as `UI-21` established:
+A `<select>` grouped as the console's actor pickers are:
 
 - Active agents, selectable.
 - A `Retired — cannot be assigned` group, disabled.
 
-The CLI permits assigning to a retired agent (verified, case 1). The console
-will not, because that is precisely how `SEC-1` reached a state where its
-parent scan is owned by a deactivated identity. Anyone who genuinely needs it
-still has the CLI; the console should not make the failure mode easy.
+The CLI permits assigning to a retired agent (case 1). The console will not:
+work assigned to a retired identity cannot be picked up, and nothing on the
+board says so. Anyone who genuinely needs it still has the CLI; the console
+should not make the failure mode easy.
 
 Already-assigned agents do not appear in the add list — that is how error 5
 becomes unreachable rather than a message.
@@ -179,11 +135,11 @@ result line with:
 > **This will leave the task unowned.**
 > It will appear under *Unowned tasks* on Health until someone is assigned.
 
-Not a blocker. Deliberately unassigning is legitimate — Mikhail did exactly
-that when signing off, releasing four tasks so an incoming agent could claim
-them explicitly. But the console should say what it is about to create.
+Not a blocker. Deliberately unassigning is legitimate — an agent signing off
+may release its tasks so a successor can claim them explicitly. But the console
+should say what it is about to create.
 
-## 6. Submitting
+## 5. Submitting
 
 1. `Save assignees` is disabled until at least one add or remove is pending.
 2. Submit sends `add`, `remove`, `actor`, and `if_revision` in one call. Never
@@ -192,7 +148,7 @@ them explicitly. But the console should say what it is about to create.
 3. Pending state disables the control to prevent duplicate submission.
 4. On success: the inspector refreshes, the new revision is shown, and an
    `aria-live="polite"` announcement states the change — "Assignees updated.
-   Now: toby, security-file-review-f. Revision 11."
+   Now: priya-be, release-bot. Revision 11."
 5. On failure the draft is preserved and never retried automatically (§5.6).
 
 ### Error copy, mapped to stable codes
@@ -207,7 +163,7 @@ them explicitly. But the console should say what it is about to create.
 Branch on `error.code`, never on message text — the CLI contract is explicit
 that codes are the stable surface.
 
-## 7. Attribution
+## 6. Attribution
 
 The panel footer names the acting actor, the active session, and the revision
 being submitted, matching the existing inspector footer. Assignment is an
@@ -218,7 +174,7 @@ its session when one is selected, so the audit entry carries it. If no session
 is selected, the action stays available — this is not a claim — but the footer
 says attribution will record the actor only.
 
-## 8. Accessibility
+## 7. Accessibility
 
 - The panel is a labelled region; focus moves to its heading on open and
   returns to `Change assignees` on close.
@@ -230,19 +186,19 @@ says attribution will record the actor only.
 - Status conveyed by glyph and text as well as colour.
 - Success and failure announced through the existing live region.
 
-## 9. What this does not do
+## 8. What this does not do
 
-- Does not claim, release, or recover. Those are `UI-22` and the existing
+- Does not claim, release, or recover. Those are the session-recovery and
   claim controls.
 - Does not change task status.
 - Does not create or delete agents.
 - Does not bypass the claim-owner rule; it surfaces it earlier.
 - Introduces no package data-shape, schema, CLI, or API change.
 
-## 10. Acceptance
+## 9. Acceptance
 
 1. An operator can remove a retired assignee from a task without leaving the
-   console — verified against a `SEC-1`-shaped case.
+   console.
 2. Retired agents cannot be *added*; already-assigned agents are not offered.
 3. The active claim owner's `Remove` is disabled with a stated reason before
    submission, not after a failed call.

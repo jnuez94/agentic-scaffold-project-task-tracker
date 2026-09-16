@@ -3,8 +3,6 @@
 | Field | Value |
 | --- | --- |
 | Status | Implemented — this is the shipped visual system |
-| Owner | UX Designer (authored by `mikhail-ux`, maintained by `michael-ux`) |
-| Tracked by | `UX-1`; implementation in `UI-2`; startup identity in `UI-4` |
 | Selected direction | Coordination Ledger layout + Flowline visual system |
 | Visual target | `assets/coordination-console-ledger-flowline-selected.png` |
 | Data-shape companion | `ux-data-shape-and-workflow-spec.md` |
@@ -161,9 +159,8 @@ font-family:
   sans-serif;
 ```
 
-Use the system stack. Do not fetch or bundle Atkinson Hyperlegible: the
-no-third-party/no-network constraint and FE-STACK-1 do not authorize an
-additional font asset.
+Use the system stack. No font asset is fetched or bundled: the console has no
+network access and ships no third-party assets.
 
 Monospace stack, limited to identifiers, revisions, timestamps, session IDs,
 and command-like values:
@@ -444,6 +441,3 @@ The mock image is not authoritative for:
 - filesystem paths;
 - unsupported transitions or mutations;
 - accessibility conformance before rendered verification.
-
-UX acceptance requires comparison against the selected target at the same
-desktop viewport, plus keyboard, contrast, zoom, state, and data-shape checks.

@@ -3,8 +3,6 @@
 | Field | Value |
 | --- | --- |
 | Status | Implemented — the shipped console conforms to this contract |
-| Owner | UX Designer (authored by `mikhail-ux`, maintained by `michael-ux`) |
-| Tracked by | `UX-1`; informs `UI-2` |
 | Contract of record | `.agents/agentic-project-scaffold-lite/docs/cli-contract.md` v1.2.0 |
 | Schema of record | `.agents/agentic-project-scaffold-lite/sqlite/schema.sql` v1 |
 | Upstream reference | `jnuez94/agentic-project-scaffold-lite` |
@@ -484,14 +482,13 @@ System
 The primary navigation may group or progressively disclose these destinations,
 but every entity remains reachable without knowing a CLI command.
 
-## 6. Visual-direction requirements
+## 6. Visual requirements
 
-All three current visual directions are concept mocks, not data fixtures. Their
-visible sample records are illustrative and must not override live API data.
-In particular, assignees, claim owners, revisions, counts, and timestamps must
-always come from the API.
+Sample records in any mockup are illustrative and never override live API
+data: assignees, claim owners, revisions, counts, and timestamps always come
+from the API.
 
-Whichever direction is selected must:
+The visual system (`ux-visual-interaction-spec.md`) must:
 
 - render IDs and revisions distinctly from human-readable titles;
 - communicate status with text and shape/icon, not color alone;
@@ -539,6 +536,4 @@ the current schema and CLI. It does not authorize:
 
 - changing schema, CLI semantics, status transitions, or error codes;
 - direct database writes;
-- backup, restore, or destructive filesystem operations in the browser;
-- production deployment or release;
-- treating a visual concept as usability validation.
+- backup, restore, or destructive filesystem operations in the browser.

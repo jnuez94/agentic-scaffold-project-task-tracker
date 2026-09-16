@@ -4,9 +4,7 @@ These describe the shipped console: how it is built, what data it may show, and
 how its workflows are meant to behave. They are for someone who has cloned this
 repository and wants to run, understand, extend, or modify it.
 
-Everything here reflects behaviour that exists. Working material — audits, QA
-passes, research, superseded directions, coordination notes — lives in
-`.documents/`, which is not tracked.
+Everything here reflects behaviour that exists.
 
 ## The documents
 
@@ -32,11 +30,3 @@ strict CSP, binds loopback only, and ships one bundled stylesheet. Several
 choices that look arbitrary — the system font stack, themes applied by
 attribute rather than a second stylesheet, no fetched webfonts — follow directly
 from those. Each document says so where it matters.
-
-## What is not here
-
-Research, option boards, rejected directions, rendered QA captures, brand and
-naming work, storyboards, and agent coordination notes. They informed these
-documents; they are not the product record. If you are looking for why a
-decision went the way it did, the coordination database holds the decision
-records, and `coordination export` will print them.

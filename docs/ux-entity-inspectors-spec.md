@@ -2,31 +2,11 @@
 
 | Field | Value |
 | --- | --- |
-| Status | Implemented in `UI-29`; UX review accepted as `UX-UI29-QA-1` |
-| Owner | `michael-ux` — UX Designer |
-| Tracked by | `UX-17`; implementation in `UI-29` |
-| Candidate | Field inventory taken against `d4e1adc` on the live database |
 | Companion | `ux-visual-interaction-spec.md` §3, §6, §9 |
 
-## 1. The problem, measured
-
-Two of the nine listed entities have an inspector. Tasks has one; Messages got
-one in `UI-9`. The other seven are tables only, and the tables show a fraction
-of what each record holds.
-
-| Entity | Fields in the record | Columns in the table | Hidden |
-| --- | ---: | ---: | ---: |
-| Agents | 14 | 6 | **8** |
-| Decisions | 13 | 5 | **8** |
-| Reviews | 12 | 6 | **6** |
-| Escalations | 12 | 6 | **6** |
-| Artifacts | 10 | 5 | **5** |
-| Sessions | 8 | 7 | 1 |
-| Messages | 7 | 6 | *has an inspector* |
-| Tasks | — | — | *has an inspector* |
-
-The hidden fields are not incidental metadata. They are, almost exactly, the
-fields that state what each record **authorises and forbids**:
+The tables show a fraction of what each record holds, and the hidden fields are
+not incidental metadata. They are, almost exactly, the fields that state what
+each record **authorises and forbids**:
 
 - **Agent** — `decision_authority`, `review_authority`, `escalation_rules`,
   `unavailable_for`, `responsibilities`, `operating_style`
@@ -38,32 +18,13 @@ fields that state what each record **authorises and forbids**:
   `follow_up_tasks`
 - **Artifact** — `usage_boundaries`, `reviewers`, `related_tasks`
 
-### Why this is a governance defect, not a convenience gap
+A console that records a constraint and cannot display it is worse than one
+that never recorded it, because everyone believes the constraint is
+communicated. The inspector is where those fields become readable.
 
-The product's stated purpose is making agent activity understandable and
-interruptible by a human operator, and this project records authority
-boundaries obsessively — every task carries `blocked_claims`, every decision
-its `implications`, every review what it does *not* approve.
+## 1. The constraint that shapes the whole design
 
-None of that is readable in the console.
-
-Two live examples, both recorded today, both invisible:
-
-- `REL1-NIKKI-BRAND-DISPOSITION-1` carries `required_changes` reading *do not
-  market, publish, file, acquire domains for, or externally announce Cernaria*.
-  An operator browsing Reviews sees the decision chip and the reviewer. The
-  constraints do not render anywhere.
-- `SEC-OWNER-2` carries `blocked_claims` stating it is **not** a security
-  sign-off and that nobody may close `SEC-1` on Toby's behalf. An operator
-  browsing Decisions sees a title and a status.
-
-A console that records a constraint and then cannot display it is worse than
-one that never recorded it, because everyone believes the constraint is
-communicated.
-
-## 2. The constraint that shapes the whole design
-
-**`task` is the only entity with a `show` command.** Verified against the CLI:
+**`task` is the only entity with a `show` command.** In the CLI:
 
 ```text
 task         {create,list,show,assign,update,claim,status,release}
@@ -90,21 +51,11 @@ of `MessageInspector`:
 That reasoning generalises exactly. This spec extends an existing pattern
 rather than inventing one.
 
-Fortunately the list responses are **complete records**, not thin rows: 14
-fields for an agent, 13 for a decision. Everything the inspector needs is
-already in memory the moment the table renders. Nothing here needs a new
-endpoint, data shape, schema, CLI, or API change.
+The list responses are **complete records**, not thin rows, so everything the
+inspector needs is already in memory the moment the table renders. Nothing here
+needs a new endpoint, data shape, schema, CLI, or API change.
 
-## 3. The seam already exists
-
-`RecordsView` already accepts `onSelect` and `selectedKey`, with the comment:
-
-> Receives the already-loaded row, so a detail view needs no extra query.
-
-Today no generic route passes them. The plumbing was built for this and is
-unused.
-
-## 4. Shared inspector shell
+## 2. Shared inspector shell
 
 One component, entity-specific content. It reuses the existing task-inspector
 shell so nothing new is invented visually.
@@ -112,19 +63,19 @@ shell so nothing new is invented visually.
 ```text
 ┌────────────────────────────────────────────┐
 │ decision                              ✕    │  ← entity kind, mono, text-400
-│ SEC-OWNER-2                                │  ← record id, mono
-│ Complete SEC-1 sole ownership…             │  ← heading-lg, title if any
+│ DEC-17                                     │  ← record id, mono
+│ Adopt the ledger layout for the queue…     │  ← heading-lg, title if any
 ├────────────────────────────────────────────┤
 │ Status   Owner        Recorded             │  ← metric row, entity-specific
-│ accepted michael-ux   2h ago               │
+│ accepted ops-lead     2h ago               │
 ├────────────────────────────────────────────┤
 │ ⚠ What this does not authorise             │  ← constraint block, first
-│   Ownership only. Not a security review…   │
+│   Layout only. Not a visual sign-off…      │
 │                                            │
 │ Context                                    │  ← remaining fields, ordered
 │ …                                          │
 ├────────────────────────────────────────────┤
-│ Recorded by michael-ux · 2026-07-27        │  ← diagnostic footer, mono
+│ Recorded by ops-lead · 2026-01-14          │  ← diagnostic footer, mono
 └────────────────────────────────────────────┘
 ```
 
@@ -132,15 +83,15 @@ shell so nothing new is invented visually.
 
 1. **Read-only by default.** Schema v1 offers no edit or delete for these
    records, so no control implies one. Three deliberate exceptions: session
-   recovery (`UI-22`, existing), artifact status (existing), and agent
+   recovery (existing), artifact status (existing), and agent
    retirement (`ux-retire-agent-spec.md`, which the Agents inspector hosts).
    Each is a state transition the CLI already supports — none is record
    editing.
 2. **Constraint first.** Whatever field states what the record does *not*
    authorise renders directly beneath the metric row, before descriptive
-   content — `blocked_claims`, `usage_boundaries`, `unavailable_for`. This
-   follows `UI-25`, where promoting *Why this is blocked* above Description was
-   the change that mattered.
+   content — `blocked_claims`, `usage_boundaries`, `unavailable_for`. The task
+   inspector already does this, promoting *Why this is blocked* above
+   Description.
 3. **Absence is meaningful for constraint fields.** An empty `blocked_claims`
    renders `None recorded` rather than being omitted. For descriptive fields,
    omit empties entirely rather than printing blank labels.
@@ -154,7 +105,7 @@ shell so nothing new is invented visually.
 6. **No invented state.** No read receipts, no "last viewed", no counts the
    API does not return.
 
-## 5. Per-entity layout
+## 3. Per-entity layout
 
 Order is deliberate. Constraint block first, then what the operator most needs.
 
@@ -168,9 +119,9 @@ Then:     Role, Goal, Responsibilities, Decision authority,
 Footer:   id · created
 ```
 
-Status shows `Active` / `Retired` with glyph and text, matching `UI-21`. This
-inspector is where an operator answers "what is this agent allowed to decide",
-which is currently unanswerable in the UI.
+Status shows `Active` / `Retired` with glyph and text, matching the actor
+pickers. This inspector is where an operator answers "what is this agent
+allowed to decide".
 
 ### Decisions
 
@@ -196,7 +147,7 @@ Footer:   id · artifact URI
 ```
 
 `Required changes` and `Remaining risks` are the reason a conditional
-acceptance is conditional, and neither is visible today.
+acceptance is conditional, and neither is visible in the table.
 
 ### Escalations
 
@@ -226,14 +177,14 @@ Footer:   id · created
 ```text
 Metrics:  Status · Agent · Harness · Model
 Then:     Started, Last seen (with age), Ended
-Action:   Recover…  (existing UI-22 control, unchanged)
+Action:   Recover…  (existing control, unchanged)
 Footer:   id
 ```
 
 Sessions hide only one field, so this inspector earns its place through the
-last-seen age and the recovery entry point rather than hidden content. Reuse
-`UI-22`'s existing predicate so the control appears only where the CLI would
-accept it.
+last-seen age and the recovery entry point rather than hidden content. The
+existing recovery predicate decides where the control appears, so it is offered
+only where the CLI would accept it.
 
 ### Audit log — no inspector
 
@@ -242,10 +193,10 @@ record where a route exists. An inspector would add a click and reveal nothing.
 
 ### Health, Export — not applicable
 
-Health is a findings list, already linked in `UI-24`. Export is a generated
-document.
+Health is a findings list whose entries already link to their records. Export
+is a generated document.
 
-## 6. Interaction
+## 4. Interaction
 
 - Selecting a row opens the inspector beside the table, matching the Tasks and
   Messages layout at ≥1280px; below that it becomes an overlay, as those two
@@ -259,7 +210,7 @@ document.
   nobody "fixes" it later.
 - `Escape` closes and returns focus to the originating row.
 
-## 7. Accessibility
+## 5. Accessibility
 
 - The panel is a labelled region; focus moves to its heading on open and back
   to the row on close, matching `MessageInspector`.
@@ -269,7 +220,7 @@ document.
 - Long fields remain reachable and selectable at 200% zoom.
 - One live-region announcement per selection: entity kind and id.
 
-## 8. Acceptance
+## 6. Acceptance
 
 1. Every entity with a table — Agents, Sessions, Reviews, Decisions,
    Artifacts, Escalations — opens an inspector from a row.
@@ -288,8 +239,8 @@ document.
 10. Tests cover: a record with every field populated, a record with empty
     constraint fields, cross-link resolution, and focus return on close.
 
-## 9. What this does not do
+## 7. What this does not do
 
-Does not authorise release, add or change any endpoint, introduce editing of
+Does not add or change any endpoint, introduce editing of
 governance records, or add deep links the CLI cannot resolve. It makes already
 recorded and already loaded information readable.
