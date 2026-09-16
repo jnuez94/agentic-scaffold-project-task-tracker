@@ -10,12 +10,16 @@ from ..request import Request
 
 def list_messages(request: Request) -> Any:
     """``message list``. Filtering by recipient also returns messages addressed
-    to the literal recipient ``team``."""
+    to the literal recipient ``team``; ``--task`` (1.4.0) restricts to one
+    task's messages, and the two combine with AND."""
 
     builder = ArgumentBuilder("message", "list")
     recipient = request.q("recipient")
     if recipient:
         builder.option("--recipient", recipient)
+    task = request.q_identifier("task")
+    if task:
+        builder.option("--task", task)
     return request.run(request.paging(builder))
 
 

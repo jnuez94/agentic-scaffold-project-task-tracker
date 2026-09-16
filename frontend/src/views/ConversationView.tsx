@@ -10,11 +10,10 @@
 import { useEffect, useRef } from "react";
 import type { Message } from "../api/contract.ts";
 import { EmptyState } from "../components/Feedback.tsx";
-import { CLEAR_FILTER_HINT, NO_MESSAGES_MATCH } from "../lib/copy.ts";
+import { BROADCAST_HINT, CLEAR_FILTER_HINT, NO_MESSAGES_MATCH } from "../lib/copy.ts";
 import { groupByDay, isOwnMessage } from "../lib/conversation.ts";
 import { distanceFromBottom, getScrollParent } from "../lib/scrollParent.ts";
-import { absoluteTime, relativeTime } from "../lib/format.ts";
-import { initials, splitTags } from "../lib/labels.ts";
+import { MessageEntry } from "./MessageEntry.tsx";
 
 const NEAR_BOTTOM_PX = 120;
 
@@ -60,11 +59,7 @@ export function ConversationView({
     return (
       <EmptyState
         title={filtered ? NO_MESSAGES_MATCH : "No messages yet"}
-        hint={
-          filtered
-            ? CLEAR_FILTER_HINT
-            : "Use Broadcast to team in the toolbar to send the first one."
-        }
+        hint={filtered ? CLEAR_FILTER_HINT : BROADCAST_HINT}
       />
     );
   }
@@ -83,7 +78,6 @@ export function ConversationView({
             {group.messages.map((message) => {
               const own = isOwnMessage(message, actorId);
               const selected = message.id === selectedId;
-              const tags = splitTags(message.tags);
               return (
                 <li
                   key={message.id}
@@ -99,49 +93,7 @@ export function ConversationView({
                     aria-pressed={selected}
                     onClick={(event) => onSelect(message, event.currentTarget)}
                   >
-                    <span className="entry-time mono" title={absoluteTime(message.created_at)}>
-                      {new Date(message.created_at).toLocaleTimeString(undefined, {
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      })}
-                    </span>
-
-                    <span className="entry-avatar" aria-hidden="true">
-                      {initials(nameFor(message.sender_id))}
-                    </span>
-
-                    <span className="entry-main">
-                      <span className="entry-head">
-                        <span className="entry-parties">
-                          <strong>{nameFor(message.sender_id)}</strong>
-                          <span aria-hidden="true"> → </span>
-                          <span className="visually-hidden"> to </span>
-                          <span className={message.recipient === "team" ? "to-team" : "to-one"}>
-                            {message.recipient}
-                          </span>
-                        </span>
-                        {message.task_id ? (
-                          <span className="entry-meta small">
-                            Task: <span className="mono">{message.task_id}</span>
-                          </span>
-                        ) : null}
-                        {tags.length > 0 ? (
-                          <span className="entry-meta small">
-                            Tags:{" "}
-                            {tags.map((tag) => (
-                              <span className="tag" key={tag}>
-                                {tag}
-                              </span>
-                            ))}
-                          </span>
-                        ) : null}
-                        <span className="entry-ago small muted">
-                          {relativeTime(message.created_at)}
-                        </span>
-                      </span>
-
-                      <span className="entry-body">{message.body}</span>
-                    </span>
+                    <MessageEntry message={message} nameFor={nameFor} />
                   </button>
                 </li>
               );

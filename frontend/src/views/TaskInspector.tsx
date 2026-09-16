@@ -2,7 +2,7 @@
  * The task inspector: detail without losing queue context.
  */
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { KeyboardEvent } from "react";
 import type { Agent } from "../api/contract.ts";
 import { ErrorBanner, SkeletonRows } from "../components/Feedback.tsx";
@@ -45,6 +45,10 @@ export function TaskInspector({
   const assigneeTrigger = useRef<HTMLButtonElement | null>(null);
   const task = useResource(() => coordination.task(taskId), [taskId]);
   const panel = useRef<HTMLElement>(null);
+  const nameFor = useMemo(() => {
+    const byId = new Map(agents.map((agent) => [agent.id, agent.name]));
+    return (id: string) => byId.get(id) ?? id;
+  }, [agents]);
 
   // Escape closes the inspector. It is an overlay below 1280px, and an overlay
   // that cannot be dismissed from the keyboard traps the operator.
@@ -206,6 +210,7 @@ export function TaskInspector({
               <TaskTabPanel
                 tab={tab}
                 detail={detail}
+                nameFor={nameFor}
                 onChanged={onChanged}
                 refresh={task.refresh}
               />

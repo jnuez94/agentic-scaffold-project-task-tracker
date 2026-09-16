@@ -218,9 +218,8 @@ cd frontend && npm test
 
 847 unit tests across the API client, libraries, state, components, and views.
 
-Three things the UI deliberately does *not* do, because the CLI cannot back
+Two things the UI deliberately does *not* do, because the CLI cannot back
 them honestly:
 
 - it reports "N loaded", never "N of M" — list results carry no total count;
-- its filter box says "Filter loaded rows", not "Search";
-- it has no per-task Messages tab — `message list` filters by recipient only.
+- its filter box says "Filter loaded rows", not "Search".

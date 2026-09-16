@@ -1,9 +1,9 @@
 /**
  * Inspector tabs other than Overview.
  *
- * There is no Messages tab. `message list` filters by recipient only, never by
- * task, so a per-task message list would either be wrong or silently partial
- * (FE-ARCH-REVIEW-1 item 3). Messages remain browsable in their own view.
+ * Messages is the newest of them (UI-74). It was withheld while `message list`
+ * filtered by recipient only, because a per-task list would have been wrong
+ * or silently partial; 1.4.0's `--task` filter made it honest.
  */
 
 import { useState } from "react";
@@ -18,8 +18,15 @@ import { useApp } from "../state/AppContext.tsx";
 import { useResource } from "../state/useResource.ts";
 import { AddEvidenceForm } from "./AddEvidenceForm.tsx";
 import { DependencyForm } from "./DependencyForm.tsx";
+import { TaskMessagesPanel } from "./TaskMessagesPanel.tsx";
 
-export type TaskTab = "overview" | "evidence" | "dependencies" | "reviews" | "activity";
+export type TaskTab =
+  | "overview"
+  | "evidence"
+  | "dependencies"
+  | "reviews"
+  | "messages"
+  | "activity";
 
 export const TASK_TABS: {
   id: TaskTab;
@@ -30,17 +37,23 @@ export const TASK_TABS: {
   { id: "evidence", label: "Evidence", count: (d) => d.evidence.length },
   { id: "dependencies", label: "Dependencies", count: (d) => d.dependencies.length },
   { id: "reviews", label: "Reviews", count: (d) => d.reviews.length },
+  // No count: the detail row carries no messages, and a count would cost a
+  // request per inspected task before the tab is opened.
+  { id: "messages", label: "Messages" },
   { id: "activity", label: "Activity" },
 ];
 
 export function TaskTabPanel({
   tab,
   detail,
+  nameFor,
   onChanged,
   refresh,
 }: {
   tab: TaskTab;
   detail: TaskDetail;
+  /** Agent display names for the Messages tab; ids fall through unchanged. */
+  nameFor: (id: string) => string;
   onChanged: () => void;
   refresh: () => void;
 }) {
@@ -53,6 +66,7 @@ export function TaskTabPanel({
     );
   }
   if (tab === "reviews") return <ReviewsPanel detail={detail} onChanged={() => { refresh(); onChanged(); }} />;
+  if (tab === "messages") return <TaskMessagesPanel taskId={detail.id} nameFor={nameFor} />;
   return <ActivityPanel taskId={detail.id} />;
 }
 

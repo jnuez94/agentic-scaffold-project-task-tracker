@@ -180,3 +180,24 @@
     margin-left: 0;
   }
 }
+
+/* The same row without the button: the task inspector's Messages tab (UI-74)
+   has no inspector to open, so its entries are laid out statically on the
+   grid the transcript uses. */
+.entry-static {
+  display: grid;
+  grid-template-columns: auto auto minmax(0, 1fr);
+  gap: var(--space-3);
+  border-left: 2px solid transparent;
+  padding: var(--space-3) var(--space-3) var(--space-3) var(--space-2);
+}
+
+.entry.own .entry-static {
+  border-left-color: var(--violet-400);
+}
+
+@media (max-width: 899px) {
+  .entry-static {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+}

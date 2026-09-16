@@ -40,6 +40,14 @@ export const CLEAR_FILTER_HINT = "Clear the filter to see everything loaded.";
 export const NO_MESSAGES_MATCH = "No loaded messages match this filter";
 
 /**
+ * Where to send a message from, wherever an empty message list is shown.
+ *
+ * Shared by the Messages route and the task inspector's Messages tab (UI-74):
+ * neither composes, and both point at the one place that does.
+ */
+export const BROADCAST_HINT = "Use Broadcast to team in the toolbar to send the first one.";
+
+/**
  * A message for something thrown that is not an `Error`.
  *
  * Both `useResource` and `useBootstrap` had a byte-identical private `describe`
