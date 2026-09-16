@@ -109,11 +109,15 @@ export function TasksView({
     [scoped, reason, staleSessionIds],
   );
 
-  // UI-34: notice when another agent moves the board, without moving it. The
-  // request is deliberately unscoped and unfiltered — the question is whether
-  // the board changed, not whether this filtered view did.
+  // UI-34: notice when another agent moves the board, without moving it.
+  // UI-75: the signal is the ledger's head, one small summary call, and what
+  // moved is read from the audit log since the cursor this data loaded at —
+  // every record kind, named with its actors, heartbeats left out.
   const watch = useBoardWatch(
-    () => coordination.tasks({ limit: REQUEST_LIMIT }),
+    {
+      head: () => coordination.summary({ section: "totals" }).then((summary) => summary.audit_cursor),
+      changes: (since) => coordination.audit({ since, limit: REQUEST_LIMIT }),
+    },
     tasks.data,
     { enabled: tasks.loaded },
   );

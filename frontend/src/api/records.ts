@@ -131,21 +131,25 @@ export interface Health {
   truncated_sections: string[];
 }
 
+/**
+ * `summary` (1.4.0). Every count comes from one read transaction, so the
+ * numbers agree with each other; `--section` computes only the named parts,
+ * which is why everything but the cursor and the section list is optional.
+ */
 export interface Summary {
-  totals: Record<string, number>;
-  task_status: Record<string, number>;
-  task_priority: Record<string, number>;
-  escalation_status: Record<string, number>;
-  session_status: Record<string, number>;
-  workload: {
+  /** The highest audit id at the snapshot: the change-detection cursor. */
+  audit_cursor: number;
+  sections: string[];
+  totals?: Record<string, number>;
+  task_status?: Record<string, number>;
+  task_priority?: Record<string, number>;
+  workload?: {
     agent_id: string;
-    name: string;
-    role: string;
-    status: string;
-    assigned: number;
-    in_progress: number;
-    blocked: number;
-    done: number;
+    agent_status: string;
+    assigned_open_tasks: number;
+    claimed_tasks: number;
+    active_sessions: number;
   }[];
-  recent_audit: AuditEntry[];
+  workload_truncated?: boolean;
+  time_in_state?: Record<string, { count: number; oldest_seconds: number; average_seconds: number }>;
 }

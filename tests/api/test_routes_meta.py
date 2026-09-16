@@ -160,6 +160,31 @@ class AuditTests(MetaTestCase):
         older = self.get("/api/audit", before=str(everything[1]["id"]))
         self.assertEqual(older, everything[2:])
 
+    def test_audit_since_returns_what_followed_the_cursor_oldest_first(self) -> None:
+        everything = self.get("/api/audit")
+        newest, second = everything[0]["id"], everything[1]["id"]
+        after = self.get("/api/audit", since=str(everything[2]["id"]))
+        self.assertEqual([row["id"] for row in after], [second, newest])
+        self.assertEqual(self.get("/api/audit", since=str(newest)), [])
+
+    def test_audit_since_and_before_do_not_combine(self) -> None:
+        from coordination_ui.cli import CoordinationError
+
+        with self.assertRaises(CoordinationError):
+            self.get("/api/audit", since="1", before="5")
+
+    def test_summary_section_computes_only_what_is_named(self) -> None:
+        totals = self.get("/api/summary", section="totals")
+        self.assertEqual(totals["sections"], ["totals"])
+        self.assertIn("audit_cursor", totals)
+        self.assertNotIn("workload", totals)
+
+    def test_summary_rejects_an_unknown_section(self) -> None:
+        from coordination_ui.cli import CoordinationError
+
+        with self.assertRaises(CoordinationError):
+            self.get("/api/summary", section="everything")
+
     def test_audit_rejects_a_non_positive_before(self) -> None:
         from coordination_ui.cli import CoordinationError
 

@@ -184,5 +184,23 @@ class FilteredWindowTests(unittest.TestCase):
         self.assertEqual(len(cli.calls), 1)
 
 
+class SinceTests(unittest.TestCase):
+    def test_returns_what_follows_the_cursor_oldest_first(self) -> None:
+        cli = log(1200)
+        rows = AuditWindow(cli, 500, {}, since=1195).rows()
+        self.assertEqual(ids(rows), [1196, 1197, 1198, 1199, 1200])
+        self.assertEqual([call[0] for call in cli.calls], ["audit"])
+        self.assertEqual(options_of(cli.calls[0]), {"--since": "1195", "--limit": "500"})
+
+    def test_nothing_after_the_head_is_an_empty_list(self) -> None:
+        self.assertEqual(AuditWindow(log(1200), 500, {}, since=1200).rows(), [])
+
+    def test_exclusions_apply_after_the_cursor_too(self) -> None:
+        rows = AuditWindow(
+            log(1200), 500, {}, since=1195, exclude_actions=("heartbeat",)
+        ).rows()
+        self.assertEqual(ids(rows), [1197, 1198, 1199])
+
+
 if __name__ == "__main__":
     unittest.main()

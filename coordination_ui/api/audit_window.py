@@ -43,17 +43,27 @@ class AuditWindow:
         limit: int,
         filters: Mapping[str, str],
         before: int | None = None,
+        since: int | None = None,
         exclude_actions: Iterable[str] = (),
     ) -> None:
         self.run = run
         self.limit = limit
         self.filters = dict(filters)
         self.before = before
+        self.since = since
         self.exclude_actions = frozenset(exclude_actions)
 
     def rows(self) -> list[dict[str, Any]]:
+        if self.since is not None:
+            return self._after(self.since)
         rows = self._newest_matching() if self.filters else self._newest_unfiltered()
         return list(reversed(rows))
+
+    def _after(self, cursor: int) -> list[dict[str, Any]]:
+        """What was recorded after ``cursor``, oldest first: ``audit list --since``
+        as the CLI spells it, with the filters and exclusions applied."""
+
+        return self._survivors(self._page(since=cursor, limit=self.limit))
 
     # -- the two recipes ----------------------------------------------------
 

@@ -51,8 +51,22 @@ def get_doctor(request: Request) -> Any:
     return request.run(ArgumentBuilder("doctor"))
 
 
+SUMMARY_SECTIONS = ("totals", "task_status", "task_priority", "workload", "time_in_state")
+
+
 def get_summary(request: Request) -> Any:
-    return request.run(ArgumentBuilder("summary"))
+    """``summary``; ``section`` (repeatable) computes only the named parts,
+    which is how a poll for ``audit_cursor`` costs one small query."""
+
+    builder = ArgumentBuilder("summary")
+    for section in request.q_all("section"):
+        if section not in SUMMARY_SECTIONS:
+            raise ArgumentError(
+                f"query parameter 'section' must be one of {', '.join(SUMMARY_SECTIONS)}",
+                {"parameter": "section", "allowed": list(SUMMARY_SECTIONS)},
+            )
+        builder.option("--section", section)
+    return request.run(builder)
 
 
 def get_health(request: Request) -> Any:
@@ -72,9 +86,13 @@ def get_audit(request: Request) -> Any:
     returns the newest ``limit`` matches across the whole log, the same
     answer the direct query used to give, so a record's Activity tab is
     complete however old the record is. ``before`` pages back: the window
-    preceding that audit id. ``exclude_action`` drops one action from the
-    window after the CLI answers, so the view's default can be ``limit``
-    coordination events rather than ``limit`` rows of heartbeats.
+    preceding that audit id. ``since`` is the change-detection primitive —
+    what was recorded after a cursor the client already holds — and it is
+    the one request whose rows come back oldest first, as the CLI orders
+    them, because a client reading forward wants them that way.
+    ``exclude_action`` drops one action from the window after the CLI
+    answers, so the view's default can be ``limit`` coordination events
+    rather than ``limit`` rows of heartbeats.
     """
 
     requested = request.q_int("limit")
@@ -82,6 +100,11 @@ def get_audit(request: Request) -> Any:
     before = request.q_int("before")
     if before is not None and before < 1:
         raise ArgumentError("query parameter 'before' must be a positive integer")
+    since = request.q_int("since")
+    if since is not None and since < 0:
+        raise ArgumentError("query parameter 'since' must be zero or a positive integer")
+    if since is not None and before is not None:
+        raise ArgumentError("query parameters 'since' and 'before' cannot be combined")
     excluded = request.q("exclude_action")
     if excluded is not None and not ACTION_TOKEN.match(excluded):
         raise ArgumentError("query parameter 'exclude_action' must be an audit action token")
@@ -95,6 +118,7 @@ def get_audit(request: Request) -> Any:
         limit,
         filters,
         before=before,
+        since=since,
         exclude_actions=(excluded,) if excluded else (),
     ).rows()
 

@@ -30,7 +30,7 @@ export class Coordination {
   show = (route: string, id: string) =>
     this.api.get<Record<string, unknown>>(`/api/${route}/${encodeURIComponent(id)}`);
   doctor = () => this.api.get<Record<string, unknown>>("/api/doctor");
-  summary = () => this.api.get<Summary>("/api/summary");
+  summary = (query?: Query) => this.api.get<Summary>("/api/summary", query);
   health = (query?: Query) => this.api.get<Health>("/api/health", query);
   audit = (query?: Query) => this.api.get<AuditEntry[]>("/api/audit", query);
   exportReport = () => this.api.getText("/api/export");
