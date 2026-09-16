@@ -123,5 +123,56 @@ class DecisionTests(RecordTestCase):
         self.assertEqual(self.get("/api/decisions")[0]["id"], "DEC-4")
 
 
+class DecisionStatusTests(RecordTestCase):
+    def seed(self) -> None:
+        super().seed()
+        self.temp.seed_session("s-1", "alice")
+        self.session = "s-1"
+        self.post(
+            "/api/decisions",
+            {
+                "id": "DEC-1",
+                "title": "Adopt the ledger layout",
+                "owner": "alice",
+                "context": "Two layouts were mocked.",
+                "decision": "Ledger.",
+            },
+        )
+
+    def rule(self, status: str, **extra: str) -> dict[str, object]:
+        body: dict[str, object] = {"status": status, "actor": "alice", **extra}
+        result: dict[str, object] = self.post("/api/decisions/DEC-1/status", body)
+        return result
+
+    def test_records_the_ruling_and_its_note_in_the_audit_trail(self) -> None:
+        ruled = self.rule(
+            "accepted", if_status="proposed", note="Operator confirmed on review."
+        )
+        self.assertEqual((ruled["previous_status"], ruled["status"]), ("proposed", "accepted"))
+        decision = next(d for d in self.get("/api/decisions") if d["id"] == "DEC-1")
+        self.assertEqual(decision["status"], "accepted")
+        newest = self.get("/api/audit", object_id="DEC-1", limit="1")[0]
+        self.assertEqual(newest["action"], "status")
+        self.assertEqual(
+            newest["detail"], "proposed -> accepted; Operator confirmed on review."
+        )
+
+    def test_if_status_refuses_a_decision_that_changed_underneath(self) -> None:
+        self.rule("accepted", if_status="proposed")
+        with self.assertRaises(CoordinationError) as caught:
+            self.rule("superseded", if_status="proposed")
+        self.assertEqual(caught.exception.code, "status_mismatch")
+        self.assertEqual(caught.exception.http_status, 409)
+
+    def test_status_must_be_one_of_the_four(self) -> None:
+        with self.assertRaises(CoordinationError) as caught:
+            self.rule("closed")
+        self.assertEqual(caught.exception.code, "invalid_arguments")
+
+    def test_actor_is_required(self) -> None:
+        with self.assertRaises(CoordinationError):
+            self.post("/api/decisions/DEC-1/status", {"status": "accepted"})
+
+
 if __name__ == "__main__":
     unittest.main()

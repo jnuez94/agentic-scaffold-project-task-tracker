@@ -71,6 +71,11 @@ export class Coordination {
 
   decisions = (query?: Query) => this.api.get<Decision[]>("/api/decisions", query);
   addDecision = (body: unknown) => this.api.post<{ id: string }>("/api/decisions", body);
+  setDecisionStatus = (id: string, body: unknown) =>
+    this.api.post<{ id: string; previous_status: string; status: string }>(
+      `/api/decisions/${id}/status`,
+      body,
+    );
 
   messages = (query?: Query) => this.api.get<Message[]>("/api/messages", query);
   sendMessage = (body: unknown) => this.api.post<{ id: string }>("/api/messages", body);

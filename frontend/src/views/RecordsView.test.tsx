@@ -147,4 +147,26 @@ describe("RecordsView across a route change", () => {
     // Same resource, refresh in flight: the loaded row stays visible.
     expect(screen.getByText("ART-1")).toBeTruthy();
   });
+
+  it("shows the inspected record as it is after a refresh, not as it was opened", async () => {
+    let status = "proposed";
+    const { impl } = routedFetch({
+      "/api/decisions": async () => ok([{ ...DECISION, status }]),
+    });
+    const { rerender } = render(
+      wrap(impl, <RecordsView key="decisions" route="decisions" filter="" reloadKey={0} />),
+    );
+    await userEvent.click(await screen.findByText("DEC-1"));
+    const inspector = await screen.findByRole("complementary", { name: /decision DEC-1/ });
+    expect(inspector.textContent).toContain("proposed");
+
+    // A ruling from the inspector refreshes the list; the open inspector must follow.
+    status = "accepted";
+    rerender(wrap(impl, <RecordsView key="decisions" route="decisions" filter="" reloadKey={1} />));
+    await waitFor(() =>
+      expect(
+        screen.getByRole("complementary", { name: /decision DEC-1/ }).textContent,
+      ).toContain("accepted"),
+    );
+  });
 });

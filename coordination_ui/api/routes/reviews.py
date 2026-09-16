@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from ...cli import ArgumentBuilder
+from ...cli import ArgumentBuilder, require_choice
 from ..enums import DECISION_STATUSES, REVIEW_DECISIONS
 from ..request import Request
 
@@ -58,9 +58,30 @@ def add_decision(request: Request) -> Any:
     return request.run(builder, with_session=True)
 
 
+def set_decision_status(request: Request) -> Any:
+    """``decision status`` (1.3.0): a ruling on a recorded decision.
+
+    ``--if-status`` is compare-and-swap on the status the caller saw; the
+    console always sends it from the loaded row, so a decision that changed
+    underneath the operator is refused with ``status_mismatch``. Decisions
+    have no notes column: the note lands in the audit detail.
+    """
+
+    body = request.body
+    status = require_choice(body, "status", DECISION_STATUSES)
+    builder = ArgumentBuilder("decision", "status")
+    builder.positional(request.path_id()).positional(status)
+    builder.identifier(body, "actor", "--actor", required=True)
+    builder.choice(body, "if_status", "--if-status", DECISION_STATUSES)
+    builder.text(body, "note", "--note")
+    builder.text(body, "because", "--because")
+    return request.run(builder, with_session=True)
+
+
 ROUTES = (
     ("GET", r"/api/reviews", list_reviews),
     ("POST", r"/api/reviews", add_review),
     ("GET", r"/api/decisions", list_decisions),
     ("POST", r"/api/decisions", add_decision),
+    ("POST", r"/api/decisions/(?P<id>[^/]+)/status", set_decision_status),
 )

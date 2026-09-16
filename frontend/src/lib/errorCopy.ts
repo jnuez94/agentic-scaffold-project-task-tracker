@@ -44,7 +44,7 @@ const COPY: Record<string, (context: CopyContext) => string> = {
     "Another session holds this task's claim. Select the session that claimed it, or recover " +
     "the stale one, then retry.",
   task_not_claimed: () => "This task is not claimed. Claim it before releasing or moving it.",
-  status_mismatch: () => "This record changed while you were looking; reload.",
+  status_mismatch: ({ subject }) => `${subject ?? "This record"} changed while you were looking; reload.`,
   already_redacted: () => "This message was already redacted; there is nothing further to remove.",
   cursor_not_monotonic: () => "Your inbox moved on; reload to see the newer position.",
 };

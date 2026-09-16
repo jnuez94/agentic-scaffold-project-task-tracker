@@ -8,9 +8,10 @@
  */
 
 import { useState } from "react";
-import type { Agent, Session, TaskListRow } from "../api/contract.ts";
+import type { Agent, Decision, Session, TaskListRow } from "../api/contract.ts";
 import { retirementBlock } from "../lib/retirement.ts";
 import { AgentRetirement } from "./AgentRetirement.tsx";
+import { DecisionStatusForm } from "./DecisionStatusForm.tsx";
 import { RecordInspector } from "./RecordInspector.tsx";
 import { useApp } from "../state/AppContext.tsx";
 import type { InspectorConfig, Row } from "./inspectorConfigs.tsx";
@@ -44,9 +45,13 @@ export function RecordPanels({
   onRecovered: () => void;
 }) {
   const [retiring, setRetiring] = useState<Agent | null>(null);
+  // UI-73: the one ruling the CLI supports on a decision after it is recorded.
+  const [ruling, setRuling] = useState<Decision | null>(null);
   const { announce } = useApp();
   const agentRow =
     inspectorConfig?.kind === "agent" ? (inspecting as Agent | null) : null;
+  const decisionRow =
+    inspectorConfig?.kind === "decision" ? (inspecting as Decision | null) : null;
   const block = agentRow ? retirementBlock(agentRow, actorId, sessions) : null;
 
   return (
@@ -93,9 +98,31 @@ export function RecordPanels({
                   ) : null}
                 </>
               ) : null}
+
+              {decisionRow ? (
+                <button
+                  type="button"
+                  className="record-action"
+                  disabled={!actorId}
+                  onClick={() => setRuling(decisionRow)}
+                >
+                  Change status…
+                </button>
+              ) : null}
             </>
           }
         />
+      ) : null}
+
+      {ruling ? (
+        <>
+          <div className="sheet-scrim" onClick={() => setRuling(null)} aria-hidden="true" />
+          <DecisionStatusForm
+            decision={ruling}
+            onClose={() => setRuling(null)}
+            onChanged={onRecovered}
+          />
+        </>
       ) : null}
 
       {retiring ? (

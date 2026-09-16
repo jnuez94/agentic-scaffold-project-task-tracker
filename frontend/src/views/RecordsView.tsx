@@ -75,6 +75,18 @@ export function RecordsView<T = Record<string, unknown>>({
     [records.data, config, filter],
   );
 
+  // The inspector shows the record as it is now, not as it was when opened:
+  // after a refresh the row it holds is looked up again by id, so a ruling
+  // made from the inspector is visible in the inspector (UI-73).
+  const inspected = useMemo(() => {
+    if (!inspecting) return null;
+    const id = String(inspecting["id"]);
+    const fresh = ((records.data ?? []) as Record<string, unknown>[]).find(
+      (row) => String(row["id"]) === id,
+    );
+    return fresh ?? inspecting;
+  }, [inspecting, records.data]);
+
   if (!config) return null;
 
   return (
@@ -158,7 +170,7 @@ export function RecordsView<T = Record<string, unknown>>({
       <RecordPanels
         config={config}
         inspectorConfig={inspectorConfig}
-        inspecting={inspecting}
+        inspecting={inspected}
         acting={acting}
         tasks={(tasks.data ?? [])}
         sessions={(sessions.data ?? [])}
