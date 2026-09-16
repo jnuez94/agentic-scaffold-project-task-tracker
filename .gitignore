@@ -1,9 +1,3 @@
-# agentic-project-scaffold-lite sqlite state
-/.coordination/coordination.sqlite3*
-.coordination/*.sqlite3*
-.coordination/**/*.sqlite3*
-.coordination/backups/
-# /agentic-project-scaffold-lite sqlite state
 
 # Python bytecode
 __pycache__/
@@ -20,3 +14,11 @@ node_modules/
 
 # Local dev toolchain (ruff, mypy); never part of the package.
 .venv/
+
+
+# agentic-project-scaffold-lite sqlite state
+/.coordination/coordination.sqlite3*
+.coordination/*.sqlite3*
+.coordination/**/*.sqlite3*
+.coordination/backups/
+# /agentic-project-scaffold-lite sqlite state
