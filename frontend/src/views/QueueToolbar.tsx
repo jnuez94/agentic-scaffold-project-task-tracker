@@ -8,7 +8,15 @@
 import type { Agent } from "../api/contract.ts";
 import { TASK_STATUSES } from "../api/contract.ts";
 import { agentOptionLabel } from "../lib/labels.ts";
+import type { PickerSpec, PickerValues } from "../lib/recordPickers.ts";
 import { ALL_SCOPE, OPEN_SCOPE, SCOPE_LABELS, type QueueScope } from "../state/queueScopeStore.ts";
+import { RecordPickers } from "./RecordPickers.tsx";
+
+/** The queue's structured pickers (UI-70): each a --where clause on task list. */
+export const QUEUE_PICKERS: PickerSpec[] = [
+  { column: "priority", label: "Priority", kind: "enum", values: ["1", "2", "3", "4", "5"] },
+  { column: "created_by", label: "Created by", kind: "agent" },
+];
 
 export function QueueToolbar({
   scope,
@@ -16,12 +24,16 @@ export function QueueToolbar({
   assignee,
   onAssignee,
   agents,
+  picked,
+  onPick,
 }: {
   scope: QueueScope;
   onScope: (scope: QueueScope) => void;
   assignee: string;
   onAssignee: (assignee: string) => void;
   agents: Agent[];
+  picked: PickerValues;
+  onPick: (column: string, value: string) => void;
 }) {
   return (
     <div className="queue-toolbar">
@@ -67,6 +79,9 @@ export function QueueToolbar({
           ))}
         </select>
       </div>
+      {/* Assignee above is task list's own flag; these two are --where
+          clauses, and both narrow the request rather than the loaded rows. */}
+      <RecordPickers pickers={QUEUE_PICKERS} values={picked} agents={agents} idPrefix="tasks" onChange={onPick} />
     </div>
   );
 }

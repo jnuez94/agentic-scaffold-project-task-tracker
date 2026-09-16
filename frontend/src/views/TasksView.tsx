@@ -11,7 +11,10 @@ import { ResizeHandle } from "../components/ResizeHandle.tsx";
 import { attentionReason, needsAttention, type AttentionReason } from "../lib/attention.ts";
 import { attentionTotal, summariseAttention } from "../lib/attentionSummary.ts";
 import { filterRows } from "../lib/filters.ts";
-import { isTruncated } from "../lib/pagination.ts";
+import { isTruncated, rangeLabel } from "../lib/pagination.ts";
+import { anyPicked, whereClauses, type PickerValues } from "../lib/recordPickers.ts";
+import { orderByTerm } from "../lib/requestOrder.ts";
+import type { SortState } from "../lib/sorting.ts";
 import { queueEmptyState } from "../lib/queueEmpty.ts";
 import { isRecoverable } from "../lib/staleness.ts";
 import { useApp } from "../state/AppContext.tsx";
@@ -51,14 +54,21 @@ export function TasksView({
   // Filing a task takes the inspector's slot: one side panel at a time, and
   // the queue stays visible beside it so an id can be checked by eye.
   const [creating, setCreating] = useState(false);
+  // UI-70: headers the contract lists as orderable re-ask the CLI.
+  const [requestSort, setRequestSort] = useState<SortState | null>(null);
+  const orderBy = orderByTerm(taskColumns(() => "", { actorId: null, sessionId: null }), requestSort);
+  const [picked, setPicked] = useState<PickerValues>({});
+  const where = useMemo(() => whereClauses(picked), [picked]);
 
   const tasks = useResource(
     () => coordination.tasks({
         status: requestStatus(scope),
         assignee: assignee || undefined,
+        where: where.length ? where : undefined,
+        order_by: orderBy,
         limit: REQUEST_LIMIT,
       }),
-    [scope, assignee],
+    [scope, assignee, orderBy, where],
   );
 
   // The scope is the request's since 1.4.0 (`--status` repeats), so the
@@ -214,6 +224,8 @@ export function TasksView({
           assignee={assignee}
           onAssignee={setAssignee}
           agents={agents}
+          picked={picked}
+          onPick={(column, value) => setPicked((current) => ({ ...current, [column]: value }))}
         />
 
         {tasks.error ? <ErrorBanner error={tasks.error} onRetry={tasks.refresh} /> : null}
@@ -224,9 +236,22 @@ export function TasksView({
           rowKey={(task) => task.id}
           caption="Coordination tasks"
           defaultOrder={TASK_DEFAULT_ORDER}
+          requestSort={{ state: requestSort, onChange: setRequestSort }}
           idPrefix="tasks"
           filtered={Boolean(filter)}
           truncated={isTruncated((tasks.data ?? []).length, REQUEST_LIMIT)}
+          pagerCopy={
+            anyPicked(picked)
+              ? {
+                  rangeLabel: (page, size, total) =>
+                    rangeLabel(page, size, total, {
+                      matching: true,
+                      filtered: Boolean(filter),
+                      truncated: isTruncated((tasks.data ?? []).length, REQUEST_LIMIT),
+                    }),
+                }
+              : undefined
+          }
           loading={tasks.loading}
           loaded={tasks.loaded}
           selectedKey={selectedId}

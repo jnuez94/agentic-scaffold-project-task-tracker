@@ -22,6 +22,12 @@ export interface Column<T> extends VacantAware<T> {
   render: (row: T) => ReactNode;
   /** Supplying this makes the column sortable. */
   sortValue?: (row: T) => SortValue;
+  /**
+   * The contract column this header can order the request by (UI-70). With
+   * `requestSort` supplied, clicking it re-asks the CLI in that order rather
+   * than sorting the loaded rows, and the header says which it does.
+   */
+  orderBy?: string;
   /** Marks columns that may be hidden at narrow widths, lowest value first. */
   priority?: number;
   align?: "start" | "end";
@@ -58,6 +64,11 @@ export interface DataTableProps<T> {
   rowClass?: (row: T) => string | undefined;
   /** Range and truncation wording, for the one table where the shared copy is wrong. */
   pagerCopy?: PagerCopy;
+  /**
+   * Server-side ordering for columns that declare `orderBy`. The state names
+   * the column key; the owner turns it into `--order-by` on the request.
+   */
+  requestSort?: { state: SortState | null; onChange: (next: SortState | null) => void };
 }
 
 export function DataTable<T>({
@@ -78,8 +89,11 @@ export function DataTable<T>({
   idPrefix = "table",
   rowClass,
   pagerCopy,
+  requestSort,
 }: DataTableProps<T>) {
   const [sort, setSort] = useState<SortState | null>(null);
+  const ordersRequest = (key: string) =>
+    Boolean(requestSort && present.find((entry) => entry.key === key)?.orderBy);
   const [page, setPage] = useState(1);
   // Keyed by idPrefix so each table keeps its own remembered size.
   const [size, setSize] = usePageSize(idPrefix);
@@ -114,17 +128,28 @@ export function DataTable<T>({
       <table className="data-table">
         <caption className="visually-hidden">
           {caption}
-          {sort
-            ? `, sorted by ${labelFor(present, sort.key)} ${sort.direction === "asc" ? "ascending" : "descending"}`
-            : defaultOrder
-              ? `, in ${defaultOrder}`
-              : ""}
+          {requestSort?.state
+            ? `, requested in ${labelFor(present, requestSort.state.key)} ${requestSort.state.direction === "asc" ? "ascending" : "descending"} order`
+            : sort
+              ? `, sorted by ${labelFor(present, sort.key)} ${sort.direction === "asc" ? "ascending" : "descending"}`
+              : defaultOrder
+                ? `, in ${defaultOrder}`
+                : ""}
         </caption>
         <SortableHead
           columns={present}
           sort={sort}
+          requestSort={requestSort?.state ?? null}
           defaultOrder={defaultOrder}
-          onSort={(key) => setSort((current) => nextSortState(current, key))}
+          onSort={(key) => {
+            if (ordersRequest(key) && requestSort) {
+              // One order at a time: a request order supersedes any local one.
+              setSort(null);
+              requestSort.onChange(nextSortState(requestSort.state, key));
+              return;
+            }
+            setSort((current) => nextSortState(current, key));
+          }}
         />
         <tbody>
           {visible.map((row) => {

@@ -236,4 +236,13 @@ describe("RecordsView across a route change", () => {
     await screen.findByText("Not found: decision NOPE");
     expect(screen.queryByRole("complementary")).toBeNull();
   });
+
+  it("re-asks the CLI in a header's order when the contract can order by it", async () => {
+    const { impl, calls } = routedFetch({ "/api/decisions": async () => ok([DECISION]) });
+    render(wrap(impl, <RecordsView key="decisions" route="decisions" filter="" />));
+    await screen.findByText("DEC-1");
+
+    await userEvent.click(screen.getByRole("button", { name: /^Status/ }));
+    await waitFor(() => expect(calls.some((u) => u.includes("order_by=status%3Aasc"))).toBe(true));
+  });
 });

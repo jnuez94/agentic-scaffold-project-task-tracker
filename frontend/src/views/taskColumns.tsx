@@ -33,6 +33,7 @@ export function taskColumns(
   return [
     {
       key: "id",
+      orderBy: "id",
       header: "ID / Title",
       priority: 1,
       render: (task) => <IdCell id={task.id} title={task.title} />,
@@ -40,6 +41,7 @@ export function taskColumns(
     },
     {
       key: "state",
+      orderBy: "status",
       header: "State",
       priority: 2,
       render: (task) => <StatusPill status={task.status} />,
@@ -47,6 +49,7 @@ export function taskColumns(
     },
     {
       key: "priority",
+      orderBy: "priority",
       header: "Priority",
       priority: 7,
       render: (task) => <PriorityTag priority={task.priority} />,
@@ -61,6 +64,7 @@ export function taskColumns(
     },
     {
       key: "rev",
+      orderBy: "revision",
       header: "Rev",
       priority: 5,
       align: "end",
@@ -81,6 +85,7 @@ export function taskColumns(
     },
     {
       key: "updated",
+      orderBy: "updated_at",
       header: "Updated",
       priority: 8,
       render: (task) => (

@@ -10,6 +10,8 @@ import { filterRows } from "../lib/filters.ts";
 import { CLEAR_FILTER_HINT } from "../lib/copy.ts";
 import { isTruncated, rangeLabel } from "../lib/pagination.ts";
 import { anyPicked, whereClauses, type PickerValues } from "../lib/recordPickers.ts";
+import { orderByTerm } from "../lib/requestOrder.ts";
+import type { SortState } from "../lib/sorting.ts";
 import { useApp } from "../state/AppContext.tsx";
 import { useRecordData } from "../state/useRecordData.ts";
 import type { RouteName } from "../state/useHashRoute.ts";
@@ -55,6 +57,8 @@ export function RecordsView<T = Record<string, unknown>>({
   const inspectorConfig = INSPECTOR_CONFIGS[route];
   const [picked, setPicked] = useState<PickerValues>({});
   const where = useMemo(() => whereClauses(picked), [picked]);
+  // UI-70: a header the contract lists as orderable re-asks the CLI.
+  const [requestSort, setRequestSort] = useState<SortState | null>(null);
   const [acting, setActing] = useState<Record<string, unknown> | null>(null);
   // Selection is view state only. These entities have no `show` command, so a
   // deep-link route would promise a record the CLI cannot resolve on load.
@@ -74,6 +78,7 @@ export function RecordsView<T = Record<string, unknown>>({
     config,
     where,
     reloadKey,
+    orderByTerm(config?.columns ?? [], requestSort),
   );
 
   // Resolve the route's record. A row already loaded costs no request — that
@@ -203,6 +208,7 @@ export function RecordsView<T = Record<string, unknown>>({
           rowKey={(row) => String((row as Record<string, unknown>)["id"])}
           caption={config.title}
           defaultOrder={config.defaultOrder}
+          requestSort={{ state: requestSort, onChange: setRequestSort }}
           idPrefix={route}
           filtered={Boolean(filter)}
           truncated={isTruncated(

@@ -223,3 +223,9 @@ them honestly:
 
 - it reports "N loaded", never "N of M" — list results carry no total count;
 - its filter box says "Filter loaded rows", not "Search".
+
+Two things it does do since 1.4.0, because the CLI can: the pickers above a
+table are `--where` clauses, so choosing one asks for the newest 500 matches
+("N matching") rather than narrowing the 500 already loaded; and a column
+header the contract lists as orderable re-asks the CLI in that order, while
+any other header sorts only the loaded rows — each header says which.

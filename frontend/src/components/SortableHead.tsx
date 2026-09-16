@@ -13,11 +13,14 @@ const INDICATORS = { ascending: "\u25B2", descending: "\u25BC", none: "\u2195" }
 export function SortableHead<T>({
   columns,
   sort,
+  requestSort = null,
   defaultOrder,
   onSort,
 }: {
   columns: Column<T>[];
   sort: SortState | null;
+  /** The request's own ordering, for columns that declare `orderBy` (UI-70). */
+  requestSort?: SortState | null;
   defaultOrder: string | undefined;
   onSort: (key: string) => void;
 }) {
@@ -25,7 +28,8 @@ export function SortableHead<T>({
     <thead>
       <tr>
         {columns.map((column) => {
-          const state = ariaSortFor(sort, column.key);
+          const ordersRequest = Boolean(column.orderBy) && requestSort !== undefined;
+          const state = ariaSortFor(ordersRequest ? requestSort : sort, column.key);
           return (
             <th
               key={column.key}
@@ -40,7 +44,7 @@ export function SortableHead<T>({
                   type="button"
                   className={state === "none" ? "sort-button" : "sort-button active"}
                   onClick={() => onSort(column.key)}
-                  title={hintFor(state, column.header, defaultOrder)}
+                  title={hintFor(state, column.header, defaultOrder, ordersRequest ? "request" : "loaded")}
                 >
                   {column.header}
                   <span className="sort-indicator" aria-hidden="true">
@@ -58,13 +62,20 @@ export function SortableHead<T>({
   );
 }
 
+/**
+ * What a click will do. Honest about the two kinds of sort: a column the
+ * contract lists as orderable re-asks the CLI, so every row is ordered; any
+ * other column sorts only what was loaded.
+ */
 function hintFor(
   state: "ascending" | "descending" | "none",
   header: string,
   defaultOrder: string | undefined,
+  mode: "request" | "loaded",
 ): string {
   const restore = defaultOrder ? ` (${defaultOrder})` : "";
-  if (state === "none") return `Sort loaded rows by ${header}, ascending`;
-  if (state === "ascending") return `Sort loaded rows by ${header}, descending`;
+  const what = mode === "request" ? "Sort the request" : "Sort loaded rows";
+  if (state === "none") return `${what} by ${header}, ascending`;
+  if (state === "ascending") return `${what} by ${header}, descending`;
   return `Clear sorting and restore the default order${restore}`;
 }

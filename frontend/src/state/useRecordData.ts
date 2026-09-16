@@ -23,15 +23,17 @@ export function useRecordData(
   config: RecordConfig | undefined,
   where: readonly string[],
   reloadKey: number,
+  orderBy?: string,
 ) {
   // Compared by value: the same clauses in a new array are the same request.
   const whereKey = where.join("\u0000");
   const query = useMemo(() => {
     const built: Record<string, string | string[]> = { limit: String(REQUEST_LIMIT) };
     if (where.length > 0) built["where"] = [...where];
+    if (orderBy) built["order_by"] = orderBy;
     return built;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [whereKey]);
+  }, [whereKey, orderBy]);
 
   const records = useResource(
     () => (config ? config.load(coordination, query) : Promise.resolve([])),
