@@ -1,4 +1,4 @@
-"""Contract enumerations, mirrored from ``docs/cli-contract.md`` v1.2.0.
+"""Contract enumerations, mirrored from ``docs/cli-contract.md`` v1.4.0.
 
 Duplicated here so the console can reject a bad value with a useful message
 before spawning a process. The CLI remains the authority; these must be updated
