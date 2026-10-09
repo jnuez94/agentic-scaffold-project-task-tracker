@@ -36,6 +36,7 @@ import { useApp } from "../state/AppContext.tsx";
 import { useResource } from "../state/useResource.ts";
 import { receiptSuffix } from "../lib/receipt.ts";
 import { useFocusProblem } from "../state/useFocusProblem.ts";
+import { useEscape } from "../state/useEscape.ts";
 
 /** Where each refused field lives, so a refused submit can focus it (UI-79). */
 const PROBLEM_FIELDS = {
@@ -82,6 +83,11 @@ export function EscalationForm({
   useFocusProblem(problem, PROBLEM_FIELDS);
   const [error, setError] = useState<ApiError | undefined>();
   const [pending, setPending] = useState(false);
+  // A panel opened over the inspector: Escape closes it first, never the
+  // inspector beneath with the draft in it (UI-80).
+  useEscape(() => {
+    if (!pending) onClose();
+  });
   const heading = useRef<HTMLHeadingElement>(null);
 
   useEffect(() => {

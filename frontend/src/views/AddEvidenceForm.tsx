@@ -8,6 +8,7 @@ import { ErrorBanner } from "../components/Feedback.tsx";
 import { useApp } from "../state/AppContext.tsx";
 import { SETUP_PENDING } from "../lib/copy.ts";
 import { receiptSuffix } from "../lib/receipt.ts";
+import { useEscape } from "../state/useEscape.ts";
 
 export function AddEvidenceForm({
   taskId,
@@ -23,6 +24,10 @@ export function AddEvidenceForm({
   const [type, setType] = useState("artifact");
   const [error, setError] = useState<ApiError | undefined>();
   const [busy, setBusy] = useState(false);
+  // Escape closes this form before the inspector it sits in (UI-80).
+  useEscape(() => {
+    if (!busy) onCancel();
+  });
 
   const submit = async (event: React.FormEvent) => {
     event.preventDefault();
