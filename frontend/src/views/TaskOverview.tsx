@@ -27,8 +27,8 @@ export function Overview({
   // explains it. Promoted directly beneath the chip, and left in place below
   // too — this is an answer offered early, not a field moved.
   const blocked = detail.status === "blocked";
-  // Shared with the escalation prefill, so what Health quotes into an
-  // escalation is the sentence shown here (UI-49).
+  // Display only: an escalation's issue starts empty and never quotes this
+  // sentence (UI-49).
   const reason = blockingReason(detail);
 
   return (

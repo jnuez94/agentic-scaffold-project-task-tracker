@@ -15,7 +15,6 @@ import { useResource } from "../state/useResource.ts";
 import { TaskActions } from "./TaskActions.tsx";
 import { AssigneeEditor } from "./AssigneeEditor.tsx";
 import { EscalationForm } from "./EscalationForm.tsx";
-import { blockingReason } from "../lib/escalationDraft.ts";
 import { takeEscalationIntent } from "../lib/escalationIntent.ts";
 import { Overview } from "./TaskOverview.tsx";
 import { TaskTabPanel, TASK_TABS, type TaskTab } from "./TaskTabs.tsx";
@@ -197,7 +196,8 @@ export function TaskInspector({
                   }}
                   onEscalate={() => {
                     setEditingAssignees(false);
-                    setEscalating({ issue: blockingReason(detail) });
+                    // The issue starts empty; nothing on the task is quoted in (UI-49).
+                    setEscalating({ issue: "" });
                   }}
                 />
               </>

@@ -4,7 +4,6 @@
 
 import { useState } from "react";
 import type { Health, Session } from "../api/contract.ts";
-import { blockingReason } from "../lib/escalationDraft.ts";
 import { stashEscalationIntent } from "../lib/escalationIntent.ts";
 import { EmptyState, ErrorBanner, SkeletonRows } from "../components/Feedback.tsx";
 import { relativeTime } from "../lib/format.ts";
@@ -127,16 +126,16 @@ export function HealthView() {
                   {/* The hint on this section tells the operator to recover the
                       session; until now the route offered no way to do it. */}
                   {/* UI-49: the same escalation form the inspector hosts, opened
-                      on the task with its blocking reason already quoted into
-                      the issue, because someone who has just read why a task is
-                      blocked should not retype it. */}
+                      on the task with the issue empty. Nothing is quoted in:
+                      on REL-1 the notes are the operator's hold, which must
+                      not become an escalation by default. */}
                   {section.key === "active_blockers" && asTask(row) ? (
                     <button
                       type="button"
                       className="record-action"
                       onClick={() => {
                         const task = asTask(row)!;
-                        stashEscalationIntent({ taskId: task.id, issue: blockingReason(task) });
+                        stashEscalationIntent({ taskId: task.id, issue: "" });
                         globalThis.location.hash = buildHash("tasks", task.id);
                       }}
                     >

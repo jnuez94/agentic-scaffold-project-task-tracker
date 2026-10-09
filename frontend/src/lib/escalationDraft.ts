@@ -3,9 +3,10 @@
  *
  * One form, two entry points. The task inspector is the primary, because the
  * operator is already looking at the thing that is stuck. Health's blocked-
- * tasks row links into the same form pre-filled with the task and its blocking
- * reason, because someone who has just read why something is blocked should
- * not retype it.
+ * tasks row links into the same form, opened on the task. Neither entry point
+ * quotes anything into the issue (UI-49): a task's notes or blocked claims can
+ * hold text that must never become an escalation by default — on the release
+ * task the notes are the operator's hold — and an empty issue is honest.
  *
  * `owner` is a select of ACTIVE agents only, by ruling, even though the CLI
  * accepts free text: an escalation owned by a retired identity is the SEC-1
@@ -31,9 +32,8 @@ export interface EscalationDraft {
 
 /**
  * Why a task is blocked, as the inspector shows it: the authority boundary
- * first, the notes otherwise. One definition, shared with TaskOverview, so the
- * sentence Health quotes into an escalation is the sentence the inspector
- * displays.
+ * first, the notes otherwise. Display only: it is never quoted into an
+ * escalation (UI-49).
  */
 export function blockingReason(task: Pick<Task, "blocked_claims" | "notes">): string {
   return task.blocked_claims?.trim() || task.notes?.trim() || "";
