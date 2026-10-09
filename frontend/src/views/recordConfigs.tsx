@@ -148,7 +148,7 @@ export const RECORD_CONFIGS: Partial<Record<RouteName, RecordConfig>> = {
     defaultOrder: "the CLI order: created, then id",
     load: (c, q) => c.decisions(q),
     columns: columns<Record<string, string>>([
-      { key: "id", orderBy: "id", header: "Decision", priority: 1, render: (r) => <IdCell id={r["id"]!} title={r["title"]} />, sortValue: (r) => r["id"], },
+      { key: "id", orderBy: "id", header: "ID / Title", priority: 1, render: (r) => <IdCell id={r["id"]!} title={r["title"]} />, sortValue: (r) => r["id"], },
       { key: "status", orderBy: "status", header: "Status", priority: 2, render: (r) => <EnumPill value={r["status"]!} />, sortValue: (r) => r["status"], },
       { key: "owner", orderBy: "owner_id", header: "Owner", priority: 3, render: (r) => <Mono>{r["owner_id"]}</Mono>, sortValue: (r) => r["owner_id"], },
       { key: "decision", header: "Decision", priority: 5, render: (r) => <span className="small">{preview(r["decision"] ?? "", 110)}</span>, sortValue: (r) => r["decision"], },

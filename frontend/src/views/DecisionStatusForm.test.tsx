@@ -104,7 +104,7 @@ describe("DecisionStatusForm", () => {
     await userEvent.type(screen.getByLabelText("Why"), "Confirmed.");
     await userEvent.click(screen.getByRole("button", { name: "Change status" }));
 
-    await screen.findByText("This decision changed while you were looking; reload.");
+    await screen.findByText("This decision changed while you were looking. Reload latest; your draft will be preserved.");
     expect(screen.getByLabelText<HTMLTextAreaElement>("Why").value).toBe("Confirmed.");
   });
 });

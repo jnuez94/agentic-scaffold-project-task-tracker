@@ -78,7 +78,7 @@ function TextPicker({
         id={id}
         type="search"
         value={draft}
-        placeholder="exact value"
+        placeholder="Exact value, then Enter"
         onChange={(event) => setDraft(event.target.value)}
         onBlur={apply}
         onKeyDown={(event) => {

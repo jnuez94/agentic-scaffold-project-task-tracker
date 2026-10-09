@@ -33,6 +33,16 @@ import {
 import { useApp } from "../state/AppContext.tsx";
 import { useResource } from "../state/useResource.ts";
 import { receiptSuffix } from "../lib/receipt.ts";
+import { useFocusProblem } from "../state/useFocusProblem.ts";
+
+/** Where each refused field lives, so a refused submit can focus it (UI-79). */
+const PROBLEM_FIELDS = {
+  id: "rev-id",
+  artifact: "rev-artifact",
+  scope: "rev-scope",
+  requiredChanges: "rev-required",
+  blockedClaims: "rev-blocked",
+} as const;
 
 export function ReviewForm({
   detail,
@@ -54,6 +64,7 @@ export function ReviewForm({
   }, [existing.loaded, existing.data, detail.id]);
 
   const [problem, setProblem] = useState<ReviewProblem | null>(null);
+  useFocusProblem(problem, PROBLEM_FIELDS);
   const [error, setError] = useState<ApiError | undefined>();
   const [pending, setPending] = useState(false);
 

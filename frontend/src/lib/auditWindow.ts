@@ -27,6 +27,8 @@ export interface AuditRangeOptions {
   narrowed: boolean;
   /** What the request narrowed to — "task events" — or "" for everything. */
   noun?: string;
+  /** The beginning of the log has been reached: what is loaded is all of it. */
+  whole?: boolean;
 }
 
 /**
@@ -38,7 +40,9 @@ export interface AuditRangeOptions {
  * window instead of hedging about it: "of the newest 500 task events", and
  * when the filter box narrows it, "37 matching, within the newest 500". The
  * window grows as older pages are loaded, so the count carries a thousands
- * separator once it needs one.
+ * separator once it needs one. "Newest" holds only while older entries exist;
+ * once the beginning is reached the label says so — "of 1,686 — the whole
+ * log" (UI-79).
  */
 export function auditRangeLabel(
   page: number,
@@ -53,9 +57,14 @@ export function auditRangeLabel(
   const prefix = total <= size ? "" : `Showing ${first}–${last} of `;
   const noun = options.noun ? ` ${options.noun}` : "";
   const count = total.toLocaleString("en-US");
+  const window = options.window.toLocaleString("en-US");
+  if (options.whole) {
+    const entries = (n: number) => noun || (n === 1 ? " entry" : " entries");
+    if (options.narrowed) return `${prefix}${count} matching, within all ${window}${entries(options.window)}`;
+    return prefix ? `${prefix}${count}${noun} — the whole log` : `${count}${entries(total)} — the whole log`;
+  }
   if (!options.narrowed) {
     return prefix ? `${prefix}the newest ${count}${noun}` : `The newest ${count}${noun}`;
   }
-  const window = options.window.toLocaleString("en-US");
   return `${prefix}${count} matching, within the newest ${window}${noun}`;
 }

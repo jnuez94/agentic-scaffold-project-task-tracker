@@ -25,7 +25,7 @@ describe("errorCopy", () => {
 
   it("names the subject where a code identifies one", () => {
     expect(errorCopy("task_claim_owner_mismatch", { subject: "alice" })).toMatch(/^alice holds/);
-    expect(errorCopy("not_found", { subject: "bob" })).toMatch(/^bob no longer exists/);
+    expect(errorCopy("not_found", { subject: "bob" })).toBe("bob is not on this board. Check the link or id.");
   });
 
   it("keeps the assignment panel's own sentences on that surface", () => {

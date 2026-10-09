@@ -31,7 +31,8 @@ const COPY: Record<string, (context: CopyContext) => string> = {
   not_found: ({ subject, surface }) =>
     surface === "assign"
       ? `${subject ?? "That agent"} no longer exists as an agent. Refresh the agent list.`
-      : `${subject ?? "That record"} no longer exists. Refresh and try again.`,
+      : // Records are not deleted, so "no longer exists" is false for a mistyped link (UI-79).
+        `${subject ?? "That record"} is not on this board. Check the link or id.`,
   task_claim_owner_mismatch: ({ subject, surface }) =>
     surface === "assign"
       ? `${subject ?? "That assignee"} holds the active claim and cannot be removed. ` +
@@ -44,9 +45,13 @@ const COPY: Record<string, (context: CopyContext) => string> = {
     "Another session holds this task's claim. Select the session that claimed it, or recover " +
     "the stale one, then retry.",
   task_not_claimed: () => "This task is not claimed. Claim it before releasing or moving it.",
-  status_mismatch: ({ subject }) => `${subject ?? "This record"} changed while you were looking; reload.`,
+  // The same words as stale_task_revision, because it is the same failure (UI-79).
+  status_mismatch: ({ subject }) =>
+    `${subject ?? "This record"} changed while you were looking. Reload latest; your draft will be preserved.`,
   already_redacted: () => "This message was already redacted; there is nothing further to remove.",
-  cursor_not_monotonic: () => "Your inbox moved on; reload to see the newer position.",
+  cursor_not_monotonic: () =>
+    "Your inbox was already marked read further along, perhaps from another session. " +
+    "Reload to see what is still unread.",
 };
 
 /** Every code with mapped copy, for tests that walk the registry. */

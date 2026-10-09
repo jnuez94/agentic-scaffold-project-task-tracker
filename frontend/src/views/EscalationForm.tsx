@@ -35,6 +35,15 @@ import { agentOptionLabel, isSelectableActor } from "../lib/labels.ts";
 import { useApp } from "../state/AppContext.tsx";
 import { useResource } from "../state/useResource.ts";
 import { receiptSuffix } from "../lib/receipt.ts";
+import { useFocusProblem } from "../state/useFocusProblem.ts";
+
+/** Where each refused field lives, so a refused submit can focus it (UI-79). */
+const PROBLEM_FIELDS = {
+  id: "esc-id",
+  owner: "esc-owner",
+  issue: "esc-issue",
+  requestedDecision: "esc-decision",
+} as const;
 
 export function EscalationForm({
   relatedTask,
@@ -70,6 +79,7 @@ export function EscalationForm({
   }, [existing.loaded, existing.data, relatedTask]);
 
   const [problem, setProblem] = useState<EscalationProblem | null>(null);
+  useFocusProblem(problem, PROBLEM_FIELDS);
   const [error, setError] = useState<ApiError | undefined>();
   const [pending, setPending] = useState(false);
   const heading = useRef<HTMLHeadingElement>(null);

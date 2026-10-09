@@ -98,6 +98,7 @@ describe("TaskCreatePanel", () => {
     const { sent } = renderPanel();
     await submit(user);
     expect(screen.getByLabelText("Title").getAttribute("aria-invalid")).toBe("true");
+    expect(document.activeElement).toBe(screen.getByLabelText("Title"));
     expect(screen.getByRole("alert").textContent).toContain("title");
     expect(sent).toHaveLength(0);
   });

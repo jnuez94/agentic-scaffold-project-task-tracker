@@ -83,7 +83,7 @@ describe("ArtifactCorrectionForm", () => {
     await userEvent.type(screen.getByLabelText("Type"), "spec");
     await userEvent.click(screen.getByRole("button", { name: "Correct record" }));
 
-    await screen.findByText("This artifact changed while you were looking; reload.");
+    await screen.findByText("This artifact changed while you were looking. Reload latest; your draft will be preserved.");
     expect(screen.getByLabelText<HTMLInputElement>("Type").value).toBe("spec");
   });
 });

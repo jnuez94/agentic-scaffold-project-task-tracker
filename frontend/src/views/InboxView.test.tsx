@@ -46,7 +46,11 @@ function inboxFetch(inbox: Inbox, markStatus = 200) {
   return { impl: impl as unknown as typeof fetch, calls };
 }
 
-function Harness({ onMarked }: { onMarked: (mark: { cursor: number }) => void }) {
+function Harness({
+  onMarked,
+}: {
+  onMarked: (mark: { cursor: number }, cleared: { count: number; truncated: boolean }) => void;
+}) {
   const { coordination } = useApp();
   const inbox = useInbox(coordination, "alice");
   return <InboxView inbox={inbox} nameFor={(id) => id} onMarked={onMarked} />;
@@ -100,7 +104,9 @@ describe("InboxView", () => {
 
     await userEvent.click(screen.getByRole("button", { name: "Mark all as read" }));
 
-    await waitFor(() => expect(onMarked).toHaveBeenCalledWith(expect.objectContaining({ cursor: 40 })));
+    await waitFor(() =>
+      expect(onMarked).toHaveBeenCalledWith(expect.objectContaining({ cursor: 40 }), { count: 2, truncated: false }),
+    );
     const mark = calls.find((call) => call.url.includes("mark-read"));
     expect(mark?.method).toBe("POST");
   });
@@ -112,13 +118,15 @@ describe("InboxView", () => {
 
     await userEvent.click(screen.getByRole("button", { name: "Mark all as read" }));
 
-    await screen.findByText("Your inbox moved on; reload to see the newer position.");
+    await screen.findByText("Your inbox was already marked read further along, perhaps from another session. Reload to see what is still unread.");
   });
 
   it("has an empty state that promises nothing about delivery", async () => {
     const { impl } = inboxFetch(envelope({ messages: [], cursor: 40 }));
     render(wrap(impl, <Harness onMarked={() => {}} />));
     await screen.findByText("Nothing unread");
-    expect(screen.getByRole<HTMLButtonElement>("button", { name: "Mark all as read" }).disabled).toBe(true);
+    // At zero the empty state says it: no count line and no control (UI-79).
+    expect(screen.queryByText(/unread loaded/)).toBeNull();
+    expect(screen.queryByRole("button", { name: "Mark all as read" })).toBeNull();
   });
 });

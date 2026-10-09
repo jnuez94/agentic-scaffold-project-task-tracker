@@ -2,8 +2,10 @@
  * Saying what moved on the board (UI-75), from the audit rows recorded since
  * the cursor the view loaded at.
  *
- * Counts by object type and names the actors, so the marker reads "3 tasks
- * and 1 review changed — david, toby" rather than "the board changed".
+ * Counts by object type and names the actors, so the marker reads "Since this
+ * view loaded: 3 tasks and 1 review changed, by david and toby" rather than
+ * "the board changed". Past two actors the rest are counted, not listed, so
+ * the line stays one line (UI-79).
  * Heartbeats are not changes: a session saying it is alive moves no record,
  * and counting it would keep the marker lit for as long as anyone is working.
  */
@@ -47,5 +49,12 @@ export function describeAuditChanges(entries: readonly AuditEntry[]): string {
   const what =
     parts.length <= 1 ? parts.join("") : `${parts.slice(0, -1).join(", ")} and ${parts[parts.length - 1]}`;
   const actors = [...new Set(counted.map((entry) => entry.actor))].sort();
-  return `${what} changed — ${actors.join(", ")}`;
+  return `${what} changed, by ${namedActors(actors)}`;
+}
+
+/** "david", "david and toby", "david, toby and 1 other", "… and 2 others". */
+export function namedActors(actors: readonly string[]): string {
+  if (actors.length <= 2) return actors.join(" and ");
+  const rest = actors.length - 2;
+  return `${actors[0]}, ${actors[1]} and ${rest} ${rest === 1 ? "other" : "others"}`;
 }

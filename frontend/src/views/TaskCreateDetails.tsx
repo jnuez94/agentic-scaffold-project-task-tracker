@@ -71,7 +71,7 @@ export function TaskCreateDetails({
         </FormField>
         <FormField
           id="create-blocked-claims"
-          label="Blocked claims"
+          label="Does not authorize"
           hint="What this task does not authorise."
         >
           {(control) => (

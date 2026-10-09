@@ -43,6 +43,16 @@ export function unreadCountLabel(count: number, truncated: boolean): string {
   return `${count}${truncated ? "+" : ""} unread loaded`;
 }
 
+/**
+ * What marking read cleared, as announced (UI-79): the count the operator
+ * cleared, never the cursor it moved to. "500+" when the window was capped,
+ * because the mark clears to the head, past anything not loaded.
+ */
+export function markedReadLine(count: number, truncated: boolean): string {
+  const noun = count === 1 && !truncated ? "message" : "messages";
+  return `Marked ${count}${truncated ? "+" : ""} ${noun} read.`;
+}
+
 /** The nav chip: nothing when nothing is unread, a capped count otherwise. */
 export function unreadChip(reading: InboxReading | null): string | null {
   if (!reading || reading.visible.length === 0) return null;

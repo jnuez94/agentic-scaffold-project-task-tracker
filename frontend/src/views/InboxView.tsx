@@ -22,37 +22,40 @@ export function InboxView({
 }: {
   inbox: InboxState;
   nameFor: (id: string) => string;
-  /** Called with the mark the CLI returned, for the announcement. */
-  onMarked: (mark: InboxMark) => void;
+  /** Called with the mark the CLI returned and what it cleared, for the announcement. */
+  onMarked: (mark: InboxMark, cleared: { count: number; truncated: boolean }) => void;
 }) {
   const { resource, reading, marking, markError, markAllRead, actorId } = inbox;
 
   if (resource.error) return <ErrorBanner error={resource.error} onRetry={resource.refresh} />;
   if (!reading) return <SkeletonRows rows={4} columns={2} />;
 
+  const empty = reading.visible.length === 0;
   const mark = async () => {
+    // Read before marking: the count is what the operator saw and cleared.
+    const cleared = { count: reading.visible.length, truncated: reading.truncated };
     const result = await markAllRead();
-    if (result) onMarked(result);
+    if (result) onMarked(result, cleared);
   };
 
   return (
     <div className="inbox">
-      <div className="inbox-toolbar">
-        <p className="small muted">{unreadCountLabel(reading.visible.length, reading.truncated)}</p>
-        <button
-          type="button"
-          onClick={() => void mark()}
-          disabled={marking || (reading.visible.length === 0 && reading.hiddenOwn === 0)}
-        >
-          {marking ? "Marking…" : "Mark all as read"}
-        </button>
-      </div>
+      {/* At zero the empty state says it all (UI-79): no "0 unread loaded",
+          and no control that would clear nothing the operator can see. */}
+      {empty ? null : (
+        <div className="inbox-toolbar">
+          <p className="small muted">{unreadCountLabel(reading.visible.length, reading.truncated)}</p>
+          <button type="button" onClick={() => void mark()} disabled={marking}>
+            {marking ? "Marking…" : "Mark all as read"}
+          </button>
+        </div>
+      )}
 
       {reading.firstRun ? <p className="inbox-note small">{FIRST_RUN_LINE}</p> : null}
       {reading.hiddenOwn > 0 ? <p className="inbox-note small muted">{OWN_TEAM_RULE}</p> : null}
       {markError ? <ErrorBanner error={markError} /> : null}
 
-      {reading.visible.length === 0 ? (
+      {empty ? (
         <EmptyState
           title="Nothing unread"
           hint="Messages to you or to the team appear here until you mark them read."

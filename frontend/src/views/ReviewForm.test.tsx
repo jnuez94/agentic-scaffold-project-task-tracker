@@ -89,6 +89,7 @@ describe("ReviewForm", () => {
     await user.type(screen.getByLabelText("Does not authorize"), "release");
     await record(user);
     expect(screen.getByLabelText("Required changes").getAttribute("aria-invalid")).toBe("true");
+    expect(document.activeElement).toBe(screen.getByLabelText("Required changes"));
     expect(sent).toHaveLength(0);
   });
 
@@ -99,6 +100,7 @@ describe("ReviewForm", () => {
     await user.type(screen.getByLabelText("Required changes"), "none");
     await record(user);
     expect(screen.getByLabelText("Does not authorize").getAttribute("aria-invalid")).toBe("true");
+    expect(document.activeElement).toBe(screen.getByLabelText("Does not authorize"));
     expect(sent).toHaveLength(0);
   });
 

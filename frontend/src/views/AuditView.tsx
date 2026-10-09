@@ -65,9 +65,11 @@ export function AuditView({ filter }: { filter: string }) {
     }
     if (announcedKey.current === audit.windowKey) return;
     announcedKey.current = audit.windowKey;
-    const what = noun ? `the newest ${loaded.length} ${noun}` : `the newest ${loaded.length} entries`;
+    const rows = `${loaded.length} ${noun || "entries"}`;
+    // "Newest" only while older entries exist (UI-79).
+    const what = audit.exhausted ? `${rows} — the whole log` : `the newest ${rows}`;
     setNotice(`Reloaded: ${what}. Page 1.`);
-  }, [audit.windowKey, noun, loaded.length]);
+  }, [audit.windowKey, audit.exhausted, noun, loaded.length]);
 
   return (
     <section className="audit" aria-label="Audit log" aria-busy={audit.loading}>
@@ -153,7 +155,7 @@ export function AuditView({ filter }: { filter: string }) {
         // holds the way back instead: load the page before the oldest row.
         pagerCopy={{
           rangeLabel: (page, size, total) =>
-            auditRangeLabel(page, size, total, { window: loaded.length, narrowed, noun }),
+            auditRangeLabel(page, size, total, { window: loaded.length, narrowed, noun, whole: audit.exhausted }),
           truncatedNotice: ({ announce }) => (
             <AuditLoadOlder
               exhausted={audit.exhausted}

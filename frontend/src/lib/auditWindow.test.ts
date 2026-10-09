@@ -57,6 +57,19 @@ describe("auditRangeLabel", () => {
     );
   });
 
+  it("drops 'newest' once the beginning of the log is reached", () => {
+    const whole = { window: 1686, narrowed: false, whole: true };
+    expect(auditRangeLabel(1, 10, 1686, whole)).toBe("Showing 1–10 of 1,686 — the whole log");
+    expect(auditRangeLabel(1, 50, 7, { window: 7, narrowed: false, whole: true })).toBe("7 entries — the whole log");
+    expect(auditRangeLabel(1, 50, 1, { window: 1, narrowed: false, whole: true })).toBe("1 entry — the whole log");
+    expect(auditRangeLabel(1, 10, 40, { window: 40, narrowed: false, whole: true, noun: "task events" })).toBe(
+      "Showing 1–10 of 40 task events — the whole log",
+    );
+    expect(auditRangeLabel(2, 10, 37, { window: 1686, narrowed: true, whole: true })).toBe(
+      "Showing 11–20 of 37 matching, within all 1,686 entries",
+    );
+  });
+
   it("never carries the shared hedges", () => {
     for (const label of [
       auditRangeLabel(1, 10, 500, full),

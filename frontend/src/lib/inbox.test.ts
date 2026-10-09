@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Inbox, InboxMessage } from "../api/contract.ts";
-import { readInbox, unreadChip, unreadCountLabel } from "./inbox.ts";
+import { markedReadLine, readInbox, unreadChip, unreadCountLabel } from "./inbox.ts";
 
 const message = (id: string, sender_id: string, recipient: string): InboxMessage => ({
   id,
@@ -62,5 +62,16 @@ describe("labels", () => {
     expect(unreadChip(readInbox(inbox([message("m", "bob", "team")]), "alice", 500))).toBe("1");
     const many = Array.from({ length: 2 }, (_, i) => message(`m-${i}`, "bob", "team"));
     expect(unreadChip(readInbox(inbox(many), "alice", 2))).toBe("2+");
+  });
+});
+
+describe("markedReadLine", () => {
+  it("states the count cleared, singular and plural", () => {
+    expect(markedReadLine(13, false)).toBe("Marked 13 messages read.");
+    expect(markedReadLine(1, false)).toBe("Marked 1 message read.");
+  });
+
+  it("says when the window was capped, since the mark clears past it", () => {
+    expect(markedReadLine(500, true)).toBe("Marked 500+ messages read.");
   });
 });

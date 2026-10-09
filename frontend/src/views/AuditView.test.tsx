@@ -102,8 +102,8 @@ describe("AuditView", () => {
     await waitFor(() => expect(auditCalls).toHaveLength(2));
     expect(auditCalls[1]).toContain("action=claim");
     expect(auditCalls[1]).toContain("limit=500");
-    await screen.findByText("Reloaded: the newest 1 claim events. Page 1.");
-    expect(screen.getByText("The newest 1 claim events")).toBeTruthy();
+    await screen.findByText("Reloaded: 1 claim events — the whole log. Page 1.");
+    expect(screen.getByText("1 claim events — the whole log")).toBeTruthy();
     expect(screen.queryByText("bob")).toBeNull();
   });
 
@@ -193,7 +193,7 @@ describe("AuditView", () => {
     await userEvent.click(screen.getByRole("button", { name: "Load older" }));
 
     // Twice: the range paragraph and the pager's live region announcing it.
-    await screen.findAllByText("Showing 1–10 of the newest 503");
+    await screen.findAllByText("Showing 1–10 of 503 — the whole log");
     expect(auditCalls[1]).toContain("before=501");
     const end = screen.getByRole("button", { name: "Beginning of the log" });
     expect((end as HTMLButtonElement).disabled).toBe(true);
@@ -207,10 +207,10 @@ describe("AuditView", () => {
     await screen.findByText("T-2");
 
     await userEvent.selectOptions(screen.getByLabelText("Object type"), "task");
-    await screen.findByText("The newest 3 task events");
+    await screen.findByText("3 task events — the whole log");
 
     rerender(wrap(impl, <AuditView filter="T-2" />));
-    await screen.findByText("1 matching, within the newest 3 task events");
+    await screen.findByText("1 matching, within all 3 task events");
   });
 
   it("carries the ruled header wording", async () => {

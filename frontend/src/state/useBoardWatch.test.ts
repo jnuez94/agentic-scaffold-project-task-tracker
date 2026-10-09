@@ -96,7 +96,7 @@ describe("useBoardWatch", () => {
     board.record({ object_id: "T-1" });
     board.record({ object_type: "review", object_id: "REV-1", action: "add", actor: "david" });
     await poll();
-    expect(result.current.summary).toBe("1 review and 1 task changed — david, toby");
+    expect(result.current.summary).toBe("1 review and 1 task changed, by david and toby");
     expect(board.source.changes).toHaveBeenCalledWith(10);
   });
 
@@ -150,7 +150,7 @@ describe("useBoardWatch", () => {
 
     document.body.innerHTML = "";
     await poll();
-    expect(result.current.summary).toBe("1 task changed — toby");
+    expect(result.current.summary).toBe("1 task changed, by toby");
   });
 
   it("never replaces what is on screen — it only reports", async () => {
@@ -171,7 +171,7 @@ describe("useBoardWatch", () => {
     await settle();
     board.record({});
     await poll();
-    expect(result.current.summary).toBe("1 task changed — toby");
+    expect(result.current.summary).toBe("1 task changed, by toby");
 
     rerender({ current: ["v2"] });
     await settle();

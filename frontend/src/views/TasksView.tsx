@@ -209,7 +209,7 @@ export function TasksView({
             rows underneath them is the behaviour being complained about. */}
         {watch.summary ? (
           <div className="board-changed" role="status">
-            <span>{watch.summary} since this view loaded.</span>
+            <span>Since this view loaded: {watch.summary}.</span>
             <button
               type="button"
               onClick={() => {

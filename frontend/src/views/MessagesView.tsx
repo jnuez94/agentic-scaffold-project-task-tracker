@@ -17,6 +17,7 @@ import { DataTable } from "../components/DataTable.tsx";
 import { ErrorBanner, SkeletonRows } from "../components/Feedback.tsx";
 import { ResizeHandle } from "../components/ResizeHandle.tsx";
 import { loadedCountLabel } from "../lib/conversation.ts";
+import { markedReadLine } from "../lib/inbox.ts";
 import { filterRows } from "../lib/filters.ts";
 import { CLEAR_FILTER_HINT, NO_MESSAGES_MATCH } from "../lib/copy.ts";
 import { isTruncated } from "../lib/pagination.ts";
@@ -203,7 +204,9 @@ export function MessagesView({
             <InboxView
               inbox={inbox}
               nameFor={nameFor}
-              onMarked={(mark) => announce(`Inbox marked read at ${mark.cursor}.${receiptSuffix(mark)}`)}
+              onMarked={(mark, cleared) =>
+                announce(`${markedReadLine(cleared.count, cleared.truncated)}${receiptSuffix(mark)}`)
+              }
             />
           ) : null}
 

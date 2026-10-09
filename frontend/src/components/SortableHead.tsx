@@ -74,7 +74,9 @@ function hintFor(
   mode: "request" | "loaded",
 ): string {
   const restore = defaultOrder ? ` (${defaultOrder})` : "";
-  const what = mode === "request" ? "Sort the request" : "Sort loaded rows";
+  // "The request" is implementation vocabulary (UI-79): a request sort reads as
+  // plain sorting; only a loaded-rows sort needs to say what it covers.
+  const what = mode === "request" ? "Sort" : "Sort loaded rows";
   if (state === "none") return `${what} by ${header}, ascending`;
   if (state === "ascending") return `${what} by ${header}, descending`;
   return `Clear sorting and restore the default order${restore}`;

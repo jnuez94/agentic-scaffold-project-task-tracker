@@ -44,6 +44,10 @@ import { useApp } from "../state/AppContext.tsx";
 import { TaskCreateDetails } from "./TaskCreateDetails.tsx";
 import { receiptSuffix } from "../lib/receipt.ts";
 import { useEscape } from "../state/useEscape.ts";
+import { useFocusProblem } from "../state/useFocusProblem.ts";
+
+/** Where each refused field lives, so a refused submit can focus it (UI-79). */
+const PROBLEM_FIELDS = { id: "create-id", title: "create-title" } as const;
 
 export function TaskCreatePanel({
   existingIds,
@@ -67,6 +71,7 @@ export function TaskCreatePanel({
     ...EMPTY_DRAFT,
   });
   const [problem, setProblem] = useState<DraftProblem | null>(null);
+  useFocusProblem(problem, PROBLEM_FIELDS);
   const [error, setError] = useState<ApiError | undefined>();
   const [pending, setPending] = useState(false);
   const heading = useRef<HTMLHeadingElement>(null);

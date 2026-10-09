@@ -100,6 +100,7 @@ describe("EscalationForm", () => {
     await user.type(screen.getByLabelText("Requested decision"), "d");
     await raise(user);
     expect(screen.getByLabelText("Owner").getAttribute("aria-invalid")).toBe("true");
+    expect(document.activeElement).toBe(screen.getByLabelText("Owner"));
     expect(sent).toHaveLength(0);
   });
 

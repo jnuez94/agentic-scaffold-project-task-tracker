@@ -34,7 +34,7 @@ describe("DataTable with requestSort", () => {
         paginate={false}
       />,
     );
-    expect(screen.getByRole("button", { name: /^Id/ }).title).toBe("Sort the request by Id, ascending");
+    expect(screen.getByRole("button", { name: /^Id/ }).title).toBe("Sort by Id, ascending");
     await userEvent.click(screen.getByRole("button", { name: /^Id/ }));
     expect(onChange).toHaveBeenCalledWith({ key: "id", direction: "asc" });
     expect(firstCell()).toContain("b");
