@@ -138,6 +138,7 @@ export function App() {
             onBroadcast={broadcast.onOpen}
             lastUpdated={agents.lastUpdated}
             busy={agents.loading || session.loading}
+            routeKey={`${route.name}/${route.detail ?? ""}`}
             sessionControls={
               session.activeSessionId ? (
                 <EndSessionControl

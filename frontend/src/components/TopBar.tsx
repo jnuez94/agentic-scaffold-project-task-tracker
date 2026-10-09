@@ -9,8 +9,8 @@
 import { useState } from "react";
 import type { Agent, Session } from "../api/contract.ts";
 import { relativeTime } from "../lib/format.ts";
-import { agentOptionLabel, isSelectableActor } from "../lib/labels.ts";
 import { Icon } from "./icons.tsx";
+import { IdentityPopover } from "./IdentityPopover.tsx";
 
 export interface TopBarProps {
   filter: string;
@@ -37,16 +37,21 @@ export interface TopBarProps {
    * surface is actually open, so anything the slot fetches is paid on open.
    */
   sessionControls?: React.ReactNode;
+  /** The current route, hash and all; the identity popover closes when it changes. */
+  routeKey: string;
 }
 
 export function TopBar(props: TopBarProps) {
-  // Already filtered to active sessions owned by the selected actor.
-  const sessionsForActor = props.sessions;
   const [panelOpen, setPanelOpen] = useState(false);
   const [identityOpen, setIdentityOpen] = useState(false);
 
-  const selectable = props.agents.filter(isSelectableActor);
-  const retired = props.agents.filter((agent) => !isSelectableActor(agent));
+  // Any route change closes the popover (UI-77): it covers page content, and
+  // left open it stays over a page the operator did not open it on.
+  const [routeSeen, setRouteSeen] = useState(props.routeKey);
+  if (routeSeen !== props.routeKey) {
+    setRouteSeen(props.routeKey);
+    setIdentityOpen(false);
+  }
 
   const actorName = props.agents.find(
     (agent) => agent.id === props.actorId,
@@ -95,95 +100,21 @@ export function TopBar(props: TopBarProps) {
           />
         </div>
 
-        {/* Identity as a readout that expands (UI-43).
-         *
-         * The two selects held 836px, 68% of a bar that is 16% of the viewport
-         * permanently, for a value set once. Attribution stays in the header —
-         * the session travels in X-Coordination-Session, so the header is what
-         * no form can disagree with — but visible and occupying two-thirds of
-         * the chrome are different requirements.
-         *
-         * Hidden below 600px tall, where UI-16's disclosure already collapses
-         * the whole toolbar and the selects render inline inside it. Two
-         * mechanisms for one job at different sizes have to agree rather than
-         * both fire, so exactly one of them is a control at any given size. */}
-        <button
-          type="button"
-          className="topbar-identity-readout"
-          aria-expanded={identityOpen}
-          aria-controls="topbar-identity"
-          onClick={() => setIdentityOpen((open) => !open)}
-        >
-          <span className="small muted">Acting as</span>
-          <span className="topbar-identity-value">{identitySummary}</span>
-          <span className="topbar-identity-caret" aria-hidden="true">
-            {identityOpen ? "▴" : "▾"}
-          </span>
-        </button>
-
-        <div
-          id="topbar-identity"
-          className={identityOpen ? "topbar-identity open" : "topbar-identity"}
-        >
-          <div className="control">
-            <label htmlFor="actor-select">Acting as</label>
-            <select
-              id="actor-select"
-              value={props.actorId ?? ""}
-              onChange={(event) => props.onActor(event.target.value || null)}
-            >
-              <option value="">No actor selected</option>
-              {/* Grouped, not filtered. The agent list is fetched with all=1 —
-                  bootstrap needs it that way to detect an incompatible
-                  local-operator record — so retired identities arrive here too.
-                  Hiding them would be the wrong fix; the problem was that
-                  nothing distinguished them. A retired actor cannot be the
-                  accountable actor for a mutation, so it is disabled rather
-                  than silently selectable. */}
-              {selectable.map((agent) => (
-                <option key={agent.id} value={agent.id}>
-                  {agentOptionLabel(agent)}
-                </option>
-              ))}
-              {retired.length ? (
-                <optgroup label="Retired — cannot act">
-                  {retired.map((agent) => (
-                    <option key={agent.id} value={agent.id} disabled>
-                      {agentOptionLabel(agent)}
-                    </option>
-                  ))}
-                </optgroup>
-              ) : null}
-            </select>
-          </div>
-
-          <div className="control">
-            <label htmlFor="session-select">Active session</label>
-            <select
-              id="session-select"
-              value={props.sessionId ?? ""}
-              onChange={(event) => props.onSession(event.target.value || null)}
-              disabled={!props.actorId}
-              aria-describedby={
-                props.sessionReason ? "session-reason" : undefined
-              }
-            >
-              <option value="">No session</option>
-              {sessionsForActor.map((session) => (
-                <option key={session.id} value={session.id}>
-                  {session.id} · {session.harness}
-                </option>
-              ))}
-            </select>
-            {props.sessionReason ? (
-              <p id="session-reason" className="small muted session-reason">
-                {props.sessionReason}
-              </p>
-            ) : null}
-          </div>
-
-          {identityOpen || panelOpen ? props.sessionControls : null}
-        </div>
+        <IdentityPopover
+          open={identityOpen}
+          onToggle={() => setIdentityOpen((open) => !open)}
+          onClose={() => setIdentityOpen(false)}
+          summary={identitySummary}
+          agents={props.agents}
+          sessions={props.sessions}
+          actorId={props.actorId}
+          sessionId={props.sessionId}
+          onActor={props.onActor}
+          onSession={props.onSession}
+          sessionReason={props.sessionReason}
+          inline={panelOpen}
+          sessionControls={props.sessionControls}
+        />
       </div>
 
       <div className="topbar-actions">

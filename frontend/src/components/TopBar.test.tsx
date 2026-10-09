@@ -66,6 +66,7 @@ function renderBar(over: Partial<Parameters<typeof TopBar>[0]> = {}) {
       broadcastRef={createRef<HTMLButtonElement>()}
       broadcastDisabledReason={null}
       onBroadcast={vi.fn()}
+      routeKey="tasks/"
       {...over}
     />,
   );
