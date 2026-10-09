@@ -90,6 +90,8 @@ export class Coordination {
   addArtifact = (body: unknown) => this.api.post<{ id: string }>("/api/artifacts", body);
   setArtifactStatus = (id: string, body: unknown) =>
     this.api.post<{ status: string }>(`/api/artifacts/${id}/status`, body);
+  updateArtifact = (id: string, body: unknown) =>
+    this.api.post<Artifact>(`/api/artifacts/${id}/update`, body);
 
   escalations = (query?: Query) => this.api.get<Escalation[]>("/api/escalations", query);
   addEscalation = (body: unknown) => this.api.post<{ id: string }>("/api/escalations", body);

@@ -8,7 +8,9 @@
  */
 
 import { useState } from "react";
-import type { Agent, Decision, Session, TaskListRow } from "../api/contract.ts";
+import type { Agent, Artifact, Decision, Session, TaskListRow } from "../api/contract.ts";
+import { ArtifactCorrectionForm } from "./ArtifactCorrectionForm.tsx";
+import { ArtifactStatusForm } from "./ArtifactStatusForm.tsx";
 import { retirementBlock } from "../lib/retirement.ts";
 import { AgentRetirement } from "./AgentRetirement.tsx";
 import { DecisionStatusForm } from "./DecisionStatusForm.tsx";
@@ -47,6 +49,10 @@ export function RecordPanels({
   const [retiring, setRetiring] = useState<Agent | null>(null);
   // UI-73: the one ruling the CLI supports on a decision after it is recorded.
   const [ruling, setRuling] = useState<Decision | null>(null);
+  // UI-54: the two changes the CLI allows on a recorded artifact.
+  const [artifactAction, setArtifactAction] = useState<{ kind: "status" | "correct"; artifact: Artifact } | null>(null);
+  const artifactRow =
+    inspectorConfig?.kind === "artifact" ? (inspecting as Artifact | null) : null;
   const { announce } = useApp();
   const agentRow =
     inspectorConfig?.kind === "agent" ? (inspecting as Agent | null) : null;
@@ -110,9 +116,49 @@ export function RecordPanels({
                   Change status…
                 </button>
               ) : null}
+
+              {artifactRow ? (
+                <>
+                  <button
+                    type="button"
+                    className="record-action"
+                    disabled={!actorId}
+                    onClick={() => setArtifactAction({ kind: "status", artifact: artifactRow })}
+                  >
+                    Change status…
+                  </button>
+                  <button
+                    type="button"
+                    className="record-action"
+                    disabled={!actorId}
+                    onClick={() => setArtifactAction({ kind: "correct", artifact: artifactRow })}
+                  >
+                    Correct record…
+                  </button>
+                </>
+              ) : null}
             </>
           }
         />
+      ) : null}
+
+      {artifactAction ? (
+        <>
+          <div className="sheet-scrim" onClick={() => setArtifactAction(null)} aria-hidden="true" />
+          {artifactAction.kind === "status" ? (
+            <ArtifactStatusForm
+              artifact={artifactAction.artifact}
+              onClose={() => setArtifactAction(null)}
+              onChanged={onRecovered}
+            />
+          ) : (
+            <ArtifactCorrectionForm
+              artifact={artifactAction.artifact}
+              onClose={() => setArtifactAction(null)}
+              onChanged={onRecovered}
+            />
+          )}
+        </>
       ) : null}
 
       {ruling ? (

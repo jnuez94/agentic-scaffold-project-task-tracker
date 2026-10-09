@@ -25,6 +25,8 @@ export interface RecordConfig {
   filterPlaceholder: string;
   /** Structured pickers, each one `--where` clause on the request (UI-70). */
   pickers?: PickerSpec[];
+  /** A header action that creates a record of this kind (UI-54: register an artifact). */
+  createAction?: { label: string; kind: "artifact" };
   /** The server-side order restored when a sort is cleared. */
   defaultOrder: string;
   load: (coordination: Coordination, query: Record<string, string | string[]>) => Promise<unknown[]>;
@@ -198,6 +200,7 @@ export const RECORD_CONFIGS: Partial<Record<RouteName, RecordConfig>> = {
   artifacts: {
     title: "Artifacts",
     description: "Produced things with an owner and explicit usage boundaries.",
+    createAction: { label: "Register artifact", kind: "artifact" },
     emptyTitle: "No artifacts recorded",
     emptyHint: "Add one with `coordination artifact add`.",
     filterFields: ["id", "uri", "owner_id", "type"],

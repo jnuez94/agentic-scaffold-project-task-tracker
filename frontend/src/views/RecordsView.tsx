@@ -20,6 +20,7 @@ import { withActionColumn } from "./recordActionColumn.tsx";
 import { INSPECTOR_CONFIGS } from "./inspectorConfigs.tsx";
 import { RecordPanels } from "./RecordPanels.tsx";
 import { RecordPickers } from "./RecordPickers.tsx";
+import { ArtifactRegisterForm } from "./ArtifactRegisterForm.tsx";
 import type { Agent } from "../api/contract.ts";
 
 const REQUEST_LIMIT = 500;
@@ -59,6 +60,8 @@ export function RecordsView<T = Record<string, unknown>>({
   const where = useMemo(() => whereClauses(picked), [picked]);
   // UI-70: a header the contract lists as orderable re-asks the CLI.
   const [requestSort, setRequestSort] = useState<SortState | null>(null);
+  // UI-54: the header action's sheet, for routes that declare one.
+  const [creating, setCreating] = useState(false);
   const [acting, setActing] = useState<Record<string, unknown> | null>(null);
   // Selection is view state only. These entities have no `show` command, so a
   // deep-link route would promise a record the CLI cannot resolve on load.
@@ -168,9 +171,21 @@ export function RecordsView<T = Record<string, unknown>>({
       }
     >
       <section className="records" aria-label={config.title}>
-        <div className="view-header">
-          <h1>{config.title}</h1>
-          <p className="small muted">{config.description}</p>
+        <div className={config.createAction ? "view-header view-header-with-action" : "view-header"}>
+          <div>
+            <h1>{config.title}</h1>
+            <p className="small muted">{config.description}</p>
+          </div>
+          {config.createAction ? (
+            <button
+              type="button"
+              className="view-action"
+              disabled={creating || !identity.actorId}
+              onClick={() => setCreating(true)}
+            >
+              {config.createAction.label}
+            </button>
+          ) : null}
         </div>
 
         {config.pickers ? (
@@ -255,6 +270,20 @@ export function RecordsView<T = Record<string, unknown>>({
           }
         />
       </section>
+
+      {creating && config.createAction?.kind === "artifact" ? (
+        <>
+          <div className="sheet-scrim" onClick={() => setCreating(false)} aria-hidden="true" />
+          <ArtifactRegisterForm
+            agents={agents}
+            onClose={() => setCreating(false)}
+            onCreated={(id) => {
+              records.refresh();
+              onDetail?.(id);
+            }}
+          />
+        </>
+      ) : null}
 
       <RecordPanels
         config={config}
