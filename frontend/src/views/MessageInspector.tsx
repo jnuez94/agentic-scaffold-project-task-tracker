@@ -15,6 +15,7 @@ import { Field, Tags } from "../components/Fields.tsx";
 import { Icon } from "../components/icons.tsx";
 import { absoluteTime, relativeTime } from "../lib/format.ts";
 import { useApp } from "../state/AppContext.tsx";
+import { useEscape } from "../state/useEscape.ts";
 
 export function MessageInspector({
   message,
@@ -30,13 +31,7 @@ export function MessageInspector({
     heading.current?.focus();
   }, [message.id]);
 
-  useEffect(() => {
-    const onKey = (event: globalThis.KeyboardEvent) => {
-      if (event.key === "Escape") onClose();
-    };
-    document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
-  }, [onClose]);
+  useEscape(onClose);
 
   const copyBody = async () => {
     try {

@@ -38,6 +38,7 @@ import {
   CurrentAssignees,
 } from "./AssigneeFields.tsx";
 import { receiptSuffix } from "../lib/receipt.ts";
+import { useEscape } from "../state/useEscape.ts";
 
 export function AssigneeEditor({
   task,
@@ -80,13 +81,7 @@ export function AssigneeEditor({
     onClose();
   };
 
-  useEffect(() => {
-    const onKey = (event: globalThis.KeyboardEvent) => {
-      if (event.key === "Escape") requestClose();
-    };
-    document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
-  });
+  useEscape(requestClose);
 
   const toggleRemove = (id: string) =>
     setDraft((current) => ({

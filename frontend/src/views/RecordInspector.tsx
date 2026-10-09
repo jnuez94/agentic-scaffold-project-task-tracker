@@ -30,6 +30,7 @@ import {
   type InspectorConfig,
   type Row,
 } from "./inspectorConfigs.tsx";
+import { useEscape } from "../state/useEscape.ts";
 
 type InspectorTab = "details" | "activity";
 
@@ -71,13 +72,7 @@ export function RecordInspector({
     heading.current?.focus();
   }, [id]);
 
-  useEffect(() => {
-    const onKey = (event: globalThis.KeyboardEvent) => {
-      if (event.key === "Escape") onClose();
-    };
-    document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
-  }, [onClose]);
+  useEscape(onClose);
 
   const title = config.titleKey ? text(row[config.titleKey]) : "";
 

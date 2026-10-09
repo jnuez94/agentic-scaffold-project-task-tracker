@@ -19,6 +19,7 @@ import { blockingReason } from "../lib/escalationDraft.ts";
 import { takeEscalationIntent } from "../lib/escalationIntent.ts";
 import { Overview } from "./TaskOverview.tsx";
 import { TaskTabPanel, TASK_TABS, type TaskTab } from "./TaskTabs.tsx";
+import { useEscape } from "../state/useEscape.ts";
 
 export function TaskInspector({
   taskId,
@@ -52,13 +53,7 @@ export function TaskInspector({
 
   // Escape closes the inspector. It is an overlay below 1280px, and an overlay
   // that cannot be dismissed from the keyboard traps the operator.
-  useEffect(() => {
-    const onKey = (event: globalThis.KeyboardEvent) => {
-      if (event.key === "Escape") onClose();
-    };
-    document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
-  }, [onClose]);
+  useEscape(onClose);
 
   // Move focus to the panel when it opens so the next Tab lands inside it.
   useEffect(() => {

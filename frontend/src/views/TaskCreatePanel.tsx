@@ -43,6 +43,7 @@ import {
 import { useApp } from "../state/AppContext.tsx";
 import { TaskCreateDetails } from "./TaskCreateDetails.tsx";
 import { receiptSuffix } from "../lib/receipt.ts";
+import { useEscape } from "../state/useEscape.ts";
 
 export function TaskCreatePanel({
   existingIds,
@@ -74,13 +75,9 @@ export function TaskCreatePanel({
     heading.current?.focus();
   }, []);
 
-  useEffect(() => {
-    const onKey = (event: globalThis.KeyboardEvent) => {
-      if (event.key === "Escape" && !pending) onClose();
-    };
-    document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
-  }, [onClose, pending]);
+  useEscape(() => {
+    if (!pending) onClose();
+  });
 
   const set = <K extends keyof TaskDraft>(key: K, value: TaskDraft[K]) =>
     setDraft((current) => ({ ...current, [key]: value }));

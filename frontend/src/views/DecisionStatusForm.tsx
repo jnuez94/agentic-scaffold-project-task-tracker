@@ -23,6 +23,7 @@ import {
 import { errorCopy, hasErrorCopy } from "../lib/errorCopy.ts";
 import { useApp } from "../state/AppContext.tsx";
 import { useFocusTrap } from "../state/useFocusTrap.ts";
+import { useEscape } from "../state/useEscape.ts";
 
 export function DecisionStatusForm({
   decision,
@@ -44,12 +45,8 @@ export function DecisionStatusForm({
   useEffect(() => {
     heading.current?.focus();
   }, []);
-  useEffect(() => {
-    const onKey = (event: globalThis.KeyboardEvent) => {
-      if (event.key === "Escape" && !pending) onClose();
-    };
-    document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
+  useEscape(() => {
+    if (!pending) onClose();
   });
 
   const blocked = rulingBlockedReason(decision, draft);

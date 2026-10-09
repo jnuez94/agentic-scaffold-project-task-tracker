@@ -17,6 +17,7 @@ import { absoluteTime } from "../lib/format.ts";
 import { useApp } from "../state/AppContext.tsx";
 import { useFocusTrap } from "../state/useFocusTrap.ts";
 import { receiptSuffix } from "../lib/receipt.ts";
+import { useEscape } from "../state/useEscape.ts";
 
 export interface BroadcastComposerProps {
   senderId: string;
@@ -66,13 +67,7 @@ export function BroadcastComposer({
     onClose();
   };
 
-  useEffect(() => {
-    const onKey = (event: globalThis.KeyboardEvent) => {
-      if (event.key === "Escape") requestClose();
-    };
-    document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
-  });
+  useEscape(requestClose);
 
   const submit = async (event: React.FormEvent) => {
     event.preventDefault();

@@ -24,6 +24,7 @@ import { useApp } from "../state/AppContext.tsx";
 import { useFocusTrap } from "../state/useFocusTrap.ts";
 import { FormField } from "../components/FormField.tsx";
 import { receiptSuffix } from "../lib/receipt.ts";
+import { useEscape } from "../state/useEscape.ts";
 
 interface Recovered {
   id: string;
@@ -67,13 +68,7 @@ export function SessionRecovery({
     onClose();
   };
 
-  useEffect(() => {
-    const onKey = (event: globalThis.KeyboardEvent) => {
-      if (event.key === "Escape") requestClose();
-    };
-    document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
-  });
+  useEscape(requestClose);
 
   const submit = async (event: React.FormEvent) => {
     event.preventDefault();

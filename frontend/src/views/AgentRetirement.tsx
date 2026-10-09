@@ -22,6 +22,7 @@ import { outstandingAssignments, retireErrorCopy } from "../lib/retirement.ts";
 import { useApp } from "../state/AppContext.tsx";
 import { useFocusTrap } from "../state/useFocusTrap.ts";
 import { receiptSuffix } from "../lib/receipt.ts";
+import { useEscape } from "../state/useEscape.ts";
 
 export function AgentRetirement({
   agent,
@@ -45,12 +46,8 @@ export function AgentRetirement({
     heading.current?.focus();
   }, []);
 
-  useEffect(() => {
-    const onKey = (event: globalThis.KeyboardEvent) => {
-      if (event.key === "Escape" && !pending) onClose();
-    };
-    document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
+  useEscape(() => {
+    if (!pending) onClose();
   });
 
   const retiring = agent.status === "active";
