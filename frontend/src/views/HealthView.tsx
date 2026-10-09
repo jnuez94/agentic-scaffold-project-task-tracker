@@ -2,7 +2,7 @@
  * Coordination health: the checks that reveal quiet decay.
  */
 
-import { useRef, useState } from "react";
+import { useState } from "react";
 import type { Health, Session } from "../api/contract.ts";
 import { blockingReason } from "../lib/escalationDraft.ts";
 import { stashEscalationIntent } from "../lib/escalationIntent.ts";
@@ -47,7 +47,6 @@ export function HealthView() {
   // A doctor failure is not a health failure: the group simply lacks the section.
   const doctor = useResource(() => coordination.doctor(), []);
   const [recovering, setRecovering] = useState<Session | null>(null);
-  const launcher = useRef<HTMLButtonElement | null>(null);
 
   if (health.error) return <ErrorBanner error={health.error} onRetry={health.refresh} />;
   if (!health.data) return <SkeletonRows rows={6} columns={2} />;
@@ -152,10 +151,7 @@ export function HealthView() {
                          .link-button; a findings list does not, and one action
                          wearing two faces in two panels is just noise. */
                       className="record-action"
-                      onClick={(event) => {
-                        launcher.current = event.currentTarget;
-                        setRecovering(asSession(row));
-                      }}
+                      onClick={() => setRecovering(asSession(row))}
                     >
                       Recover…
                     </button>
@@ -178,10 +174,7 @@ export function HealthView() {
             session={recovering}
             tasks={(tasks.data ?? [])}
             actorId={identity.actorId}
-            onClose={() => {
-              setRecovering(null);
-              launcher.current?.focus();
-            }}
+            onClose={() => setRecovering(null)}
             onRecovered={() => {
               health.refresh();
               tasks.refresh();

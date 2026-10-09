@@ -23,6 +23,7 @@ import {
 import { errorCopy, hasErrorCopy } from "../lib/errorCopy.ts";
 import { useApp } from "../state/AppContext.tsx";
 import { useFocusTrap } from "../state/useFocusTrap.ts";
+import { useReturnFocus } from "../state/useReturnFocus.ts";
 import { useEscape } from "../state/useEscape.ts";
 
 export function DecisionStatusForm({
@@ -41,6 +42,7 @@ export function DecisionStatusForm({
   const sheet = useRef<HTMLElement>(null);
   const heading = useRef<HTMLHeadingElement>(null);
 
+  useReturnFocus();
   useFocusTrap(sheet, true);
   useEffect(() => {
     heading.current?.focus();

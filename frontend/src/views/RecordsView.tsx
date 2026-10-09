@@ -73,7 +73,6 @@ export function RecordsView<T = Record<string, unknown>>({
   // told apart from "this view has no routing at all".
   const previousDetail = useRef<string | null>(detail);
   const rowTrigger = useRef<HTMLElement | null>(null);
-  const launcher = useRef<HTMLButtonElement | null>(null);
 
   const { records, tasks, sessions } = useRecordData(
     coordination,
@@ -132,10 +131,7 @@ export function RecordsView<T = Record<string, unknown>>({
   const tableColumns = useMemo(
     () =>
       config
-        ? withActionColumn(config, (row, trigger) => {
-            launcher.current = trigger;
-            setActing(row);
-          })
+        ? withActionColumn(config, (row) => setActing(row))
         : [],
     [config],
   );
@@ -298,10 +294,7 @@ export function RecordsView<T = Record<string, unknown>>({
           onDetail?.(null);
           rowTrigger.current?.focus();
         }}
-        onCloseAction={() => {
-          setActing(null);
-          launcher.current?.focus();
-        }}
+        onCloseAction={() => setActing(null)}
         onAct={(row) => setActing(row)}
         onRecovered={() => {
           records.refresh();

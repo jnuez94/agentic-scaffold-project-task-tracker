@@ -133,7 +133,6 @@ export function App() {
             onActor={setActor}
             onSession={setSession}
             onRefresh={refreshAll}
-            broadcastRef={broadcast.triggerRef}
             broadcastDisabledReason={broadcast.disabledReason}
             onBroadcast={broadcast.onOpen}
             lastUpdated={agents.lastUpdated}

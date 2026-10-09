@@ -27,7 +27,6 @@ export interface TopBarProps {
   busy: boolean;
   /** The single explanation shown wherever a session is required. */
   sessionReason: string | null;
-  broadcastRef: React.RefObject<HTMLButtonElement | null>;
   broadcastDisabledReason: string | null;
   onBroadcast: () => void;
   /**
@@ -120,7 +119,6 @@ export function TopBar(props: TopBarProps) {
       <div className="topbar-actions">
         <div className="topbar-broadcast">
           <button
-            ref={props.broadcastRef}
             disabled={Boolean(props.broadcastDisabledReason)}
             aria-describedby={
               props.broadcastDisabledReason ? "broadcast-reason" : undefined

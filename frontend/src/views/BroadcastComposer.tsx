@@ -16,6 +16,7 @@ import { newBroadcastId } from "../lib/messageId.ts";
 import { absoluteTime } from "../lib/format.ts";
 import { useApp } from "../state/AppContext.tsx";
 import { useFocusTrap } from "../state/useFocusTrap.ts";
+import { useReturnFocus } from "../state/useReturnFocus.ts";
 import { receiptSuffix } from "../lib/receipt.ts";
 import { useEscape } from "../state/useEscape.ts";
 
@@ -50,6 +51,7 @@ export function BroadcastComposer({
   // `aria-modal="true"` is a promise that the rest of the page is unavailable.
   // Without this, Tab walked out into the navigation behind the dialog and the
   // promise was false.
+  useReturnFocus();
   useFocusTrap(sheet, true);
 
   useEffect(() => {

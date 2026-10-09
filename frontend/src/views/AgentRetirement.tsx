@@ -21,6 +21,7 @@ import { Icon } from "../components/icons.tsx";
 import { outstandingAssignments, retireErrorCopy } from "../lib/retirement.ts";
 import { useApp } from "../state/AppContext.tsx";
 import { useFocusTrap } from "../state/useFocusTrap.ts";
+import { useReturnFocus } from "../state/useReturnFocus.ts";
 import { receiptSuffix } from "../lib/receipt.ts";
 import { useEscape } from "../state/useEscape.ts";
 
@@ -41,6 +42,7 @@ export function AgentRetirement({
   const sheet = useRef<HTMLElement>(null);
   const heading = useRef<HTMLHeadingElement>(null);
 
+  useReturnFocus();
   useFocusTrap(sheet, true);
   useEffect(() => {
     heading.current?.focus();

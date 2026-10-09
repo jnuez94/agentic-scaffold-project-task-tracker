@@ -22,6 +22,7 @@ import { absoluteTime } from "../lib/format.ts";
 import { describeAge, recoveryCaution, secondsSinceSeen, tasksClaimedBy } from "../lib/staleness.ts";
 import { useApp } from "../state/AppContext.tsx";
 import { useFocusTrap } from "../state/useFocusTrap.ts";
+import { useReturnFocus } from "../state/useReturnFocus.ts";
 import { FormField } from "../components/FormField.tsx";
 import { receiptSuffix } from "../lib/receipt.ts";
 import { useEscape } from "../state/useEscape.ts";
@@ -54,6 +55,7 @@ export function SessionRecovery({
   const sheet = useRef<HTMLElement>(null);
   const heading = useRef<HTMLHeadingElement>(null);
 
+  useReturnFocus();
   useFocusTrap(sheet, true);
   useEffect(() => {
     heading.current?.focus();

@@ -18,7 +18,7 @@ import type { RecordConfig } from "./recordConfigs.tsx";
  */
 export function withActionColumn(
   config: RecordConfig,
-  onAct: (row: Record<string, unknown>, trigger: HTMLButtonElement) => void,
+  onAct: (row: Record<string, unknown>) => void,
 ): Column<never>[] {
   if (!config.rowAction) return config.columns;
   const action = config.rowAction;
@@ -36,7 +36,7 @@ export function withActionColumn(
             onClick={(event) => {
               // The row itself opens the inspector; the action is not that.
               event.stopPropagation();
-              onAct(row, event.currentTarget);
+              onAct(row);
             }}
           >
             {action.label}

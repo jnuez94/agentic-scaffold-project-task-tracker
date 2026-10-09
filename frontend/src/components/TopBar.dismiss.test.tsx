@@ -10,7 +10,6 @@
 
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { createRef } from "react";
 import { describe, expect, it, vi } from "vitest";
 import type { Agent, Session } from "../api/contract.ts";
 import { TopBar, type TopBarProps } from "./TopBar.tsx";
@@ -58,7 +57,6 @@ function props(over: Partial<TopBarProps> = {}): TopBarProps {
     lastUpdated: undefined,
     busy: false,
     sessionReason: null,
-    broadcastRef: createRef<HTMLButtonElement>(),
     broadcastDisabledReason: null,
     onBroadcast: vi.fn(),
     routeKey: "tasks/",

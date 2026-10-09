@@ -3,11 +3,11 @@
  *
  * The trigger lives in the persistent toolbar, so the composer must open over
  * whatever route is showing rather than navigating anywhere. That means the
- * open state, readiness, and focus-return target belong here rather than in
- * any one view.
+ * open state and readiness belong here rather than in any one view. Focus
+ * return is the composer's own, as it is for every dialog (UI-78).
  */
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useState } from "react";
 import type { Agent } from "../api/contract.ts";
 import { broadcastReadiness, type Readiness } from "../lib/broadcast.ts";
 
@@ -16,9 +16,7 @@ export interface BroadcastLauncher {
   readiness: Readiness;
   /** Null when a broadcast can be sent; otherwise the one reason it cannot. */
   disabledReason: string | null;
-  triggerRef: React.RefObject<HTMLButtonElement | null>;
   onOpen: () => void;
-  /** Closes and returns focus to the toolbar trigger. */
   onClose: () => void;
   /** Increments on a successful send so Messages can refresh in place. */
   sentNonce: number;
@@ -32,28 +30,15 @@ export function useBroadcastLauncher(
 ): BroadcastLauncher {
   const [open, setOpen] = useState(false);
   const [sentNonce, setSentNonce] = useState(0);
-  const triggerRef = useRef<HTMLButtonElement | null>(null);
 
   const readiness = broadcastReadiness({ actor, sessionId, mutationsEnabled });
 
   const onClose = useCallback(() => setOpen(false), []);
 
-  // Focus returns to the trigger after the close has been committed, not during
-  // it. While the dialog is open the whole background shell is `inert`, and
-  // focusing an inert element silently does nothing — so restoring focus in the
-  // same tick as the state change dropped the operator on <body> instead, with
-  // the next Tab starting from the top of the page.
-  const wasOpen = useRef(false);
-  useEffect(() => {
-    if (wasOpen.current && !open) triggerRef.current?.focus();
-    wasOpen.current = open;
-  }, [open]);
-
   return {
     open,
     readiness,
     disabledReason: readiness.kind === "blocked" ? readiness.reason : null,
-    triggerRef,
     onOpen: useCallback(() => setOpen(true), []),
     onClose,
     sentNonce,

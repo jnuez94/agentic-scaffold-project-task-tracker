@@ -8,6 +8,7 @@ import { useEffect, useRef, type ReactNode } from "react";
 import { Icon } from "../components/icons.tsx";
 import { useApp } from "../state/AppContext.tsx";
 import { useFocusTrap } from "../state/useFocusTrap.ts";
+import { useReturnFocus } from "../state/useReturnFocus.ts";
 import { useEscape } from "../state/useEscape.ts";
 
 export function ArtifactSheet({
@@ -35,6 +36,7 @@ export function ArtifactSheet({
   const sheet = useRef<HTMLElement>(null);
   const heading = useRef<HTMLHeadingElement>(null);
 
+  useReturnFocus();
   useFocusTrap(sheet, true);
   useEffect(() => {
     heading.current?.focus();

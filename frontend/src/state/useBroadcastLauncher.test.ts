@@ -68,18 +68,7 @@ describe("useBroadcastLauncher open state", () => {
     expect(result.current.open).toBe(false);
   });
 
-  it("returns focus to the toolbar trigger on close", () => {
-    const { result } = renderHook(() => useBroadcastLauncher(agent(), "console-1", true));
-    const button = document.createElement("button");
-    document.body.appendChild(button);
-    result.current.triggerRef.current = button;
-    act(() => result.current.onOpen());
-    act(() => result.current.onClose());
-    expect(document.activeElement).toBe(button);
-    button.remove();
-  });
-
-  it("does not throw when the trigger is not mounted", () => {
+  it("does not throw when nothing holds focus", () => {
     const { result } = renderHook(() => useBroadcastLauncher(agent(), "console-1", true));
     act(() => result.current.onOpen());
     expect(() => act(() => result.current.onClose())).not.toThrow();
