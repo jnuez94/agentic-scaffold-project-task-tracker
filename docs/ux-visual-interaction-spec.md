@@ -128,14 +128,13 @@ Header:
 Tabs:
 
 ```text
-Overview | Evidence | Dependencies | Reviews | Activity
+Overview | Evidence | Dependencies | Reviews | Messages | Activity
 ```
 
 Overview includes description, assignees and claim, acceptance criteria, next
 steps, blocked claims, and notes. Other tabs use the exact data shapes in the
-companion specification. Messages remain available as a global Work
-destination; schema v1 and the CLI do not provide a truthful per-task message
-query.
+companion specification. The Messages tab lists the messages that name the
+task; the Messages destination remains the place for everything else.
 
 The inspector footer contains:
 
@@ -371,8 +370,11 @@ Empty states state what is absent and the next relevant action:
   paginates it client-side, so `Showing 1–10 of 42 loaded` and
   `Page 1 of 5 of loaded rows` are both true and both explicitly bounded. That
   satisfies this rule; a bare `of 42` or `Page 1 of 5` would not.
-- Previous/next paging may be offered using page length and offset. The audit
-  view may show its real total, because that endpoint computes one.
+- Previous/next paging may be offered using page length and offset.
+- The audit view states its window instead: it holds the newest 500 entries,
+  says so (`of the newest 500`), loads older entries on request, and says
+  `the whole log` only once the beginning has been reached. No list states a
+  total of the whole board.
 
 ## 7. Responsive behavior
 

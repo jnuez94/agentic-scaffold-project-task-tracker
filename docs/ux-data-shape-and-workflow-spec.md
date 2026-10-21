@@ -3,7 +3,7 @@
 | Field | Value |
 | --- | --- |
 | Status | Implemented — the shipped console conforms to this contract |
-| Contract of record | `.agents/agentic-project-scaffold-lite/docs/cli-contract.md` v1.2.0 |
+| Contract of record | `.agents/agentic-project-scaffold-lite/docs/cli-contract.md` v1.4.0 |
 | Schema of record | `.agents/agentic-project-scaffold-lite/sqlite/schema.sql` v1 |
 | Upstream reference | `jnuez94/agentic-project-scaffold-lite` |
 
@@ -297,9 +297,12 @@ id, sender_id, recipient, task_id?, body, tags, created_at
 Required views and actions:
 
 - Inbox/all-messages view and task-linked messages.
-- The CLI filters messages by recipient only. Do not expose a task-specific
-  Messages tab or claim a complete task thread unless a future read-only
-  backend affordance provides that query.
+- The inbox belongs to the acting actor: messages to it or to `team` after its
+  own read position (`inbox list`). Viewing never moves that position; only an
+  explicit mark-read does, at the head returned by the same list.
+- A task's Messages tab lists the messages that name the task
+  (`message list --task`). It is that set, not a conversation: a message about
+  the task that did not name it is not in it.
 - Send message with sender, recipient, optional task, body, and tags.
 - Recipient is text, not necessarily an agent ID; literal `team` is meaningful.
 - Preserve chronological metadata and do not present messages as ephemeral chat.
