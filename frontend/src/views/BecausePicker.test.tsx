@@ -39,7 +39,7 @@ describe("BecausePicker", () => {
   it("loads nothing until opened, then offers reviews, naming decisions and open escalations", async () => {
     const { impl, calls } = harness();
     const onChange = vi.fn();
-    render(wrap(impl, <BecausePicker task={TASK} value="" onChange={onChange} />));
+    render(wrap(impl, <BecausePicker subject={TASK} value="" onChange={onChange} />));
     expect(calls.filter((url) => url.includes("/api/decisions") || url.includes("/api/escalations"))).toHaveLength(0);
 
     await userEvent.click(screen.getByRole("button", { name: "Add a cause…" }));

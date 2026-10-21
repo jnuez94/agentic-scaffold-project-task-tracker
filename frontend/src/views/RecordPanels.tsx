@@ -1,22 +1,19 @@
 /**
- * The overlays a record table can open: the read-only inspector, and the one
- * state transition the CLI supports on this surface.
+ * The overlays a record table can open: the inspector, its actions (see
+ * RecordActions) and the sheet one of them opened, and session recovery from
+ * a table row.
  *
- * Extracted from RecordsView to keep that view to one job and within the
- * file-size limit. Both panels are driven by the row the table already holds;
- * neither issues a query.
+ * Extracted from RecordsView to keep that view to one job. The inspector is
+ * driven by the row the table already holds and issues no query of its own.
  */
 
 import { useState } from "react";
-import type { Agent, Artifact, Decision, Session, TaskListRow } from "../api/contract.ts";
-import { ArtifactCorrectionForm } from "./ArtifactCorrectionForm.tsx";
-import { ArtifactStatusForm } from "./ArtifactStatusForm.tsx";
-import { retirementBlock } from "../lib/retirement.ts";
-import { AgentRetirement } from "./AgentRetirement.tsx";
-import { DecisionStatusForm } from "./DecisionStatusForm.tsx";
-import { RecordInspector } from "./RecordInspector.tsx";
+import type { Session, TaskListRow } from "../api/contract.ts";
 import { useApp } from "../state/AppContext.tsx";
 import type { InspectorConfig, Row } from "./inspectorConfigs.tsx";
+import { RecordActionSheet } from "./RecordActionSheet.tsx";
+import { RecordActions, type OpenSheet } from "./RecordActions.tsx";
+import { RecordInspector } from "./RecordInspector.tsx";
 import type { RecordConfig } from "./recordConfigs.tsx";
 import { SessionRecovery } from "./SessionRecovery.tsx";
 
@@ -46,19 +43,8 @@ export function RecordPanels({
   onAct: (row: Row) => void;
   onRecovered: () => void;
 }) {
-  const [retiring, setRetiring] = useState<Agent | null>(null);
-  // UI-73: the one ruling the CLI supports on a decision after it is recorded.
-  const [ruling, setRuling] = useState<Decision | null>(null);
-  // UI-54: the two changes the CLI allows on a recorded artifact.
-  const [artifactAction, setArtifactAction] = useState<{ kind: "status" | "correct"; artifact: Artifact } | null>(null);
-  const artifactRow =
-    inspectorConfig?.kind === "artifact" ? (inspecting as Artifact | null) : null;
+  const [sheet, setSheet] = useState<OpenSheet | null>(null);
   const { announce } = useApp();
-  const agentRow =
-    inspectorConfig?.kind === "agent" ? (inspecting as Agent | null) : null;
-  const decisionRow =
-    inspectorConfig?.kind === "decision" ? (inspecting as Decision | null) : null;
-  const block = agentRow ? retirementBlock(agentRow, actorId, sessions) : null;
 
   return (
     <>
@@ -70,131 +56,26 @@ export function RecordPanels({
           onCopied={announce}
           withActivity
           actions={
-            <>
-              {/* Reuses the row action's own predicate, so the control appears
-                  only where the underlying command would accept it. */}
-              {config.rowAction?.applies(inspecting) ? (
-                <button
-                  type="button"
-                  className="record-action"
-                  onClick={() => onAct(inspecting)}
-                >
-                  {config.rowAction.label}
-                </button>
-              ) : null}
-
-              {agentRow ? (
-                <>
-                  <button
-                    type="button"
-                    className="record-action"
-                    disabled={Boolean(block)}
-                    aria-describedby={block ? "retire-block" : undefined}
-                    onClick={() => setRetiring(agentRow)}
-                  >
-                    {agentRow.status === "active"
-                      ? "Retire agent…"
-                      : "Restore to active"}
-                  </button>
-                  {/* Accessible text, not a tooltip: the reason is required to
-                      understand why the control is unavailable. */}
-                  {block ? (
-                    <p className="small muted" id="retire-block">
-                      {block.reason}
-                    </p>
-                  ) : null}
-                </>
-              ) : null}
-
-              {decisionRow ? (
-                <button
-                  type="button"
-                  className="record-action"
-                  disabled={!actorId}
-                  onClick={() => setRuling(decisionRow)}
-                >
-                  Change status…
-                </button>
-              ) : null}
-
-              {artifactRow ? (
-                <>
-                  <button
-                    type="button"
-                    className="record-action"
-                    disabled={!actorId}
-                    onClick={() => setArtifactAction({ kind: "status", artifact: artifactRow })}
-                  >
-                    Change status…
-                  </button>
-                  <button
-                    type="button"
-                    className="record-action"
-                    disabled={!actorId}
-                    onClick={() => setArtifactAction({ kind: "correct", artifact: artifactRow })}
-                  >
-                    Correct record…
-                  </button>
-                </>
-              ) : null}
-            </>
+            <RecordActions
+              config={config}
+              kind={inspectorConfig.kind}
+              row={inspecting}
+              actorId={actorId}
+              sessions={sessions}
+              onAct={onAct}
+              onOpen={setSheet}
+            />
           }
         />
       ) : null}
 
-      {artifactAction ? (
-        <>
-          <div className="sheet-scrim" onClick={() => setArtifactAction(null)} aria-hidden="true" />
-          {artifactAction.kind === "status" ? (
-            <ArtifactStatusForm
-              artifact={artifactAction.artifact}
-              onClose={() => setArtifactAction(null)}
-              onChanged={onRecovered}
-            />
-          ) : (
-            <ArtifactCorrectionForm
-              artifact={artifactAction.artifact}
-              onClose={() => setArtifactAction(null)}
-              onChanged={onRecovered}
-            />
-          )}
-        </>
-      ) : null}
-
-      {ruling ? (
-        <>
-          <div className="sheet-scrim" onClick={() => setRuling(null)} aria-hidden="true" />
-          <DecisionStatusForm
-            decision={ruling}
-            onClose={() => setRuling(null)}
-            onChanged={onRecovered}
-          />
-        </>
-      ) : null}
-
-      {retiring ? (
-        <>
-          <div
-            className="sheet-scrim"
-            onClick={() => setRetiring(null)}
-            aria-hidden="true"
-          />
-          <AgentRetirement
-            agent={retiring}
-            tasks={tasks}
-            onClose={() => setRetiring(null)}
-            onChanged={onRecovered}
-          />
-        </>
+      {sheet ? (
+        <RecordActionSheet sheet={sheet} tasks={tasks} onClose={() => setSheet(null)} onChanged={onRecovered} />
       ) : null}
 
       {acting ? (
         <>
-          <div
-            className="sheet-scrim"
-            onClick={onCloseAction}
-            aria-hidden="true"
-          />
+          <div className="sheet-scrim" onClick={onCloseAction} aria-hidden="true" />
           <SessionRecovery
             session={acting as unknown as Session}
             tasks={tasks}

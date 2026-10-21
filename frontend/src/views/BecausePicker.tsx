@@ -9,21 +9,21 @@
  */
 
 import { useState } from "react";
-import type { TaskDetail } from "../api/contract.ts";
 import { FormField } from "../components/FormField.tsx";
-import { causeOptions } from "../lib/because.ts";
+import { causeOptions, type CauseSubject } from "../lib/because.ts";
 import { useApp } from "../state/AppContext.tsx";
 import { useResource } from "../state/useResource.ts";
 
 const REQUEST_LIMIT = 500;
 
 export function BecausePicker({
-  task,
+  subject,
   value,
   onChange,
   disabled = false,
 }: {
-  task: TaskDetail;
+  /** The record whose change this is: a task, or an escalation being answered. */
+  subject: CauseSubject;
   /** `TYPE:ID`, or "" for none. */
   value: string;
   onChange: (value: string) => void;
@@ -33,12 +33,12 @@ export function BecausePicker({
   const [open, setOpen] = useState(Boolean(value));
   const decisions = useResource(
     () => coordination.decisions({ limit: REQUEST_LIMIT }),
-    [task.id],
+    [subject.id],
     { enabled: open },
   );
   const escalations = useResource(
     () => coordination.escalations({ status: "open", limit: REQUEST_LIMIT }),
-    [task.id],
+    [subject.id],
     { enabled: open },
   );
 
@@ -50,7 +50,7 @@ export function BecausePicker({
     );
   }
 
-  const options = causeOptions(task, decisions.data ?? [], escalations.data ?? []);
+  const options = causeOptions(subject, decisions.data ?? [], escalations.data ?? []);
   const loading = decisions.loading || escalations.loading;
 
   return (

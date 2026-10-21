@@ -18,7 +18,7 @@ import {
 import { NOT_VERIFIED_MANY } from "../lib/artifactPaths.ts";
 import { agentOptionLabel, isSelectableActor } from "../lib/labels.ts";
 import { useApp } from "../state/AppContext.tsx";
-import { ArtifactSheet } from "./ArtifactSheet.tsx";
+import { RecordSheet } from "./RecordSheet.tsx";
 
 export function ArtifactRegisterForm({
   agents,
@@ -55,7 +55,7 @@ export function ArtifactRegisterForm({
   };
 
   return (
-    <ArtifactSheet
+    <RecordSheet
       title="Register artifact"
       headingId="artifact-register-heading"
       error={error}
@@ -108,6 +108,6 @@ export function ArtifactRegisterForm({
       <FormField id="new-artifact-reviewers" label="Reviewers" hint="Agent ids, separated by commas or spaces.">
         {(props) => <input {...props} value={draft.reviewers} onChange={(event) => set("reviewers", event.target.value)} />}
       </FormField>
-    </ArtifactSheet>
+    </RecordSheet>
   );
 }

@@ -1,7 +1,8 @@
 /**
- * The frame every artifact form shares (UI-54): a modal sheet with a heading,
- * an error line, the acting identity, and the two buttons — so the three
- * forms differ only in their fields and what they send.
+ * The frame a record's sheet forms share (UI-54, UI-82): a modal sheet with a
+ * heading, an error line, the acting identity, and the two buttons — so the
+ * artifact forms and escalation resolution differ only in their fields and
+ * what they send.
  */
 
 import { useEffect, useRef, type ReactNode } from "react";
@@ -11,7 +12,7 @@ import { useFocusTrap } from "../state/useFocusTrap.ts";
 import { useReturnFocus } from "../state/useReturnFocus.ts";
 import { useEscape } from "../state/useEscape.ts";
 
-export function ArtifactSheet({
+export function RecordSheet({
   title,
   headingId,
   error,

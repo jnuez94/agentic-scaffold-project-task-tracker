@@ -12,11 +12,13 @@
  *
  * Focus is restored after the close has committed: while the broadcast
  * composer is open the rest of the shell is `inert`, and focusing an inert
- * element silently does nothing.
+ * element silently does nothing. When it lands back on the opener, the hook
+ * keeps watching for a moment, because the refresh an action triggers can
+ * remove the opener it returned to.
  */
 
 import { useEffect, useState } from "react";
-import { captureFocusReturn, pressedControl, restoreFocus } from "../lib/returnFocus.ts";
+import { captureFocusReturn, followOpenerRemoval, pressedControl, restoreFocus } from "../lib/returnFocus.ts";
 
 // The control the last pointer press landed in. Safari does not focus a
 // button on click, so for a mouse operator "what had focus" is not the
@@ -48,7 +50,12 @@ export function useReturnFocus(key?: unknown): void {
   }
   useEffect(
     () => () => {
-      queueMicrotask(() => restoreFocus(box.target, document));
+      queueMicrotask(() => {
+        const landed = restoreFocus(box.target, document);
+        // The opener may still leave with the change it made, once the
+        // record refreshes; follow it rather than strand focus on the body.
+        if (landed && landed === box.target.origin) followOpenerRemoval(box.target, document);
+      });
     },
     [box],
   );

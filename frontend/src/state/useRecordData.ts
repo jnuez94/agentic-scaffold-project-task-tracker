@@ -4,7 +4,8 @@
  *
  * Extracted from RecordsView so that view stays within the file-size limit and
  * keeps to rendering. The side lists are loaded only for the routes that use
- * them — tasks for the panels that must name outstanding work, sessions for the
+ * them — tasks for the panels that must name outstanding work or check a
+ * resolution's follow-ups, sessions for the
  * Agents inspector explaining the CLI's active-session guard — because a route
  * should not pay for a panel it never shows.
  */
@@ -41,7 +42,8 @@ export function useRecordData(
     { enabled: Boolean(config) },
   );
 
-  const needsTasks = Boolean(config?.rowAction) || route === "agents";
+  // Escalations need them to check a resolution's follow-up tasks (UI-82).
+  const needsTasks = Boolean(config?.rowAction) || route === "agents" || route === "escalations";
   const tasks = useResource(
     () => (needsTasks ? coordination.tasks({ limit: REQUEST_LIMIT }) : Promise.resolve([])),
     [coordination, route],

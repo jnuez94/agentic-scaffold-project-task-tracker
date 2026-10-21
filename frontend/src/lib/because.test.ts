@@ -63,6 +63,17 @@ describe("causeOptions", () => {
     ]);
     expect(causeOptions(task, decisions, escalations)[0]!.label).toBe("Review REV-2 — changes requested");
   });
+
+  it("for an escalation being answered, offers decisions naming it or its related tasks, never itself", () => {
+    const answering = { id: "ESC-1", reviews: [], alsoNamed: ["T-9"] };
+    const named = [
+      ...decisions,
+      { id: "DEC-3", title: "", context: "Settles ESC-1.", decision: "", evidence: "", implications: "" },
+      { id: "DEC-4", title: "", context: "", decision: "T-9 ships as is.", evidence: "", implications: "" },
+    ] as Decision[];
+    const offered = causeOptions(answering, named, [...escalations, { id: "ESC-4", status: "open", related_tasks: "ESC-1" } as Escalation]);
+    expect(offered.map((option) => option.value)).toEqual(["decision:DEC-3", "decision:DEC-4", "escalation:ESC-4"]);
+  });
 });
 
 describe("autoCause", () => {

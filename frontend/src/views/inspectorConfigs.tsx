@@ -135,7 +135,10 @@ export const INSPECTOR_CONFIGS: Partial<Record<RouteName, InspectorConfig>> = {
     kind: "escalation",
     metrics: [
       { label: "Status", key: "status" },
-      { label: "Owner", key: "owner_id", kind: "agentLink" },
+      // Free text, not an agent id: an escalation can be owned by a role or a
+      // person outside the database. It was read from owner_id, which
+      // escalations do not have, and always showed a dash (UI-82).
+      { label: "Owner", key: "owner" },
       { label: "Raised by", key: "raised_by", kind: "agentLink" },
       { label: "Needed by", key: "needed_by" },
     ],

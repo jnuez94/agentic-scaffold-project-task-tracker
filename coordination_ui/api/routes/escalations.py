@@ -34,12 +34,19 @@ def add_escalation(request: Request) -> Any:
 
 
 def resolve_escalation(request: Request) -> Any:
+    """``escalation resolve``. ``if_status`` is the status the console loaded,
+    so an escalation answered elsewhere in the meantime is refused as
+    ``status_mismatch`` rather than answered twice; ``because`` is the record
+    the resolution follows from, validated by the CLI (1.4.0)."""
+
     body = request.body
     builder = ArgumentBuilder("escalation", "resolve").positional(request.path_id())
     builder.text(body, "resolution", "--resolution", required=True)
     builder.identifier(body, "actor", "--actor", required=True)
     builder.choice(body, "status", "--status", ESCALATION_RESOLUTIONS)
     builder.text(body, "follow_up_tasks", "--follow-up-tasks")
+    builder.choice(body, "if_status", "--if-status", ESCALATION_STATUSES)
+    builder.text(body, "because", "--because")
     return request.run(builder, with_session=True)
 
 

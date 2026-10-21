@@ -84,3 +84,28 @@ const FOCUSABLE = "button, a[href], input, select, textarea, [tabindex]";
 export function pressedControl(target: EventTarget | null): HTMLElement | null {
   return target instanceof Element ? (target.closest<HTMLElement>(FOCUSABLE) ?? null) : null;
 }
+
+/**
+ * Follows the opener for a moment after focus went back to it. An action can
+ * remove its own opener once the record refreshes — "Resolve…" leaves with
+ * the open status it answered — and the refresh lands after the surface has
+ * closed and focus has already returned. If the opener leaves while focus is
+ * still lost to it, focus moves on to its successor, its heading or the page
+ * heading. Stops on its own after `windowMs`. Returns the stop function.
+ */
+export function followOpenerRemoval(target: FocusReturn, doc: Document, windowMs = 3000): () => void {
+  const origin = target.origin;
+  if (!origin) return () => {};
+  const observer = new MutationObserver(() => {
+    if (origin.isConnected) return;
+    stop();
+    restoreFocus({ ...target, origin: null }, doc);
+  });
+  observer.observe(doc.body, { childList: true, subtree: true });
+  const timer = setTimeout(stop, windowMs);
+  function stop() {
+    observer.disconnect();
+    clearTimeout(timer);
+  }
+  return stop;
+}

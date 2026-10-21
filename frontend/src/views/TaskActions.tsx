@@ -133,7 +133,7 @@ export function TaskActions({
               />
             </div>
 
-            <BecausePicker task={task} value={because} onChange={setBecause} disabled={busy !== null} />
+            <BecausePicker subject={task} value={because} onChange={setBecause} disabled={busy !== null} />
             {!because && automatic ? (
               <p className="small muted">
                 Leaving review cites {describeCause(automatic)} as the cause unless another is chosen.

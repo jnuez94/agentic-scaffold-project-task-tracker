@@ -20,7 +20,7 @@ import {
 import { NOT_VERIFIED_MANY } from "../lib/artifactPaths.ts";
 import { errorCopy, hasErrorCopy } from "../lib/errorCopy.ts";
 import { useApp } from "../state/AppContext.tsx";
-import { ArtifactSheet } from "./ArtifactSheet.tsx";
+import { RecordSheet } from "./RecordSheet.tsx";
 
 export function ArtifactCorrectionForm({
   artifact,
@@ -60,7 +60,7 @@ export function ArtifactCorrectionForm({
   };
 
   return (
-    <ArtifactSheet
+    <RecordSheet
       title={`Correct record · ${artifact.id}`}
       headingId="artifact-correct-heading"
       error={error}
@@ -92,6 +92,6 @@ export function ArtifactCorrectionForm({
           />
         )}
       </FormField>
-    </ArtifactSheet>
+    </RecordSheet>
   );
 }

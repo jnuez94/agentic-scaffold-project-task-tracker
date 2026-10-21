@@ -1,5 +1,5 @@
-import { afterEach, describe, expect, it } from "vitest";
-import { captureFocusReturn, focusIsLost, pressedControl, restoreFocus } from "./returnFocus.ts";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { captureFocusReturn, focusIsLost, followOpenerRemoval, pressedControl, restoreFocus } from "./returnFocus.ts";
 
 function build(html: string) {
   document.body.innerHTML = html;
@@ -109,5 +109,47 @@ describe("restoreFocus when the opener was replaced or focus was not lost", () =
     const $ = build(`<button id="act"><span id="label">Retire agent…</span></button><p id="text">plain</p>`);
     expect(pressedControl($("#label"))).toBe($("#act"));
     expect(pressedControl($("#text"))).toBeNull();
+  });
+});
+
+describe("followOpenerRemoval", () => {
+  it("moves focus on to the heading when the opener leaves after focus returned to it", async () => {
+    const $ = build(`<aside><h2 id="title" tabindex="-1">ESC-1</h2><div id="actions"><button id="act">Resolve…</button></div></aside>`);
+    $("#act").focus();
+    const target = captureFocusReturn(document);
+    followOpenerRemoval(target, document);
+
+    $("#actions").replaceChildren();
+    await Promise.resolve();
+
+    expect(document.activeElement).toBe($("#title"));
+  });
+
+  it("leaves focus alone if the operator moved it before the opener left", async () => {
+    const $ = build(`<aside><h2 tabindex="-1">ESC-1</h2><div id="actions"><button id="act">Resolve…</button></div><input id="elsewhere" /></aside>`);
+    $("#act").focus();
+    const target = captureFocusReturn(document);
+    followOpenerRemoval(target, document);
+    $("#elsewhere").focus();
+
+    $("#actions").replaceChildren();
+    await Promise.resolve();
+
+    expect(document.activeElement).toBe($("#elsewhere"));
+  });
+
+  it("stops watching after its window", async () => {
+    vi.useFakeTimers();
+    try {
+      const $ = build(`<aside><h2 id="title" tabindex="-1">ESC-1</h2><div id="actions"><button id="act">Resolve…</button></div></aside>`);
+      $("#act").focus();
+      followOpenerRemoval(captureFocusReturn(document), document, 100);
+      vi.advanceTimersByTime(150);
+      $("#actions").replaceChildren();
+      await Promise.resolve();
+      expect(document.activeElement).not.toBe($("#title"));
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

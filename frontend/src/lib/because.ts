@@ -58,16 +58,23 @@ export interface CauseOption {
 }
 
 /**
- * What a transition may cite: the task's own reviews, decisions whose text
- * names the task, and open escalations that relate to it. Only records that
- * exist are offered — the CLI would refuse anything else, and a typed id is a
- * guess where a choice is a fact.
+ * What a change may cite. For a task: its own reviews, decisions whose text
+ * names it, and open escalations that relate to it. For an escalation being
+ * answered (UI-82): decisions that name it or one of its related tasks.
+ * Only records that exist are offered — the CLI would refuse anything else,
+ * and a typed id is a guess where a choice is a fact.
  */
+export interface CauseSubject extends Pick<TaskDetail, "id" | "reviews"> {
+  /** Other ids a decision may name to count as a cause — an escalation's related tasks. */
+  alsoNamed?: readonly string[];
+}
+
 export function causeOptions(
-  task: Pick<TaskDetail, "id" | "reviews">,
+  task: CauseSubject,
   decisions: readonly Decision[],
   escalations: readonly Escalation[],
 ): CauseOption[] {
+  const names = [task.id, ...(task.alsoNamed ?? [])];
   const reviews = [...task.reviews]
     .sort((a, b) => b.created_at.localeCompare(a.created_at))
     .map((review) => ({
@@ -78,7 +85,7 @@ export function causeOptions(
     .filter((decision) =>
       [decision.title, decision.context, decision.decision, decision.evidence, decision.implications]
         .join("\n")
-        .includes(task.id),
+        .match(new RegExp(names.map(escapeRegExp).join("|"))),
     )
     .map((decision) => ({
       value: formatBecause({ type: "decision", id: decision.id }),
@@ -87,6 +94,7 @@ export function causeOptions(
   const open = escalations
     .filter(
       (escalation) =>
+        escalation.id !== task.id &&
         escalation.status === "open" &&
         escalation.related_tasks
           .split(",")
@@ -115,3 +123,7 @@ export function describeCause(because: Because): string {
 }
 
 export type { Review };
+
+function escapeRegExp(text: string): string {
+  return text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}

@@ -17,7 +17,7 @@ import {
 } from "../lib/artifactActions.ts";
 import { errorCopy, hasErrorCopy } from "../lib/errorCopy.ts";
 import { useApp } from "../state/AppContext.tsx";
-import { ArtifactSheet } from "./ArtifactSheet.tsx";
+import { RecordSheet } from "./RecordSheet.tsx";
 
 export function ArtifactStatusForm({
   artifact,
@@ -55,7 +55,7 @@ export function ArtifactStatusForm({
   };
 
   return (
-    <ArtifactSheet
+    <RecordSheet
       title={`Change status · ${artifact.id}`}
       headingId="artifact-status-heading"
       error={error}
@@ -82,6 +82,6 @@ export function ArtifactStatusForm({
         )}
       </FormField>
       {status ? <p className="small muted">{ARTIFACT_STATUS_CONSEQUENCE[status]}</p> : null}
-    </ArtifactSheet>
+    </RecordSheet>
   );
 }
