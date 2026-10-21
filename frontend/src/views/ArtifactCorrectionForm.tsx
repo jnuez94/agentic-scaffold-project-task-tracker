@@ -21,6 +21,8 @@ import { NOT_VERIFIED_MANY } from "../lib/artifactPaths.ts";
 import { errorCopy, hasErrorCopy } from "../lib/errorCopy.ts";
 import { useApp } from "../state/AppContext.tsx";
 import { RecordSheet } from "./RecordSheet.tsx";
+import { SinceLoaded } from "./SinceLoaded.tsx";
+import { EDITING } from "../lib/sinceLoaded.ts";
 
 export function ArtifactCorrectionForm({
   artifact,
@@ -35,12 +37,15 @@ export function ArtifactCorrectionForm({
   const [draft, setDraft] = useState(() => correctionDraftFrom(artifact));
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // UI-33: a status_mismatch shows what changed since the row was loaded.
+  const [mismatch, setMismatch] = useState(false);
   const blocked = correctionBlockedReason(artifact, draft);
 
   const submit = async () => {
     if (pending || blocked || !identity.actorId) return;
     setPending(true);
     setError(null);
+    setMismatch(false);
     try {
       const changes = correctionChanges(artifact, draft);
       const result = await coordination.updateArtifact(
@@ -53,6 +58,7 @@ export function ArtifactCorrectionForm({
     } catch (caught) {
       const failure = caught instanceof ApiError ? caught : new ApiError("network_error", String(caught), 0);
       // The draft stays; nothing retries on its own.
+      setMismatch(failure.code === "status_mismatch");
       setError(hasErrorCopy(failure.code) ? errorCopy(failure.code, { subject: "This artifact" }) : failure.message);
     } finally {
       setPending(false);
@@ -64,6 +70,7 @@ export function ArtifactCorrectionForm({
       title={`Correct record · ${artifact.id}`}
       headingId="artifact-correct-heading"
       error={error}
+      conflict={mismatch ? <SinceLoaded objectType="artifact" objectId={artifact.id} loaded={{ status: artifact.status }} editing={EDITING.correction} /> : undefined}
       blocked={blocked}
       pending={pending}
       submitLabel="Correct record"

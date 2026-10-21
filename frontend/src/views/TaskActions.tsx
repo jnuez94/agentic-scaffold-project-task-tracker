@@ -17,16 +17,20 @@ import { SETUP_PENDING } from "../lib/copy.ts";
 import { claimAnnouncement, transitionAnnouncement } from "../lib/taskAnnouncements.ts";
 import { autoCause, describeCause, formatBecause, parseBecause } from "../lib/because.ts";
 import { BecausePicker } from "./BecausePicker.tsx";
+import { ConflictBanner } from "./ConflictBanner.tsx";
 
 
 export function TaskActions({
   task,
   agents,
   onDone,
+  onShowActivity,
 }: {
   task: TaskDetail;
   agents: Agent[];
   onDone: () => void;
+  /** Opens the inspector's Activity tab, for a conflict's longer history. */
+  onShowActivity?: () => void;
 }) {
   const { coordination, identity, announce, mutationsEnabled, session } = useApp();
   const [note, setNote] = useState("");
@@ -96,26 +100,30 @@ export function TaskActions({
 
   return (
     <div className="inspector-footer">
-      {error ? (
-        error.isStaleRevision ? (
-          <ConflictBanner
-            error={error}
-            currentRevision={task.revision}
-            onReload={() => {
-              setError(undefined);
-              onDone();
-            }}
-          />
-        ) : (
-          <ErrorBanner error={error} onDismiss={() => setError(undefined)} />
-        )
-      ) : null}
-
       {/* Everything that can yield lives here. A task with several unavailable
           actions carries a reason line for each, and those lines were tall
           enough to push the buttons they describe out of the panel. They scroll
           now; the buttons below do not. */}
       <div className="inspector-footer-scroll">
+        {/* First in the yielding region: a refusal with its change list can be
+            taller than the footer, and must scroll rather than push the
+            action buttons out of the panel (UI-33). */}
+        {error ? (
+          error.isStaleRevision ? (
+            <ConflictBanner
+              error={error}
+              taskId={task.id}
+              currentRevision={task.revision}
+              onShowActivity={onShowActivity}
+              onReload={() => {
+                setError(undefined);
+                onDone();
+              }}
+            />
+          ) : (
+            <ErrorBanner error={error} onDismiss={() => setError(undefined)} />
+          )
+        ) : null}
         {task.status === "done" ? (
           <p className="small muted">
             This task is done. Done is terminal; there is no further status action.
@@ -179,31 +187,6 @@ export function TaskActions({
           Revision <span className="mono">{task.revision}</span>
         </span>
       </div>
-    </div>
-  );
-}
-
-function ConflictBanner({
-  error,
-  currentRevision,
-  onReload,
-}: {
-  error: ApiError;
-  currentRevision: number;
-  onReload: () => void;
-}) {
-  const actual = error.actualRevision;
-  return (
-    <div className="conflict" role="alert">
-      <div>
-        <p className="conflict-title">
-          {actual ? `Task changed to revision ${actual}` : "This task changed"}
-        </p>
-        <p className="small">
-          You submitted revision {currentRevision}. Reload latest; your draft will be preserved.
-        </p>
-      </div>
-      <button onClick={onReload}>Reload latest</button>
     </div>
   );
 }

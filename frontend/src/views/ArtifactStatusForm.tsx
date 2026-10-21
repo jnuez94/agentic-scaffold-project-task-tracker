@@ -18,6 +18,8 @@ import {
 import { errorCopy, hasErrorCopy } from "../lib/errorCopy.ts";
 import { useApp } from "../state/AppContext.tsx";
 import { RecordSheet } from "./RecordSheet.tsx";
+import { SinceLoaded } from "./SinceLoaded.tsx";
+import { EDITING } from "../lib/sinceLoaded.ts";
 
 export function ArtifactStatusForm({
   artifact,
@@ -32,12 +34,15 @@ export function ArtifactStatusForm({
   const [status, setStatus] = useState<ArtifactStatus | "">("");
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // UI-33: a status_mismatch shows what changed since the row was loaded.
+  const [mismatch, setMismatch] = useState(false);
   const blocked = statusBlockedReason(artifact, status);
 
   const submit = async () => {
     if (pending || blocked || !identity.actorId || !status) return;
     setPending(true);
     setError(null);
+    setMismatch(false);
     try {
       const result = await coordination.setArtifactStatus(
         artifact.id,
@@ -48,6 +53,7 @@ export function ArtifactStatusForm({
       onClose();
     } catch (caught) {
       const failure = caught instanceof ApiError ? caught : new ApiError("network_error", String(caught), 0);
+      setMismatch(failure.code === "status_mismatch");
       setError(hasErrorCopy(failure.code) ? errorCopy(failure.code, { subject: "This artifact" }) : failure.message);
     } finally {
       setPending(false);
@@ -59,6 +65,7 @@ export function ArtifactStatusForm({
       title={`Change status · ${artifact.id}`}
       headingId="artifact-status-heading"
       error={error}
+      conflict={mismatch ? <SinceLoaded objectType="artifact" objectId={artifact.id} loaded={{ status: artifact.status }} editing={EDITING.status} /> : undefined}
       blocked={blocked}
       pending={pending}
       submitLabel="Change status"

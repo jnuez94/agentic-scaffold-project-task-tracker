@@ -26,6 +26,8 @@ import {
 import { useApp } from "../state/AppContext.tsx";
 import { BecausePicker } from "./BecausePicker.tsx";
 import { RecordSheet } from "./RecordSheet.tsx";
+import { SinceLoaded } from "./SinceLoaded.tsx";
+import { EDITING } from "../lib/sinceLoaded.ts";
 
 export function EscalationResolveForm({
   escalation,
@@ -42,6 +44,8 @@ export function EscalationResolveForm({
   const [draft, setDraft] = useState<ResolutionDraft>(emptyResolution);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // UI-33: a status_mismatch shows what changed since the row was loaded.
+  const [mismatch, setMismatch] = useState(false);
   const blocked = resolutionBlockedReason(draft, tasks.map((task) => task.id));
   const note = ownerNote(escalation, identity.actorId);
   const set = <K extends keyof ResolutionDraft>(key: K, value: ResolutionDraft[K]) =>
@@ -51,6 +55,7 @@ export function EscalationResolveForm({
     if (pending || blocked || !identity.actorId) return;
     setPending(true);
     setError(null);
+    setMismatch(false);
     try {
       const result = await coordination.resolveEscalation(
         escalation.id,
@@ -62,6 +67,7 @@ export function EscalationResolveForm({
     } catch (caught) {
       // The draft stays as typed: a refusal costs no re-entry.
       const failure = caught instanceof ApiError ? caught : new ApiError("network_error", String(caught), 0);
+      setMismatch(failure.code === "status_mismatch");
       setError(hasErrorCopy(failure.code) ? errorCopy(failure.code, { subject: "This escalation" }) : failure.message);
     } finally {
       setPending(false);
@@ -73,6 +79,7 @@ export function EscalationResolveForm({
       title={`Resolve · ${escalation.id}`}
       headingId="escalation-resolve-heading"
       error={error}
+      conflict={mismatch ? <SinceLoaded objectType="escalation" objectId={escalation.id} loaded={{ status: escalation.status }} editing={EDITING.status} /> : undefined}
       blocked={blocked}
       pending={pending}
       submitLabel="Resolve"

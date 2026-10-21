@@ -204,14 +204,20 @@ export function AssignmentError({
   text,
   stale,
   onReload,
+  since,
 }: {
   text: string;
   stale: boolean;
   onReload: () => void;
+  /** What changed since the task was loaded, shown when stale (UI-33). */
+  since?: React.ReactNode;
 }) {
   return (
     <div className="error-banner" role="alert">
-      <p>{text}</p>
+      <div>
+        <p>{text}</p>
+        {stale ? since : null}
+      </div>
       {stale ? (
         <button type="button" onClick={onReload}>
           Reload latest

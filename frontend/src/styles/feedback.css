@@ -316,3 +316,27 @@
   color: var(--text-200);
   margin: 0 0 var(--space-1);
 }
+
+/* "Since you loaded it" (UI-33): what a refused change lost to, under the
+ * refusal, in the banner's own colour so it reads as part of it. */
+.since-loaded {
+  margin: var(--space-1) 0;
+}
+
+.since-loaded .since-loaded-title {
+  font: var(--body-strong);
+}
+
+.since-loaded .since-loaded-collision {
+  font-weight: 600;
+  margin-top: var(--space-1);
+}
+
+.since-loaded ul {
+  margin: var(--space-1) 0 0;
+  padding-left: var(--space-4);
+}
+
+.since-loaded li {
+  font: var(--body-sm);
+}

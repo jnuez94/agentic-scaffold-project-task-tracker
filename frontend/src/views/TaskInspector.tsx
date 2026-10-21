@@ -210,6 +210,7 @@ export function TaskInspector({
           <TaskActions
             task={detail}
             agents={agents}
+            onShowActivity={() => setTab("activity")}
             onDone={() => {
               task.refresh();
               onChanged();

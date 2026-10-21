@@ -25,6 +25,8 @@ import { useApp } from "../state/AppContext.tsx";
 import { useFocusTrap } from "../state/useFocusTrap.ts";
 import { useReturnFocus } from "../state/useReturnFocus.ts";
 import { useEscape } from "../state/useEscape.ts";
+import { SinceLoaded } from "./SinceLoaded.tsx";
+import { EDITING } from "../lib/sinceLoaded.ts";
 
 export function DecisionStatusForm({
   decision,
@@ -39,6 +41,8 @@ export function DecisionStatusForm({
   const [draft, setDraft] = useState<RulingDraft>({ status: "", note: "" });
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // UI-33: a status_mismatch shows what changed since the row was loaded.
+  const [mismatch, setMismatch] = useState(false);
   const sheet = useRef<HTMLElement>(null);
   const heading = useRef<HTMLHeadingElement>(null);
 
@@ -57,6 +61,7 @@ export function DecisionStatusForm({
     if (pending || blocked || !identity.actorId || !draft.status) return;
     setPending(true);
     setError(null);
+    setMismatch(false);
     try {
       const result = await coordination.setDecisionStatus(
         decision.id,
@@ -69,6 +74,7 @@ export function DecisionStatusForm({
       const failure =
         caught instanceof ApiError ? caught : new ApiError("network_error", String(caught), 0);
       // The draft stays; nothing retries on its own.
+      setMismatch(failure.code === "status_mismatch");
       setError(
         hasErrorCopy(failure.code)
           ? errorCopy(failure.code, { subject: "This decision" })
@@ -93,7 +99,12 @@ export function DecisionStatusForm({
       <div className="sheet-body">
         {error ? (
           <div className="error-banner" role="alert">
-            <p>{error}</p>
+            <div>
+              <p>{error}</p>
+              {mismatch ? (
+                <SinceLoaded objectType="decision" objectId={decision.id} loaded={{ status: decision.status }} editing={EDITING.status} />
+              ) : null}
+            </div>
           </div>
         ) : null}
 

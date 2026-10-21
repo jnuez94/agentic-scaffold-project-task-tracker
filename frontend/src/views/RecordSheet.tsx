@@ -16,6 +16,7 @@ export function RecordSheet({
   title,
   headingId,
   error,
+  conflict,
   blocked,
   pending,
   submitLabel,
@@ -26,6 +27,8 @@ export function RecordSheet({
   title: string;
   headingId: string;
   error: string | null;
+  /** What changed since the record was loaded, shown under a refusal (UI-33). */
+  conflict?: ReactNode;
   blocked: string | null;
   pending: boolean;
   submitLabel: string;
@@ -60,7 +63,10 @@ export function RecordSheet({
       <div className="sheet-body">
         {error ? (
           <div className="error-banner" role="alert">
-            <p>{error}</p>
+            <div>
+              <p>{error}</p>
+              {conflict}
+            </div>
           </div>
         ) : null}
 

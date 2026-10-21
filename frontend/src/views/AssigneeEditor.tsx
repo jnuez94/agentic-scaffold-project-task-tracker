@@ -40,6 +40,8 @@ import {
 import { receiptSuffix } from "../lib/receipt.ts";
 import { useEscape } from "../state/useEscape.ts";
 import { useReturnFocus } from "../state/useReturnFocus.ts";
+import { SinceLoaded } from "./SinceLoaded.tsx";
+import { EDITING } from "../lib/sinceLoaded.ts";
 
 export function AssigneeEditor({
   task,
@@ -152,6 +154,9 @@ export function AssigneeEditor({
             text={error.text}
             stale={error.stale}
             onReload={onSaved}
+            since={
+              <SinceLoaded objectType="task" objectId={task.id} loaded={{ revision: task.revision }} editing={EDITING.assignees} />
+            }
           />
         ) : null}
 
