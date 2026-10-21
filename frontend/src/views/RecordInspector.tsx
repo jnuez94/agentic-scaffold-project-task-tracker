@@ -31,6 +31,7 @@ import {
   type Row,
 } from "./inspectorConfigs.tsx";
 import { useEscape } from "../state/useEscape.ts";
+import { useReturnFocus } from "../state/useReturnFocus.ts";
 
 type InspectorTab = "details" | "activity";
 
@@ -67,6 +68,9 @@ export function RecordInspector({
   const heading = useRef<HTMLHeadingElement>(null);
   const id = text(row["id"]);
   const [tab, setTab] = useState<InspectorTab>("details");
+  // Closing returns focus to the row that opened this record, read again for
+  // each record shown; reached by deep link, to the page heading (UI-81).
+  useReturnFocus(id);
 
   useEffect(() => {
     heading.current?.focus();

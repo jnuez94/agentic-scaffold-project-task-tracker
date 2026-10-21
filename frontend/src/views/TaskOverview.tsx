@@ -62,6 +62,7 @@ export function Overview({
               row, which has neither the revision nor the claim state. */}
           {onChangeAssignees ? (
             <button
+              id="assignees-trigger"
               type="button"
               className="record-action"
               onClick={onChangeAssignees}
@@ -70,7 +71,7 @@ export function Overview({
             </button>
           ) : null}
           {onEscalate ? (
-            <button type="button" className="record-action" onClick={onEscalate}>
+            <button id="escalate-trigger" type="button" className="record-action" onClick={onEscalate}>
               Escalate…
             </button>
           ) : null}

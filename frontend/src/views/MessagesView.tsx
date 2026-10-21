@@ -65,7 +65,6 @@ export function MessagesView({
   const [selected, setSelected] = useState<Message | null>(null);
   const [missing, setMissing] = useState<ApiError | null>(null);
   const previousDetail = useRef<string | null>(detail);
-  const lastTrigger = useRef<HTMLElement | null>(null);
   const orientation = useRef<HTMLDivElement>(null);
 
   // The day headings stick beneath the orientation bar rather than under it.
@@ -92,8 +91,7 @@ export function MessagesView({
     return (id: string) => byId.get(id) ?? id;
   }, [agents]);
 
-  const select = (message: Message, element: HTMLElement) => {
-    lastTrigger.current = element;
+  const select = (message: Message) => {
     setSelected(message);
     onDetail?.(message.id);
   };
@@ -251,7 +249,6 @@ export function MessagesView({
               loading={resource.loading}
               selectedKey={selected?.id ?? null}
               onSelect={(row) => {
-                lastTrigger.current = document.activeElement as HTMLElement;
                 setSelected(row);
                 onDetail?.((row as Message).id);
               }}
@@ -277,7 +274,6 @@ export function MessagesView({
               onClose={() => {
                 setSelected(null);
                 onDetail?.(null);
-                lastTrigger.current?.focus();
               }}
             />
           </>

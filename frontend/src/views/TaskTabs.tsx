@@ -102,7 +102,13 @@ function EvidencePanel({ detail, onAdded }: { detail: TaskDetail; onAdded: () =>
           }}
         />
       ) : (
-        <button className="primary" onClick={() => setAdding(true)}>
+        <button
+          // The id lets focus come back to this button, rendered anew, when
+          // the form that replaced it closes (UI-81).
+          id="add-evidence-trigger"
+          className="primary"
+          onClick={() => setAdding(true)}
+        >
           Add evidence
         </button>
       )}

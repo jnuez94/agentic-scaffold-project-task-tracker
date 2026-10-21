@@ -69,5 +69,26 @@ describe("Escape across layers", () => {
     await userEvent.keyboard("{Escape}");
 
     expect(onDetail).toHaveBeenLastCalledWith(null);
+    // Reached by deep link, so no row opened it: focus lands on the page
+    // heading rather than the body (UI-81).
+    await waitFor(() => expect(document.activeElement).toBe(screen.getByRole("heading", { name: "Decisions" })));
+  });
+
+  it("returns focus to the row that opened the record (UI-81)", async () => {
+    const fetchImpl = vi.fn(async () => new Response(JSON.stringify({ ok: true, data: [DECISION] }), { status: 200 }));
+    render(
+      <AppProvider store={new IdentityStore(memoryStorage())} client={new ApiClient(() => null, "", fetchImpl as typeof fetch)}>
+        <RecordsView key="decisions" route="decisions" filter="" onDetail={() => {}} />
+      </AppProvider>,
+    );
+    const rowCell = await screen.findByText("DEC-1");
+    const row = rowCell.closest("tr")!;
+    await userEvent.click(rowCell);
+    await screen.findByRole("complementary", { name: /decision DEC-1/ });
+
+    await userEvent.keyboard("{Escape}");
+
+    await waitFor(() => expect(screen.queryByRole("complementary")).toBeNull());
+    await waitFor(() => expect(document.activeElement).toBe(row));
   });
 });

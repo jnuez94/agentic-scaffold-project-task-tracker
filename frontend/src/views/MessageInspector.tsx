@@ -16,6 +16,7 @@ import { Icon } from "../components/icons.tsx";
 import { absoluteTime, relativeTime } from "../lib/format.ts";
 import { useApp } from "../state/AppContext.tsx";
 import { useEscape } from "../state/useEscape.ts";
+import { useReturnFocus } from "../state/useReturnFocus.ts";
 
 export function MessageInspector({
   message,
@@ -26,6 +27,9 @@ export function MessageInspector({
 }) {
   const { announce } = useApp();
   const heading = useRef<HTMLHeadingElement>(null);
+  // Closing returns focus to the entry that opened this message, read again
+  // for each message shown; reached by deep link, to the page heading (UI-81).
+  useReturnFocus(message.id);
 
   useEffect(() => {
     heading.current?.focus();

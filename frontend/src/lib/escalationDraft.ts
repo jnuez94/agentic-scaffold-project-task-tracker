@@ -65,6 +65,25 @@ export function emptyEscalation(relatedTask: string | null, issue: string, ids: 
   };
 }
 
+/**
+ * Whether the operator has typed anything since the form opened (UI-81), for
+ * the discard question on Escape. The id counts only once they edited it: the
+ * form rewrites its own suggestion when the existing ids arrive.
+ */
+export function escalationDraftTouched(
+  draft: EscalationDraft,
+  opened: { relatedTasks: string; issue: string; idEdited: boolean },
+): boolean {
+  return (
+    opened.idEdited ||
+    draft.owner !== "" ||
+    draft.neededBy.trim() !== "" ||
+    draft.requestedDecision.trim() !== "" ||
+    draft.issue.trim() !== opened.issue.trim() ||
+    draft.relatedTasks.trim() !== opened.relatedTasks.trim()
+  );
+}
+
 export interface EscalationProblem {
   field: "id" | "owner" | "issue" | "requestedDecision" | "actor";
   message: string;

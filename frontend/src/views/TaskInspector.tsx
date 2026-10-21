@@ -19,6 +19,7 @@ import { takeEscalationIntent } from "../lib/escalationIntent.ts";
 import { Overview } from "./TaskOverview.tsx";
 import { TaskTabPanel, TASK_TABS, type TaskTab } from "./TaskTabs.tsx";
 import { useEscape } from "../state/useEscape.ts";
+import { useReturnFocus } from "../state/useReturnFocus.ts";
 
 export function TaskInspector({
   taskId,
@@ -41,10 +42,11 @@ export function TaskInspector({
     const intent = takeEscalationIntent(taskId);
     if (intent) setEscalating({ issue: intent.issue });
   }, [taskId]);
-  // Focus returns to the control that opened the panel, per spec section 8.
-  const assigneeTrigger = useRef<HTMLButtonElement | null>(null);
   const task = useResource(() => coordination.task(taskId), [taskId]);
-  const panel = useRef<HTMLElement>(null);
+  const title = useRef<HTMLHeadingElement>(null);
+  // Closing returns focus to the queue row that opened this task, read again
+  // for each task shown; reached by deep link, to the page heading (UI-81).
+  useReturnFocus(taskId);
   const nameFor = useMemo(() => {
     const byId = new Map(agents.map((agent) => [agent.id, agent.name]));
     return (id: string) => byId.get(id) ?? id;
@@ -54,20 +56,17 @@ export function TaskInspector({
   // that cannot be dismissed from the keyboard traps the operator.
   useEscape(onClose);
 
-  // Move focus to the panel when it opens so the next Tab lands inside it.
+  // Move focus to the task's title when it opens, so the next Tab lands
+  // inside the panel and a form opened without a button of its own (from
+  // Health) has a heading to hand focus back to.
   useEffect(() => {
-    panel.current?.focus();
+    title.current?.focus();
   }, [taskId]);
 
   const detail = task.data;
 
   return (
-    <aside
-      className="inspector"
-      aria-label={`Task ${taskId}`}
-      ref={panel}
-      tabIndex={-1}
-    >
+    <aside className="inspector" aria-label={`Task ${taskId}`}>
       <button className="inspector-back" onClick={onClose}>
         <Icon name="back" size={16} />
         Back to queue
@@ -75,7 +74,9 @@ export function TaskInspector({
       <div className="inspector-header">
         <div>
           <span className="mono inspector-id">{taskId}</span>
-          <h2 className="inspector-title">{detail?.title ?? "Loading…"}</h2>
+          <h2 className="inspector-title" ref={title} tabIndex={-1}>
+            {detail?.title ?? "Loading…"}
+          </h2>
         </div>
         <button
           onClick={onClose}
@@ -178,7 +179,6 @@ export function TaskInspector({
                     agents={agents}
                     onClose={() => {
                       setEditingAssignees(false);
-                      assigneeTrigger.current?.focus();
                     }}
                     onSaved={() => {
                       task.refresh();
@@ -188,12 +188,7 @@ export function TaskInspector({
                 ) : null}
                 <Overview
                   detail={detail}
-                  onChangeAssignees={(event?: unknown) => {
-                    assigneeTrigger.current =
-                      (event as { currentTarget?: HTMLButtonElement })
-                        ?.currentTarget ?? null;
-                    setEditingAssignees(true);
-                  }}
+                  onChangeAssignees={() => setEditingAssignees(true)}
                   onEscalate={() => {
                     setEditingAssignees(false);
                     // The issue starts empty; nothing on the task is quoted in (UI-49).

@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { captureFocusReturn, restoreFocus } from "./returnFocus.ts";
+import { captureFocusReturn, focusIsLost, pressedControl, restoreFocus } from "./returnFocus.ts";
 
 function build(html: string) {
   document.body.innerHTML = html;
@@ -14,7 +14,7 @@ describe("captureFocusReturn", () => {
   it("records the focused control and the heading of its region", () => {
     const $ = build(`<main><h1>Decisions</h1><aside><h2 id="title" tabindex="-1">D-1</h2><button id="act">Change status…</button></aside></main>`);
     $("#act").focus();
-    expect(captureFocusReturn(document)).toEqual({ origin: $("#act"), anchor: $("#title") });
+    expect(captureFocusReturn(document)).toEqual({ origin: $("#act"), originId: "act", anchor: $("#title") });
   });
 
   it("walks out to an enclosing region when the nearest has no heading", () => {
@@ -25,16 +25,19 @@ describe("captureFocusReturn", () => {
 
   it("records nothing when focus is on the body", () => {
     build(`<main><h1>Tasks</h1></main>`);
-    expect(captureFocusReturn(document)).toEqual({ origin: null, anchor: null });
+    expect(captureFocusReturn(document)).toEqual({ origin: null, originId: null, anchor: null });
   });
 });
 
 describe("restoreFocus", () => {
   it("returns focus to the control that opened the dialog", () => {
-    const $ = build(`<aside><h2 tabindex="-1">D-1</h2><button id="act">Change status…</button></aside>`);
+    const $ = build(
+      `<aside><h2 tabindex="-1">D-1</h2><button id="act">Change status…</button></aside><div id="dialog" tabindex="-1"></div>`,
+    );
     $("#act").focus();
     const target = captureFocusReturn(document);
-    $("h2").focus();
+    $("#dialog").focus();
+    $("#dialog").remove();
 
     expect(restoreFocus(target, document)).toBe($("#act"));
     expect(document.activeElement).toBe($("#act"));
@@ -58,6 +61,7 @@ describe("restoreFocus", () => {
     const target = captureFocusReturn(document);
     $("#dialog").focus();
     ($("#act") as HTMLButtonElement).disabled = true;
+    $("#dialog").remove();
 
     expect(restoreFocus(target, document)).toBe($("#title"));
   });
@@ -69,5 +73,41 @@ describe("restoreFocus", () => {
     $("#s").remove();
 
     expect(restoreFocus(target, document)).toBe($("#page"));
+  });
+});
+
+describe("restoreFocus when the opener was replaced or focus was not lost", () => {
+  it("finds the opener's successor by id once the original has gone", () => {
+    const $ = build(`<section><h2>Evidence</h2><div id="slot"><button id="add-evidence-trigger">Add evidence</button></div></section>`);
+    $("#add-evidence-trigger").focus();
+    const target = captureFocusReturn(document);
+    $("#slot").innerHTML = `<button id="add-evidence-trigger">Add evidence</button>`;
+
+    expect(restoreFocus(target, document)).toBe($("#add-evidence-trigger"));
+    expect($("#add-evidence-trigger")).not.toBe(target.origin);
+  });
+
+  it("leaves focus alone when the operator already put it on a live control", () => {
+    const $ = build(`<main><h1>Tasks</h1><button id="row">T-1</button><button id="file">File a task</button></main>`);
+    $("#row").focus();
+    const target = captureFocusReturn(document);
+    $("#file").focus();
+
+    expect(focusIsLost(document)).toBe(false);
+    expect(restoreFocus(target, document)).toBeNull();
+    expect(document.activeElement).toBe($("#file"));
+  });
+
+  it("takes a recent press as the opener when the click did not focus it", () => {
+    const $ = build(`<aside><h2 id="title">D-1</h2><button id="act">Change status…</button></aside>`);
+    const target = captureFocusReturn(document, pressedControl($("#act")));
+    expect(target.origin).toBe($("#act"));
+    expect(target.anchor).toBe($("#title"));
+  });
+
+  it("finds the control a press landed inside", () => {
+    const $ = build(`<button id="act"><span id="label">Retire agent…</span></button><p id="text">plain</p>`);
+    expect(pressedControl($("#label"))).toBe($("#act"));
+    expect(pressedControl($("#text"))).toBeNull();
   });
 });

@@ -2,13 +2,15 @@
  * Adding evidence — the gate on completing a task.
  */
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ApiError } from "../api/errors.ts";
 import { ErrorBanner } from "../components/Feedback.tsx";
 import { useApp } from "../state/AppContext.tsx";
 import { SETUP_PENDING } from "../lib/copy.ts";
 import { receiptSuffix } from "../lib/receipt.ts";
-import { useEscape } from "../state/useEscape.ts";
+import { useReturnFocus } from "../state/useReturnFocus.ts";
+import { useDiscardGuard } from "../state/useDiscardGuard.ts";
+import { DiscardPrompt } from "../components/DiscardPrompt.tsx";
 
 export function AddEvidenceForm({
   taskId,
@@ -24,10 +26,19 @@ export function AddEvidenceForm({
   const [type, setType] = useState("artifact");
   const [error, setError] = useState<ApiError | undefined>();
   const [busy, setBusy] = useState(false);
-  // Escape closes this form before the inspector it sits in (UI-80).
-  useEscape(() => {
-    if (!busy) onCancel();
+  // Focus goes back to "Add evidence" on every close path, and Escape asks
+  // before throwing away a typed reference (UI-81). The form replaces the
+  // button that opened it, so focus starts in the first field.
+  useReturnFocus();
+  const guard = useDiscardGuard({
+    isTouched: () => uri.trim() !== "" || type !== "artifact",
+    pending: busy,
+    onDiscard: onCancel,
   });
+  const uriField = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    uriField.current?.focus();
+  }, []);
 
   const submit = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -61,6 +72,7 @@ export function AddEvidenceForm({
       <div className="control">
         <label htmlFor="evidence-uri">Evidence URI</label>
         <input
+          ref={uriField}
           id="evidence-uri"
           value={uri}
           required
@@ -77,6 +89,7 @@ export function AddEvidenceForm({
           placeholder="artifact"
         />
       </div>
+      {guard.confirming ? <DiscardPrompt onKeep={guard.keepEditing} onDiscard={guard.discard} /> : null}
       <div className="form-actions">
         <button
           type="submit"

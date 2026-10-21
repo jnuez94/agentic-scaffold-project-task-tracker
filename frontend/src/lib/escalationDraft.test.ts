@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   blockingReason,
+  escalationDraftTouched,
   buildEscalationRequest,
   checkEscalationDraft,
   emptyEscalation,
@@ -128,5 +129,26 @@ describe("escalation intent", () => {
   it("survives garbage in storage rather than throwing", () => {
     sessionStorage.setItem("coordination-console.escalationIntent", "{not json");
     expect(takeEscalationIntent("UI-12")).toBeNull();
+  });
+});
+
+describe("escalationDraftTouched", () => {
+  const opened = { relatedTasks: "UI-12", issue: "", idEdited: false };
+  const draft = emptyEscalation("UI-12", "", []);
+
+  it("is untouched as opened, whatever id the form suggested since", () => {
+    expect(escalationDraftTouched({ ...draft, id: "ESC-UI12-2" }, opened)).toBe(false);
+  });
+
+  it("is touched once the operator types in any field or edits the id", () => {
+    expect(escalationDraftTouched({ ...draft, issue: "stuck" }, opened)).toBe(true);
+    expect(escalationDraftTouched({ ...draft, owner: "michael-ux" }, opened)).toBe(true);
+    expect(escalationDraftTouched({ ...draft, requestedDecision: "unblock" }, opened)).toBe(true);
+    expect(escalationDraftTouched({ ...draft, relatedTasks: "UI-12, UI-13" }, opened)).toBe(true);
+    expect(escalationDraftTouched(draft, { ...opened, idEdited: true })).toBe(true);
+  });
+
+  it("does not count whitespace as typing", () => {
+    expect(escalationDraftTouched({ ...draft, issue: "   " }, opened)).toBe(false);
   });
 });

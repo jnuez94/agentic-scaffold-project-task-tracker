@@ -23,6 +23,7 @@ import { ErrorBanner } from "../components/Feedback.tsx";
 import { FormField } from "../components/FormField.tsx";
 import { describeThrown } from "../lib/copy.ts";
 import {
+  escalationDraftTouched,
   buildEscalationRequest,
   checkEscalationDraft,
   emptyEscalation,
@@ -36,7 +37,9 @@ import { useApp } from "../state/AppContext.tsx";
 import { useResource } from "../state/useResource.ts";
 import { receiptSuffix } from "../lib/receipt.ts";
 import { useFocusProblem } from "../state/useFocusProblem.ts";
-import { useEscape } from "../state/useEscape.ts";
+import { useReturnFocus } from "../state/useReturnFocus.ts";
+import { useDiscardGuard } from "../state/useDiscardGuard.ts";
+import { DiscardPrompt } from "../components/DiscardPrompt.tsx";
 
 /** Where each refused field lives, so a refused submit can focus it (UI-79). */
 const PROBLEM_FIELDS = {
@@ -83,10 +86,15 @@ export function EscalationForm({
   useFocusProblem(problem, PROBLEM_FIELDS);
   const [error, setError] = useState<ApiError | undefined>();
   const [pending, setPending] = useState(false);
-  // A panel opened over the inspector: Escape closes it first, never the
-  // inspector beneath with the draft in it (UI-80).
-  useEscape(() => {
-    if (!pending) onClose();
+  // Focus goes back to whatever opened the form on every close path, and
+  // Escape asks before throwing away what was typed (UI-81). The form is a
+  // layer over the inspector, so Escape reaches it first (UI-80).
+  useReturnFocus();
+  const [opened] = useState(() => ({ relatedTasks: relatedTask ?? "", issue: prefillIssue }));
+  const guard = useDiscardGuard({
+    isTouched: () => escalationDraftTouched(draft, { ...opened, idEdited: idTouched.current }),
+    pending,
+    onDiscard: onClose,
   });
   const heading = useRef<HTMLHeadingElement>(null);
 
@@ -211,6 +219,8 @@ export function EscalationForm({
             <input {...control} value={draft.neededBy} onChange={(event) => set("neededBy", event.target.value)} placeholder="A date or a milestone" />
           )}
         </FormField>
+
+        {guard.confirming ? <DiscardPrompt onKeep={guard.keepEditing} onDiscard={guard.discard} /> : null}
 
         <div className="field-actions">
           <button type="submit" className="primary" disabled={pending || !mutationsEnabled}>

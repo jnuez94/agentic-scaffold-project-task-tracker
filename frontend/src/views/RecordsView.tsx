@@ -72,7 +72,6 @@ export function RecordsView<T = Record<string, unknown>>({
   // What the route said last time, so "the route cleared its detail" can be
   // told apart from "this view has no routing at all".
   const previousDetail = useRef<string | null>(detail);
-  const rowTrigger = useRef<HTMLElement | null>(null);
 
   const { records, tasks, sessions } = useRecordData(
     coordination,
@@ -248,7 +247,6 @@ export function RecordsView<T = Record<string, unknown>>({
               ? (row) => onSelect(row)
               : inspectorConfig
                 ? (row) => {
-                    rowTrigger.current = document.activeElement as HTMLElement;
                     setInspecting(row);
                     onDetail?.(String(row["id"]));
                   }
@@ -292,7 +290,6 @@ export function RecordsView<T = Record<string, unknown>>({
         onCloseInspector={() => {
           setInspecting(null);
           onDetail?.(null);
-          rowTrigger.current?.focus();
         }}
         onCloseAction={() => setActing(null)}
         onAct={(row) => setActing(row)}

@@ -39,6 +39,7 @@ import {
 } from "./AssigneeFields.tsx";
 import { receiptSuffix } from "../lib/receipt.ts";
 import { useEscape } from "../state/useEscape.ts";
+import { useReturnFocus } from "../state/useReturnFocus.ts";
 
 export function AssigneeEditor({
   task,
@@ -58,6 +59,8 @@ export function AssigneeEditor({
     null,
   );
   const heading = useRef<HTMLHeadingElement>(null);
+  // Focus goes back to "Change assignees" on every close path (UI-81).
+  useReturnFocus();
 
   useEffect(() => {
     heading.current?.focus();
