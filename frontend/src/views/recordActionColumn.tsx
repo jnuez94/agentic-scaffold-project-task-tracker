@@ -15,6 +15,11 @@ import type { RecordConfig } from "./recordConfigs.tsx";
  * `applies` decides per row, so the control never appears where the underlying
  * command would refuse it — a dash is shown instead, which keeps the column
  * aligned and says "not applicable here" rather than leaving a gap.
+ *
+ * The column itself appears only when at least one loaded row qualifies
+ * (UI-40): Sessions held 83px to show ten dashes on a board with no stale
+ * session. It is declared vacant for every row the action does not apply to,
+ * so the table drops it across the whole loaded set, not page by page.
  */
 export function withActionColumn(
   config: RecordConfig,
@@ -28,6 +33,7 @@ export function withActionColumn(
       key: "__action",
       header: action.header,
       priority: 1,
+      vacantFor: (row: Record<string, unknown>) => !action.applies(row),
       render: (row: Record<string, unknown>) =>
         action.applies(row) ? (
           <button
