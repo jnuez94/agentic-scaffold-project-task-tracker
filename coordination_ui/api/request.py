@@ -117,7 +117,3 @@ class Request:
         if "audit_range" in envelope:
             self.receipt["audit_range"] = envelope["audit_range"]
         return envelope.get("data")
-
-    def run_text(self, builder: Any) -> str:
-        args = builder.args if hasattr(builder, "args") else list(builder)
-        return self.cli.run_text(args)

@@ -19,7 +19,6 @@ import type { InboxState } from "../state/useInbox.ts";
 import type { Layout } from "../state/useLayout.ts";
 import type { Route, RouteName } from "../state/useHashRoute.ts";
 import { AuditView } from "./AuditView.tsx";
-import { ExportView } from "./ExportView.tsx";
 import { HealthView } from "./HealthView.tsx";
 import { MessagesView } from "./MessagesView.tsx";
 import { RecordsView } from "./RecordsView.tsx";
@@ -58,7 +57,6 @@ export function RoutedView({
 
       {route.name === "health" ? <HealthView /> : null}
       {route.name === "audit" ? <AuditView filter={filter} /> : null}
-      {route.name === "export" ? <ExportView /> : null}
 
       {route.name === "messages" ? (
         <MessagesView

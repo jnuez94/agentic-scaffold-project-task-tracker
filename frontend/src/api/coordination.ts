@@ -34,7 +34,6 @@ export class Coordination {
   summary = (query?: Query) => this.api.get<Summary>("/api/summary", query);
   health = (query?: Query) => this.api.get<Health>("/api/health", query);
   audit = (query?: Query) => this.api.get<AuditEntry[]>("/api/audit", query);
-  exportReport = () => this.api.getText("/api/export");
 
   agents = (query?: Query) => this.api.get<Agent[]>("/api/agents", query);
   createAgent = (body: unknown) => this.api.post<{ id: string }>("/api/agents", body);

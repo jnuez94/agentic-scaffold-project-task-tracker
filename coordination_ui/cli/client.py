@@ -108,8 +108,3 @@ class CoordinationCLI:
         """Run a JSON command and return its whole success envelope."""
 
         return self.parser.envelope(self.invoke(args, session))
-
-    def run_text(self, args: Sequence[str], session: str | None = None) -> str:
-        """Run a command whose success output is plain text (``export``)."""
-
-        return self.parser.text(self.invoke(args, session))

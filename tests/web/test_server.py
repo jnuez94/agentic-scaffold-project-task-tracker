@@ -32,11 +32,10 @@ class ReadEndpointTests(LiveServerTestCase):
         self.assertEqual(status, 200)
         self.assertEqual(payload["data"]["id"], "T-1")
 
-    def test_export_returns_markdown(self) -> None:
-        status, headers, raw = self.request("GET", "/api/export")
-        self.assertEqual(status, 200)
-        self.assertEqual(headers["Content-Type"], "text/markdown; charset=utf-8")
-        self.assertIn(b"#", raw)
+    def test_export_is_not_served(self) -> None:
+        # UI-59 removed the route; the report is `coordination export`.
+        status, _headers, _raw = self.request("GET", "/api/export")
+        self.assertEqual(status, 404)
 
     def test_audit_is_a_list_of_the_newest_rows(self) -> None:
         _, payload = self.get_json("/api/audit?limit=1")

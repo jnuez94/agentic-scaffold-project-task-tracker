@@ -1,4 +1,4 @@
-"""Project metadata, diagnostics, health, audit, and export routes."""
+"""Project metadata, diagnostics, health and audit routes."""
 
 from __future__ import annotations
 
@@ -10,7 +10,6 @@ from .. import enums
 from ..audit_window import AuditWindow
 from ..enums import MAX_LIST_LIMIT, MIN_LIST_LIMIT
 from ..request import Request
-from ..text_response import TextResponse
 
 HEALTH_OPTIONS = (
     ("stale_days", "--stale-days"),
@@ -123,18 +122,10 @@ def get_audit(request: Request) -> Any:
     ).rows()
 
 
-def get_export(request: Request) -> TextResponse:
-    """``export`` without ``--output`` writes Markdown, not JSON."""
-
-    report = request.run_text(ArgumentBuilder("export"))
-    return TextResponse(report, "text/markdown; charset=utf-8")
-
-
 ROUTES = (
     ("GET", r"/api/meta", get_meta),
     ("GET", r"/api/doctor", get_doctor),
     ("GET", r"/api/summary", get_summary),
     ("GET", r"/api/health", get_health),
     ("GET", r"/api/audit", get_audit),
-    ("GET", r"/api/export", get_export),
 )

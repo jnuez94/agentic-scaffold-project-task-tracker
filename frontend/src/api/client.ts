@@ -99,16 +99,6 @@ export class ApiClient {
     return data as Mutated<T>;
   }
 
-  /** Fetch a text body (the Markdown export). */
-  async getText(path: string): Promise<string> {
-    const response = await this.fetchImpl(this.url(path), {
-      method: "GET",
-      headers: this.headers(false),
-    });
-    if (!response.ok) throw ApiError.fromPayload(await this.safeJson(response), response.status);
-    return response.text();
-  }
-
   private async unwrap<T>(response: Response): Promise<T> {
     return this.unwrapPayload<T>(await this.safeJson(response), response);
   }

@@ -25,7 +25,6 @@ export type IconName =
   | "escalations"
   | "health"
   | "audit"
-  | "export"
   | "search"
   | "close"
   | "back";
@@ -81,13 +80,6 @@ const PATHS: Record<IconName, ReactElement> = {
     <>
       <circle cx="12" cy="12" r="8.5" />
       <path d="M12 7v5.2l3.2 2" />
-    </>
-  ),
-  export: (
-    <>
-      <path d="M12 3v11" />
-      <path d="m8 10.5 4 4 4-4" />
-      <path d="M4.5 17.5v2A1.5 1.5 0 0 0 6 21h12a1.5 1.5 0 0 0 1.5-1.5v-2" />
     </>
   ),
   search: (

@@ -1,13 +1,12 @@
-"""Router dispatch, plus the enums and TextResponse value objects."""
+"""Router dispatch, plus the enums value object."""
 
 from __future__ import annotations
 
-import dataclasses
 import unittest
 from pathlib import Path
 from typing import Any
 
-from coordination_ui.api import ROUTES, Request, Router, TextResponse, enums
+from coordination_ui.api import ROUTES, Request, Router, enums
 from coordination_ui.api.context import ApiContext
 from coordination_ui.cli import CoordinationError
 from coordination_ui.discovery import Project
@@ -118,7 +117,6 @@ class RouteTableTests(unittest.TestCase):
             "escalations",
             "health",
             "audit",
-            "export",
         ):
             with self.subTest(entity=entity):
                 self.assertIn(entity, patterns)
@@ -155,18 +153,6 @@ class EnumsTests(unittest.TestCase):
         described = enums.describe()
         self.assertIsInstance(described["statuses"]["task"], list)
         self.assertIsInstance(described["transitions"]["todo"], list)
-
-
-class TextResponseTests(unittest.TestCase):
-    def test_defaults_to_plain_text(self) -> None:
-        self.assertEqual(TextResponse("hi").content_type, "text/plain; charset=utf-8")
-
-    def test_encodes_as_utf8(self) -> None:
-        self.assertEqual(TextResponse("é").encode(), "é".encode())
-
-    def test_is_frozen(self) -> None:
-        with self.assertRaises(dataclasses.FrozenInstanceError):
-            TextResponse("a").body = "b"  # type: ignore[misc]
 
 
 if __name__ == "__main__":

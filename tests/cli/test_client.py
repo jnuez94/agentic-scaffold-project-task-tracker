@@ -111,11 +111,6 @@ class InvocationTests(unittest.TestCase):
         )
         self.assertEqual(self.cli.run(["task", "show", "T-UNI"])["description"], body)
 
-    def test_run_text_returns_markdown(self) -> None:
-        report = self.cli.run_text(["export"])
-        self.assertIn("#", report)
-        self.assertNotIn('"ok"', report)
-
     def test_timeout_is_reported_as_cli_timeout(self) -> None:
         impatient = CoordinationCLI(
             self.project.database.parent.parent / "nope",

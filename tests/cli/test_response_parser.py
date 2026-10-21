@@ -94,17 +94,5 @@ class ResponseParserErrorTests(unittest.TestCase):
         self.assertEqual(caught.exception.code, "not_found")
 
 
-class ResponseParserTextTests(unittest.TestCase):
-    def test_returns_stdout_verbatim(self) -> None:
-        result = CommandResult(["export"], 0, "# Report\n\ntext\n", "")
-        self.assertEqual(ResponseParser.text(result), "# Report\n\ntext\n")
-
-    def test_raises_on_failure(self) -> None:
-        result = CommandResult(["export"], 4, "", failure("output_exists"))
-        with self.assertRaises(CoordinationError) as caught:
-            ResponseParser.text(result)
-        self.assertEqual(caught.exception.code, "output_exists")
-
-
 if __name__ == "__main__":
     unittest.main()

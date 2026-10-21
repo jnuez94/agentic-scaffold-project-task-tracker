@@ -174,10 +174,9 @@ only where the CLI would accept it.
 Audit rows are already complete in the table. Instead, link `object_id` to its
 record where a route exists. An inspector would add a click and reveal nothing.
 
-### Health, Export — not applicable
+### Health — not applicable
 
-Health is a findings list whose entries already link to their records. Export
-is a generated document.
+Health is a findings list whose entries already link to their records.
 
 ## 4. Interaction
 

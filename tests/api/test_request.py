@@ -30,10 +30,6 @@ class RecordingCLI:
             envelope["audit_range"] = [7, 8]
         return envelope
 
-    def run_text(self, args: Sequence[str], session: str | None = None) -> str:
-        self.calls.append((list(args), session))
-        return "# report"
-
 
 def make_request(**kwargs: Any) -> tuple[Request, RecordingCLI]:
     cli = RecordingCLI()
@@ -163,10 +159,6 @@ class RunTests(unittest.TestCase):
         request, cli = make_request()
         request.run(["doctor"])
         self.assertEqual(cli.calls[0][0], ["doctor"])
-
-    def test_run_text_returns_the_string(self) -> None:
-        request, _ = make_request()
-        self.assertEqual(request.run_text(ArgumentBuilder("export")), "# report")
 
 
 class ReceiptTests(unittest.TestCase):

@@ -44,7 +44,6 @@ const GROUPS: Group[] = [
     items: [
       { route: "health", label: "Health", icon: "health" },
       { route: "audit", label: "Audit log", icon: "audit" },
-      { route: "export", label: "Export", icon: "export" },
     ],
   },
 ];

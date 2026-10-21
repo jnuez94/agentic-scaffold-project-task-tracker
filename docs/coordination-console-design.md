@@ -15,7 +15,8 @@ evidence, dependencies, reviews, decisions, messages, artifacts, escalations,
 health, and the audit log — plus the ability to act on that state.
 
 **In scope:** browsing every schema-v1 entity, performing every mutation the CLI
-exposes, health and audit views, and the Markdown export.
+exposes, and health and audit views. The Markdown report stays a CLI operation,
+`coordination export`; the console does not serve it.
 
 **Out of scope:** `backup`, `restore`, and `init`. These are destructive or
 filesystem-publishing operations whose failure modes need an operator at a
@@ -135,8 +136,6 @@ The single choke point for CLI invocation.
 - Parses `{"ok": true, "data": …}` from stdout, or `{"ok": false, "error": …}`
   from stderr, into a `CoordinationError` carrying `code`, `message`, `details`,
   and the exit code.
-- `run_text()` exists for the one command whose success output is not JSON:
-  `export` without `--output`.
 
 No shell is ever involved: `subprocess.run` receives a list, `shell=False`.
 
@@ -340,7 +339,7 @@ flowchart TD
     end
 
     subgraph views["View layer — shaped by the chosen UX direction"]
-        VIEWS["Entity views<br/>tasks, agents, sessions, reviews,<br/>decisions, messages, artifacts,<br/>escalations, audit, health, export"]
+        VIEWS["Entity views<br/>tasks, agents, sessions, reviews,<br/>decisions, messages, artifacts,<br/>escalations, audit, health"]
         FORMS["Mutation forms<br/>generated from field descriptors"]
     end
 

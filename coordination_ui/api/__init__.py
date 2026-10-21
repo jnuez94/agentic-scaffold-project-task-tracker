@@ -9,7 +9,6 @@ from .context import ApiContext
 from .request import Request
 from .router import Handler, Router, RouteSpec
 from .routes import ROUTES
-from .text_response import TextResponse
 
 __all__ = [
     "ROUTES",
@@ -18,7 +17,6 @@ __all__ = [
     "Request",
     "RouteSpec",
     "Router",
-    "TextResponse",
     "build_router",
     "enums",
 ]

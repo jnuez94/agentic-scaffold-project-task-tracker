@@ -19,7 +19,6 @@ export const ROUTES = [
   "escalations",
   "health",
   "audit",
-  "export",
 ] as const;
 
 export type RouteName = (typeof ROUTES)[number];
@@ -96,5 +95,4 @@ export const ROUTE_ENTRY_SCROLL: Record<RouteName, EntryScroll> = {
   escalations: "top",
   health: "top",
   audit: "top",
-  export: "top",
 };

@@ -133,7 +133,7 @@ frontend/
   src/api/     typed client and the row types mirrored from the contract
   src/lib/     transition rules, labels, formatting, filtering
   src/state/   identity, hash routing, resource loading
-  src/views/   task queue, inspector, entity browsers, health, audit, export
+  src/views/   task queue, inspector, entity browsers, health, audit
   src/styles/  Flowline design tokens and per-concern stylesheets
 ```
 

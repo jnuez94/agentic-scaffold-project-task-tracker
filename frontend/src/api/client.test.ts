@@ -110,22 +110,6 @@ describe("ApiClient.post", () => {
   });
 });
 
-describe("ApiClient.getText", () => {
-  it("returns the raw body for the Markdown export", async () => {
-    const fetchImpl = vi.fn().mockResolvedValue(new Response("# Report", { status: 200 }));
-    const client = new ApiClient(() => null, "", fetchImpl as unknown as typeof fetch);
-    await expect(client.getText("/api/export")).resolves.toBe("# Report");
-  });
-
-  it("throws on failure", async () => {
-    const fetchImpl = vi
-      .fn()
-      .mockResolvedValue(jsonResponse({ ok: false, error: { code: "database_busy", message: "busy" } }, 503));
-    const client = new ApiClient(() => null, "", fetchImpl as unknown as typeof fetch);
-    await expect(client.getText("/api/export")).rejects.toMatchObject({ code: "database_busy" });
-  });
-});
-
 describe("ApiClient.withoutSession", () => {
   it("never sends the session header", async () => {
     const fetchImpl = vi.fn().mockResolvedValue(jsonResponse({ ok: true, data: {} }));

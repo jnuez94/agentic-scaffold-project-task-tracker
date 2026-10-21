@@ -88,11 +88,3 @@ class ResponseParser:
         """Return the ``data`` payload of a successful JSON command."""
 
         return cls.envelope(result).get("data")
-
-    @classmethod
-    def text(cls, result: CommandResult) -> str:
-        """Return stdout for the one command whose success output is Markdown."""
-
-        if not result.succeeded:
-            raise cls.error_from(result)
-        return result.stdout

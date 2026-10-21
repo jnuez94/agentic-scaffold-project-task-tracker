@@ -13,9 +13,9 @@
  * a statement, while an empty descriptive field is just noise and is dropped.
  *
  * Nothing is deliberately omitted: every field in each list response appears in
- * `metrics`, `fields`, or `footer`. Audit, Health and Export have no config
- * because they get no inspector — audit rows are already complete in the table,
- * Health is a findings list, and Export is a generated document.
+ * `metrics`, `fields`, or `footer`. Audit and Health have no config because
+ * they get no inspector — audit rows are already complete in the table, and
+ * Health is a findings list.
  *
  * Spec: docs/ux-entity-inspectors-spec.md section 5.
  */

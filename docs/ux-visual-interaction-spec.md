@@ -74,7 +74,6 @@ Governance
 System
   Health
   Audit log
-  Export
 
 Local-only connection
 Project selector / diagnostics

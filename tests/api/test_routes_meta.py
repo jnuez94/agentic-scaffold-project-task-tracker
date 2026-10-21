@@ -1,10 +1,8 @@
-"""Meta, doctor, summary, health, audit, and export routes."""
+"""Meta, doctor, summary, health and audit routes."""
 
 from __future__ import annotations
 
 import unittest
-
-from coordination_ui.api import TextResponse
 
 from .route_case import RouteTestCase
 
@@ -214,17 +212,6 @@ class AuditTests(MetaTestCase):
 
         with self.assertRaises(CoordinationError):
             self.get("/api/audit", actor="--actor")
-
-
-class ExportTests(MetaTestCase):
-    def test_export_returns_markdown_not_json(self) -> None:
-        response = self.get("/api/export")
-        self.assertIsInstance(response, TextResponse)
-        self.assertEqual(response.content_type, "text/markdown; charset=utf-8")
-        self.assertIn("#", response.body)
-
-    def test_export_mentions_seeded_tasks(self) -> None:
-        self.assertIn("T-1", self.get("/api/export").body)
 
 
 if __name__ == "__main__":

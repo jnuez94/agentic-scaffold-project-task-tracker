@@ -9,7 +9,6 @@ from http import HTTPStatus
 from typing import Any
 from urllib.parse import parse_qs, unquote, urlsplit
 
-from ..api import TextResponse
 from ..cli import CoordinationError
 from .json_body_reader import JsonBodyReader
 from .security_headers import SecurityHeaders
@@ -135,9 +134,6 @@ class RequestHandlerMixin:
             )
             return
 
-        if isinstance(result, TextResponse):
-            self.respond(HTTPStatus.OK, result.encode(), result.content_type)
-            return
         # The receipt rides beside data, as the CLI's own envelope carries it,
         # so the browser can say "Recorded as audit N" about what it just did.
         self.respond_json(HTTPStatus.OK, {"ok": True, "data": result, **receipt})

@@ -418,7 +418,7 @@ Required view:
 - Each finding links to the relevant task, session, agent, or escalation when a
   corresponding entity exists.
 
-### 3.13 Metadata, diagnostics, summary, and export
+### 3.13 Metadata, diagnostics, and summary
 
 The shell also needs:
 
@@ -426,8 +426,10 @@ The shell also needs:
   enumerations, and transition map;
 - doctor result: environment health;
 - summary: table counts, task status/priority counts, escalation/session counts,
-  agent workload, and recent audit;
-- Markdown export: preview/download of the CLI-rendered report.
+  agent workload, and recent audit.
+
+The Markdown report is not part of the console: it is `coordination export`,
+one CLI command, and every record it serialises is browsable in the console.
 
 The full filesystem database path is diagnostic information and should not be
 the default project label. Show a shortened path with an explicit reveal/copy
@@ -478,7 +480,6 @@ Governance
 System
   Health
   Audit log
-  Export
   Project / CLI diagnostics
 ```
 
