@@ -1,9 +1,6 @@
 /**
- * Promoting the blocking reason (UI-25).
- *
- * "Blocked claims" and "Notes" sat sixth and seventh in a scroll region showing
- * a fraction of its content, so the operator saw a Blocked chip and had to go
- * looking for the sentence explaining it. The answer now leads.
+ * The Overview of a task that is not blocked (UI-25). A blocked task's
+ * "Why this is blocked" is covered in BlockedReason.test.tsx (UI-83).
  */
 
 import { render, screen } from "@testing-library/react";
@@ -36,42 +33,6 @@ function detail(overrides: Partial<TaskDetail> = {}): TaskDetail {
 
 const firstFieldLabel = () =>
   document.querySelector(".blocked-reason .field-label, .field-label")?.textContent;
-
-describe("Overview — blocked tasks", () => {
-  it("leads with the blocking reason", () => {
-    render(<Overview detail={detail({ status: "blocked", blocked_claims: "Waiting on SEC-1." })} />);
-    expect(firstFieldLabel()).toBe("Why this is blocked");
-    expect(screen.getByRole("note").textContent).toContain("Waiting on SEC-1.");
-  });
-
-  it("keeps the full field set below, so nothing is moved out of its place", () => {
-    render(<Overview detail={detail({ status: "blocked", blocked_claims: "Waiting on SEC-1." })} />);
-    // Promotion is an answer offered early, not a field relocated.
-    expect(screen.getByText("Blocked claims")).toBeTruthy();
-    expect(screen.getByText("Description")).toBeTruthy();
-    expect(screen.getByText("Acceptance criteria")).toBeTruthy();
-  });
-
-  it("falls back to notes when there are no blocked claims", () => {
-    render(<Overview detail={detail({ status: "blocked", notes: "Owner is away." })} />);
-    expect(screen.getByRole("note").textContent).toContain("Owner is away.");
-  });
-
-  it("says so when a task is blocked with no recorded reason", () => {
-    // Silence here would read as "no reason needed" rather than "none given".
-    render(<Overview detail={detail({ status: "blocked" })} />);
-    expect(screen.getByRole("note").textContent).toMatch(/No blocking reason was recorded/i);
-  });
-
-  it("prefers blocked claims over notes when both exist", () => {
-    render(
-      <Overview
-        detail={detail({ status: "blocked", blocked_claims: "The claim.", notes: "The note." })}
-      />,
-    );
-    expect(screen.getByRole("note").textContent).toContain("The claim.");
-  });
-});
 
 describe("Overview — tasks that are not blocked", () => {
   it("shows no blocking callout", () => {

@@ -13,7 +13,6 @@
  * failure repeating. `raised_by` is the acting actor and read-only.
  */
 
-import type { Task } from "../api/contract.ts";
 import {
   ESCALATION_ID_SHAPE,
   isValidRecordId,
@@ -28,15 +27,6 @@ export interface EscalationDraft {
   neededBy: string;
   issue: string;
   requestedDecision: string;
-}
-
-/**
- * Why a task is blocked, as the inspector shows it: the authority boundary
- * first, the notes otherwise. Display only: it is never quoted into an
- * escalation (UI-49).
- */
-export function blockingReason(task: Pick<Task, "blocked_claims" | "notes">): string {
-  return task.blocked_claims?.trim() || task.notes?.trim() || "";
 }
 
 /** Escalation prefixes on this board, most-used first. */

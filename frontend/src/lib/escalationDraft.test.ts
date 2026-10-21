@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
 import {
-  blockingReason,
   escalationDraftTouched,
   buildEscalationRequest,
   checkEscalationDraft,
@@ -22,14 +21,6 @@ const draft = (over: Partial<EscalationDraft> = {}): EscalationDraft => ({
   issue: "stuck",
   requestedDecision: "unblock",
   ...over,
-});
-
-describe("blockingReason", () => {
-  it("prefers the authority boundary, then the notes, as the inspector does", () => {
-    expect(blockingReason({ blocked_claims: " why ", notes: "n" })).toBe("why");
-    expect(blockingReason({ blocked_claims: "", notes: " n " })).toBe("n");
-    expect(blockingReason({ blocked_claims: "", notes: "" })).toBe("");
-  });
 });
 
 describe("escalationPrefixes", () => {

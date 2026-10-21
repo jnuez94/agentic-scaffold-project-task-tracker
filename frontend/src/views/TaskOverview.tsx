@@ -8,7 +8,7 @@
 import type { TaskDetail } from "../api/contract.ts";
 import { Field, Tags, TextBlock } from "../components/Fields.tsx";
 import { absoluteTime } from "../lib/format.ts";
-import { blockingReason } from "../lib/escalationDraft.ts";
+import { BlockedReason } from "./BlockedReason.tsx";
 
 export function Overview({
   detail,
@@ -21,31 +21,14 @@ export function Overview({
   /** Opens the escalation form for this task (UI-49). */
   onEscalate?: () => void;
 }) {
-  // Why a task is blocked is the reason anyone opens a blocked task, and it sat
-  // sixth and seventh in a scroll region showing a fraction of its content: the
-  // operator saw a Blocked chip and had to go looking for the sentence that
-  // explains it. Promoted directly beneath the chip, and left in place below
-  // too — this is an answer offered early, not a field moved.
+  // Why a task is blocked is the reason anyone opens a blocked task, so it
+  // leads, directly beneath the chip, and is built from what blocks it
+  // (UI-83): never from "Does not authorize", which is a boundary.
   const blocked = detail.status === "blocked";
-  // Display only: an escalation's issue starts empty and never quotes this
-  // sentence (UI-49).
-  const reason = blockingReason(detail);
 
   return (
     <>
-      {blocked ? (
-        <div className="blocked-reason" role="note">
-          <span className="field-label">Why this is blocked</span>
-          {reason ? (
-            <TextBlock text={reason} />
-          ) : (
-            <p className="small muted">
-              No blocking reason was recorded. The task's state says blocked;
-              nothing on the record says why.
-            </p>
-          )}
-        </div>
-      ) : null}
+      {blocked ? <BlockedReason detail={detail} /> : null}
 
       <Field label="Description">
         <TextBlock text={detail.description} />
@@ -92,7 +75,9 @@ export function Overview({
       <Field label="Next steps" hideWhenEmpty>
         {detail.next_steps ? <TextBlock text={detail.next_steps} /> : ""}
       </Field>
-      <Field label="Blocked claims" hideWhenEmpty>
+      {/* The boundary of what finishing this task allows, under the one term
+          the console uses for it (UI-79, UI-83). Never shown as a reason. */}
+      <Field label="Does not authorize" hideWhenEmpty>
         {detail.blocked_claims ? (
           <TextBlock text={detail.blocked_claims} />
         ) : (
