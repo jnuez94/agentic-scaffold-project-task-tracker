@@ -147,7 +147,7 @@ describe("AgentRetirement — clause 1, retire and restore", () => {
   it("restores a retired agent, and says assignments are unchanged", async () => {
     const user = userEvent.setup();
     const { sent, fetchImpl } = harness();
-    show(fetchImpl, { ...AGENT, status: "inactive" } as Agent);
+    show(fetchImpl, { ...AGENT, status: "inactive" });
 
     expect(document.body.textContent).toMatch(/existing assignments are unchanged/i);
     await user.click(screen.getByRole("button", { name: /restore to active/i }));
@@ -156,7 +156,7 @@ describe("AgentRetirement — clause 1, retire and restore", () => {
   });
 
   it("does not warn about outstanding work when restoring", () => {
-    show(harness().fetchImpl, { ...AGENT, status: "inactive" } as Agent);
+    show(harness().fetchImpl, { ...AGENT, status: "inactive" });
     expect(screen.queryByRole("note")).toBeNull();
   });
 });

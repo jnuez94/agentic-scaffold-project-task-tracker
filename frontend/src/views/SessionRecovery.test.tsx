@@ -211,7 +211,7 @@ describe("SessionRecovery — outcomes", () => {
     await user.click(submitButton());
 
     await screen.findByRole("alert");
-    expect((screen.getByLabelText(/reason/i) as HTMLTextAreaElement).value).toBe("worth keeping");
+    expect(screen.getByLabelText<HTMLTextAreaElement>(/reason/i).value).toBe("worth keeping");
     expect(sent).toHaveLength(1);
     expect(onRecovered).not.toHaveBeenCalled();
   });

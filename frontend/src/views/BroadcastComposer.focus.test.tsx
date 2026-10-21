@@ -173,7 +173,7 @@ describe("Broadcast dialog focus containment", () => {
 
     expect(confirmSpy).toHaveBeenCalled();
     expect(onClose).not.toHaveBeenCalled();
-    expect((screen.getByLabelText("Message") as HTMLTextAreaElement).value).toBe(
+    expect(screen.getByLabelText<HTMLTextAreaElement>("Message").value).toBe(
       "half-written thought",
     );
     confirmSpy.mockRestore();

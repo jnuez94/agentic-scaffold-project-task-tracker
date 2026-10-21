@@ -14,7 +14,7 @@ const ago = (seconds: number) => new Date(NOW - seconds * 1000).toISOString();
 const AGENT = { id: "mikhail-ux", name: "Mikhail" } as Agent;
 
 function session(overrides: Partial<Session> = {}): Session {
-  return {
+  const row: Session = {
     id: "s-1",
     agent_id: "mikhail-ux",
     harness: "codex",
@@ -24,7 +24,8 @@ function session(overrides: Partial<Session> = {}): Session {
     last_seen_at: ago(7200),
     ended_at: null,
     ...overrides,
-  } as Session;
+  };
+  return row;
 }
 
 describe("blockingSessions", () => {
@@ -52,7 +53,7 @@ describe("retirementBlock — the console's own guards", () => {
   });
 
   it("refuses to retire local-operator", () => {
-    const block = retirementBlock({ id: PROTECTED_AGENT_ID, name: "Local Operator" } as Agent, "david", []);
+    const block = retirementBlock({ id: PROTECTED_AGENT_ID, name: "Local Operator" }, "david", []);
     expect(block?.kind).toBe("protected");
     expect(block?.reason).toContain("recreate it");
   });

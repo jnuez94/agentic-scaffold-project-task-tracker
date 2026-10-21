@@ -78,7 +78,7 @@ describe("BroadcastComposer presentation", () => {
     const { fetchImpl } = harness(async () => ({ id: "bcast-5" }));
     renderComposer(fetchImpl as unknown as typeof fetch);
 
-    const body = screen.getByLabelText("Message") as HTMLTextAreaElement;
+    const body = screen.getByLabelText<HTMLTextAreaElement>("Message");
     await user.type(body, "done");
     await user.click(screen.getByRole("button", { name: /send broadcast/i }));
 
@@ -99,8 +99,8 @@ describe("BroadcastComposer presentation", () => {
   it("marks sender and recipient read-only", () => {
     const { fetchImpl } = harness(async () => ({ id: "x" }));
     renderComposer(fetchImpl as unknown as typeof fetch);
-    expect((screen.getByLabelText("From") as HTMLInputElement).readOnly).toBe(true);
-    expect((screen.getByLabelText("To") as HTMLInputElement).readOnly).toBe(true);
+    expect(screen.getByLabelText<HTMLInputElement>("From").readOnly).toBe(true);
+    expect(screen.getByLabelText<HTMLInputElement>("To").readOnly).toBe(true);
   });
 
   it("moves focus to the composer heading on open", async () => {

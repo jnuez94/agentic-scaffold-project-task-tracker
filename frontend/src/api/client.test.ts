@@ -41,13 +41,13 @@ describe("ApiClient.url", () => {
 describe("ApiClient.get", () => {
   it("unwraps the data envelope", async () => {
     const fetchImpl = vi.fn().mockResolvedValue(jsonResponse({ ok: true, data: [1, 2] }));
-    const client = new ApiClient(() => null, "", fetchImpl as unknown as typeof fetch);
+    const client = new ApiClient(() => null, "", fetchImpl);
     await expect(client.get("/api/tasks")).resolves.toEqual([1, 2]);
   });
 
   it("omits the session header when there is no session", async () => {
     const fetchImpl = vi.fn().mockResolvedValue(jsonResponse({ ok: true, data: {} }));
-    const client = new ApiClient(() => null, "", fetchImpl as unknown as typeof fetch);
+    const client = new ApiClient(() => null, "", fetchImpl);
     await client.get("/api/meta");
     const headers = fetchImpl.mock.calls[0]?.[1]?.headers as Record<string, string>;
     expect(headers[SESSION_HEADER]).toBeUndefined();
@@ -55,7 +55,7 @@ describe("ApiClient.get", () => {
 
   it("sends the session header when one is active", async () => {
     const fetchImpl = vi.fn().mockResolvedValue(jsonResponse({ ok: true, data: {} }));
-    const client = new ApiClient(() => "s-1", "", fetchImpl as unknown as typeof fetch);
+    const client = new ApiClient(() => "s-1", "", fetchImpl);
     await client.get("/api/meta");
     const headers = fetchImpl.mock.calls[0]?.[1]?.headers as Record<string, string>;
     expect(headers[SESSION_HEADER]).toBe("s-1");
@@ -64,7 +64,7 @@ describe("ApiClient.get", () => {
   it("reads the session at call time, not construction time", async () => {
     let session: string | null = null;
     const fetchImpl = vi.fn().mockResolvedValue(jsonResponse({ ok: true, data: {} }));
-    const client = new ApiClient(() => session, "", fetchImpl as unknown as typeof fetch);
+    const client = new ApiClient(() => session, "", fetchImpl);
     session = "s-2";
     await client.get("/api/meta");
     const headers = fetchImpl.mock.calls[0]?.[1]?.headers as Record<string, string>;
@@ -78,7 +78,7 @@ describe("ApiClient.get", () => {
         409,
       ),
     );
-    const client = new ApiClient(() => null, "", fetchImpl as unknown as typeof fetch);
+    const client = new ApiClient(() => null, "", fetchImpl);
     await expect(client.get("/api/tasks")).rejects.toMatchObject({
       code: "stale_task_revision",
       status: 409,
@@ -87,13 +87,13 @@ describe("ApiClient.get", () => {
 
   it("reports a non-JSON failure without throwing a parse error", async () => {
     const fetchImpl = vi.fn().mockResolvedValue(new Response("<html>", { status: 500 }));
-    const client = new ApiClient(() => null, "", fetchImpl as unknown as typeof fetch);
+    const client = new ApiClient(() => null, "", fetchImpl);
     await expect(client.get("/api/tasks")).rejects.toBeInstanceOf(ApiError);
   });
 
   it("rejects a success payload without data", async () => {
     const fetchImpl = vi.fn().mockResolvedValue(jsonResponse({ ok: true }));
-    const client = new ApiClient(() => null, "", fetchImpl as unknown as typeof fetch);
+    const client = new ApiClient(() => null, "", fetchImpl);
     await expect(client.get("/api/tasks")).rejects.toMatchObject({ code: "unexpected_response" });
   });
 });
@@ -101,7 +101,7 @@ describe("ApiClient.get", () => {
 describe("ApiClient.post", () => {
   it("sends JSON and the content type the server requires", async () => {
     const fetchImpl = vi.fn().mockResolvedValue(jsonResponse({ ok: true, data: { id: "T-1" } }));
-    const client = new ApiClient(() => "s-1", "", fetchImpl as unknown as typeof fetch);
+    const client = new ApiClient(() => "s-1", "", fetchImpl);
     await client.post("/api/tasks", { id: "T-1" });
     const init = fetchImpl.mock.calls[0]?.[1] as RequestInit;
     expect(init.method).toBe("POST");
@@ -113,7 +113,7 @@ describe("ApiClient.post", () => {
 describe("ApiClient.withoutSession", () => {
   it("never sends the session header", async () => {
     const fetchImpl = vi.fn().mockResolvedValue(jsonResponse({ ok: true, data: {} }));
-    const client = new ApiClient(() => "s-1", "", fetchImpl as unknown as typeof fetch);
+    const client = new ApiClient(() => "s-1", "", fetchImpl);
     await client.withoutSession().post("/api/agents", { id: "local-operator" });
     const headers = fetchImpl.mock.calls[0]?.[1]?.headers as Record<string, string>;
     expect(headers[SESSION_HEADER]).toBeUndefined();
@@ -121,7 +121,7 @@ describe("ApiClient.withoutSession", () => {
 
   it("keeps the original client sending its session", async () => {
     const fetchImpl = vi.fn().mockResolvedValue(jsonResponse({ ok: true, data: {} }));
-    const client = new ApiClient(() => "s-1", "", fetchImpl as unknown as typeof fetch);
+    const client = new ApiClient(() => "s-1", "", fetchImpl);
     client.withoutSession();
     await client.get("/api/meta");
     const headers = fetchImpl.mock.calls[0]?.[1]?.headers as Record<string, string>;
@@ -130,7 +130,7 @@ describe("ApiClient.withoutSession", () => {
 
   it("preserves the base URL and fetch implementation", async () => {
     const fetchImpl = vi.fn().mockResolvedValue(jsonResponse({ ok: true, data: {} }));
-    const client = new ApiClient(() => "s", "/base", fetchImpl as unknown as typeof fetch);
+    const client = new ApiClient(() => "s", "/base", fetchImpl);
     await client.withoutSession().get("/api/meta");
     expect(fetchImpl.mock.calls[0]?.[0]).toBe("/base/api/meta");
   });

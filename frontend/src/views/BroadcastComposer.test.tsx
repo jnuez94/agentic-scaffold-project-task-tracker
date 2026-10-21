@@ -123,7 +123,7 @@ describe("BroadcastComposer", () => {
     });
     renderComposer(fetchImpl as unknown as typeof fetch);
 
-    const body = screen.getByLabelText("Message") as HTMLTextAreaElement;
+    const body = screen.getByLabelText<HTMLTextAreaElement>("Message");
     await user.type(body, "keep me");
     await user.click(screen.getByRole("button", { name: /send broadcast/i }));
 
