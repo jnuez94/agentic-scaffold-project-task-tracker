@@ -12,6 +12,7 @@
  * on error.code.
  */
 
+import { NEWEST_FIRST, SIDE_LIST_LIMIT } from "../lib/listQueries.ts";
 import { useEffect, useRef, useState } from "react";
 import type { TaskDetail } from "../api/contract.ts";
 import { ApiError } from "../api/errors.ts";
@@ -52,7 +53,12 @@ export function ReviewForm({
   onRecorded: () => void;
 }) {
   const { coordination, identity, announce, mutationsEnabled } = useApp();
-  const existing = useResource(() => coordination.reviews({ limit: 500 }), [coordination]);
+  // This task's reviews, where its suggested id lives; the first 500 reviews
+  // on the board missed every newer one (UI-86).
+  const existing = useResource(
+    () => coordination.reviews({ task: detail.id, order_by: NEWEST_FIRST, limit: SIDE_LIST_LIMIT }),
+    [coordination, detail.id],
+  );
   const existingIds = (existing.data ?? []).map((entry) => entry.id);
 
   const [draft, setDraft] = useState<ReviewDraft>(() => emptyReview(detail, []));

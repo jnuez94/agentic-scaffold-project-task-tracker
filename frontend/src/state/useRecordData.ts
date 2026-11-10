@@ -12,11 +12,14 @@
 
 import { useMemo } from "react";
 import type { Coordination } from "../api/coordination.ts";
+import { activeSessions, NEWEST_FIRST, openTasks } from "../lib/listQueries.ts";
 import type { RouteName } from "./useHashRoute.ts";
+import { useListWindow } from "./useListWindow.ts";
 import { useResource } from "./useResource.ts";
 import type { RecordConfig } from "../views/recordConfigs.tsx";
 
-const REQUEST_LIMIT = 500;
+/** Sessions have no created_at; they start. Every other list is newest by creation. */
+const NEWEST: Partial<Record<RouteName, string>> = { sessions: "started_at:desc" };
 
 export function useRecordData(
   coordination: Coordination,
@@ -29,35 +32,43 @@ export function useRecordData(
   // Compared by value: the same clauses in a new array are the same request.
   const whereKey = where.join("\u0000");
   const query = useMemo(() => {
-    const built: Record<string, string | string[]> = { limit: String(REQUEST_LIMIT) };
+    const built: Record<string, string | string[]> = {};
     if (where.length > 0) built["where"] = [...where];
-    if (orderBy) built["order_by"] = orderBy;
+    // Newest first unless the operator sorted (UI-86): the CLI's own order is
+    // oldest first, so a busy project's newest rows never loaded.
+    built["order_by"] = orderBy ?? NEWEST[route] ?? NEWEST_FIRST;
     return built;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [whereKey, orderBy]);
+  }, [whereKey, orderBy, route]);
 
-  const records = useResource(
-    () => (config ? config.load(coordination, query) : Promise.resolve([])),
+  const records = useListWindow<Record<string, unknown>>(
+    (page) =>
+      config
+        ? (config.load(coordination, { ...query, limit: String(page.limit), offset: String(page.offset) }) as Promise<
+            Record<string, unknown>[]
+          >)
+        : Promise.resolve([]),
+    (row) => String(row["id"]),
     [route, query, reloadKey],
     { enabled: Boolean(config) },
   );
 
   // Escalations need them to check a resolution's follow-up tasks (UI-82).
+  // Only open tasks: claims, assignments and follow-up work are never done.
   const needsTasks = Boolean(config?.rowAction) || route === "agents" || route === "escalations";
   const tasks = useResource(
-    () => (needsTasks ? coordination.tasks({ limit: REQUEST_LIMIT }) : Promise.resolve([])),
+    () => (needsTasks ? openTasks(coordination) : Promise.resolve([])),
     [coordination, route],
     { enabled: needsTasks },
   );
 
+  // The Agents inspector explains the CLI's active-session guard, so only
+  // active sessions matter.
   const sessions = useResource(
-    () =>
-      route === "agents"
-        ? coordination.sessions({ limit: REQUEST_LIMIT })
-        : Promise.resolve([]),
+    () => (route === "agents" ? activeSessions(coordination) : Promise.resolve([])),
     [coordination, route],
     { enabled: route === "agents" },
   );
 
-  return { records, tasks, sessions, requestLimit: REQUEST_LIMIT };
+  return { records, tasks, sessions };
 }

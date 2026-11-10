@@ -62,6 +62,7 @@ describe("TaskMessagesPanel", () => {
     expect(calls).toHaveLength(1);
     expect(calls[0]).toContain("task=T-1");
     expect(calls[0]).toContain("limit=500");
+    expect(calls[0]).toContain("order_by=created_at%3Adesc");
     const bodies = screen.getAllByText(/first word|a reply/).map((el) => el.textContent);
     expect(bodies).toEqual(["a reply", "first word"]);
   });

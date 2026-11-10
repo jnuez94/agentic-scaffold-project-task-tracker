@@ -201,6 +201,14 @@ class SinceTests(unittest.TestCase):
         ).rows()
         self.assertEqual(ids(rows), [1197, 1198, 1199])
 
+    def test_a_page_of_heartbeats_does_not_hide_the_changes_after_it(self) -> None:
+        rows = [
+            {"id": index, "action": "heartbeat" if index <= 600 else "update", "actor": "a", "object_id": "T-1"}
+            for index in range(1, 611)
+        ]
+        found = AuditWindow(FakeLog(rows), 500, {}, since=0, exclude_actions=("heartbeat",)).rows()
+        self.assertEqual(ids(found), list(range(601, 611)))
+
 
 if __name__ == "__main__":
     unittest.main()

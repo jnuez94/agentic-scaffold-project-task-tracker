@@ -9,10 +9,11 @@
  * and not to a task.
  */
 
+import { NEWEST_FIRST } from "../lib/listQueries.ts";
 import { useMemo } from "react";
 import type { Message } from "../api/contract.ts";
 import { EmptyState, ErrorBanner, SkeletonRows } from "../components/Feedback.tsx";
-import { isOwnMessage, loadedCountLabel } from "../lib/conversation.ts";
+import { isOwnMessage, loadedCountLabel, sortChronologically } from "../lib/conversation.ts";
 import { BROADCAST_HINT } from "../lib/copy.ts";
 import { isTruncated } from "../lib/pagination.ts";
 import { useApp } from "../state/AppContext.tsx";
@@ -30,11 +31,13 @@ export function TaskMessagesPanel({
 }) {
   const { coordination, identity } = useApp();
   const messages = useResource(
-    () => coordination.messages({ task: taskId, limit: REQUEST_LIMIT }),
+    // Newest first, so a task with more than 500 messages shows its latest (UI-86).
+    () => coordination.messages({ task: taskId, order_by: NEWEST_FIRST, limit: REQUEST_LIMIT }),
     [taskId],
   );
-  // The CLI lists oldest first; a tab is read from the latest word down.
-  const rows = useMemo<Message[]>(() => [...(messages.data ?? [])].reverse(), [messages.data]);
+  // A tab is read from the latest word down. Sorted here as well, so the order
+  // never depends on the server honouring order_by.
+  const rows = useMemo<Message[]>(() => sortChronologically(messages.data ?? []).reverse(), [messages.data]);
 
   if (messages.error) return <ErrorBanner error={messages.error} onRetry={messages.refresh} />;
   if (!messages.loaded) return <SkeletonRows rows={3} columns={2} />;
