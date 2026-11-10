@@ -2,8 +2,9 @@
  * The audit position a record was read at, kept with the record itself, for
  * "Since you loaded it" (UI-88).
  *
- * The ledger's head is read before and after each read of records. When the
- * two agree, nothing was written while the records were read, so the rows the
+ * The ledger's head is read before each read of records, and the audit log is
+ * asked afterwards for anything written since. When there is nothing (session
+ * heartbeats aside), nothing was written while the records were read, so the rows the
  * operator sees reflect exactly that head: only rows after it can be changes
  * since. When they differ, a write may or may not be in the rows, so the read
  * is made again. No clock is involved; the CLI stamps a record's `updated_at`
@@ -37,26 +38,56 @@ export function stamp<T extends object>(rows: T, head: number | undefined): T {
 const ATTEMPTS = 3;
 
 /**
- * Reads the records between two reads of the ledger head, and marks each
- * record with the head when both reads agree. Reads again when they differ.
+ * A fence around a read: the ledger's head before it, and whether anything
+ * was written after that head. Heartbeats are left out: they are written all
+ * the time and change no record a list shows.
+ */
+export interface Fence {
+  /** The ledger's head now, or undefined when it cannot be read. */
+  head: () => Promise<number | undefined>;
+  /** True when nothing but heartbeats was written after `head`. False if unknown. */
+  quietSince: (head: number) => Promise<boolean>;
+}
+
+export function ledgerFence(coordination: Coordination): Fence {
+  return {
+    head: async () => {
+      try {
+        return (await coordination.summary({ section: "totals" })).audit_cursor;
+      } catch {
+        return undefined;
+      }
+    },
+    quietSince: async (head) => {
+      try {
+        // `complete`: the server walks a bounded stretch of the log, and
+        // answers with an error, not an empty list, when it could not reach
+        // the end. An empty list is then proof, not a scan that gave up (UI-91).
+        const written = await coordination.audit({ since: head, exclude_action: "heartbeat", limit: 1, complete: true });
+        return written.length === 0;
+      } catch {
+        return false;
+      }
+    },
+  };
+}
+
+/**
+ * Reads the records inside a fence, and marks each record with the head read
+ * before them when nothing was written since. Reads again when something was.
  */
 export async function readMarked<T extends object>(
   coordination: Coordination,
   read: () => Promise<T[]>,
 ): Promise<T[]> {
-  const head = () =>
-    coordination
-      .summary({ section: "totals" })
-      .then((summary) => summary.audit_cursor)
-      .catch(() => undefined);
+  const fence = ledgerFence(coordination);
   let rows: T[] = [];
   for (let attempt = 0; attempt < ATTEMPTS; attempt += 1) {
-    const before = await head();
+    const before = await fence.head();
     rows = await read();
     // No head to compare: the rows stand unmarked.
     if (before === undefined) return rows;
-    const after = await head();
-    if (after === before) {
+    if (await fence.quietSince(before)) {
       for (const row of rows) stamp(row, before);
       return rows;
     }

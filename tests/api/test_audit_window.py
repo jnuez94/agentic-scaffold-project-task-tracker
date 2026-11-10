@@ -209,6 +209,42 @@ class SinceTests(unittest.TestCase):
         found = AuditWindow(FakeLog(rows), 500, {}, since=0, exclude_actions=("heartbeat",)).rows()
         self.assertEqual(ids(found), list(range(601, 611)))
 
+    def backlog(self, heartbeats: int) -> list[dict[str, object]]:
+        """``heartbeats`` heartbeats after the cursor, then one record update."""
+
+        return [
+            {"id": index, "action": "heartbeat" if index <= heartbeats else "update", "actor": "a", "object_id": "T-1"}
+            for index in range(1, heartbeats + 2)
+        ]
+
+    def test_a_scan_that_hits_its_cap_is_not_an_empty_answer_when_complete_is_asked(self) -> None:
+        # 10,000 heartbeats fill the whole bounded walk; the update after them
+        # is never examined, so "nothing was written" would be a false answer.
+        from coordination_ui.cli import CoordinationError
+
+        rows = self.backlog(10_000)
+        with self.assertRaises(CoordinationError) as raised:
+            AuditWindow(FakeLog(rows), 1, {}, since=0, exclude_actions=("heartbeat",), complete=True).rows()
+        self.assertEqual(raised.exception.code, "audit_scan_incomplete")
+        self.assertEqual(raised.exception.http_status, 503)
+        # Without ``complete`` the bounded answer stands, as before.
+        self.assertEqual(
+            AuditWindow(FakeLog(rows), 1, {}, since=0, exclude_actions=("heartbeat",)).rows(), []
+        )
+
+    def test_complete_finds_the_update_just_inside_the_walk(self) -> None:
+        found = AuditWindow(
+            FakeLog(self.backlog(9_999)), 1, {}, since=0, exclude_actions=("heartbeat",), complete=True
+        ).rows()
+        self.assertEqual(ids(found), [10_000])
+
+    def test_complete_answers_empty_when_the_walk_reaches_the_end_of_the_log(self) -> None:
+        heartbeats = self.backlog(9_999)[:-1]
+        found = AuditWindow(
+            FakeLog(heartbeats), 1, {}, since=0, exclude_actions=("heartbeat",), complete=True
+        ).rows()
+        self.assertEqual(found, [])
+
 
 if __name__ == "__main__":
     unittest.main()

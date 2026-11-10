@@ -11,6 +11,7 @@
  */
 
 import type { Coordination } from "../api/coordination.ts";
+import { ledgerFence, type Fence } from "./auditWatermark.ts";
 import { OPEN_SCOPE, requestStatus } from "../state/queueScopeStore.ts";
 
 export const SIDE_LIST_LIMIT = 500;
@@ -55,10 +56,18 @@ export class ListTooLong extends Error {
  */
 export async function readAll<T extends { id: string }>(
   page: (query: { order_by: string; limit: number; offset: number }) => Promise<T[]>,
+  fence?: Fence,
 ): Promise<T[]> {
   for (let attempt = 0; attempt < ATTEMPTS; attempt += 1) {
+    const head = await fence?.head();
     const rows = await readOnce(page);
-    if (rows) return rows;
+    if (!rows) continue;
+    // One page is one snapshot. Across pages, changes that cancel (one row
+    // out, one in, above the boundary) leave the boundary in place, so only
+    // the ledger can say nothing was written under the read (UI-90).
+    const pages = rows.length > SIDE_LIST_LIMIT;
+    if (pages && fence && head !== undefined && !(await fence.quietSince(head))) continue;
+    return rows;
   }
   throw new ListMoving();
 }
@@ -87,11 +96,11 @@ async function readOnce<T extends { id: string }>(
  * are only ever on these, and the checks that use them must see all of them.
  */
 export const openTasks = (coordination: Coordination) =>
-  readAll((page) => coordination.tasks({ status: requestStatus(OPEN_SCOPE), ...page }));
+  readAll((page) => coordination.tasks({ status: requestStatus(OPEN_SCOPE), ...page }), ledgerFence(coordination));
 
 /** Every active session: the ones a guard or a selector can mean. */
 export const activeSessions = (coordination: Coordination) =>
-  readAll((page) => coordination.sessions({ status: "active", ...page }));
+  readAll((page) => coordination.sessions({ status: "active", ...page }), ledgerFence(coordination));
 
 /** Newest first, for every list ordered by creation. */
 export const NEWEST_FIRST = "created_at:desc";

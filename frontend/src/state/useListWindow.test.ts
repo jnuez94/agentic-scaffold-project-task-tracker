@@ -314,4 +314,91 @@ describe("useListWindow", () => {
     expect(ids(result.current.data)).toEqual(["N", "B", "C", "D", "A", "E", "F"].slice(0, result.current.data!.length));
     expect(ids(result.current.data)).toContain("N");
   });
+
+  describe("with a fence over the audit log (UI-90)", () => {
+    /** A list with a ledger: every change the test makes moves the head. */
+    function ledgered(initial: string[]) {
+      let rows = initial;
+      let head = 1;
+      let onRead: ((count: number) => void) | null = null;
+      let reads = 0;
+      return {
+        load: (page: Page) => {
+          const answer = named(...rows.slice(page.offset, page.offset + page.limit));
+          reads += 1;
+          onRead?.(reads);
+          return Promise.resolve(answer);
+        },
+        fence: { head: () => Promise.resolve<number | undefined>(head), quietSince: (at: number) => Promise.resolve(head === at) },
+        write: (next: string[]) => {
+          rows = next;
+          head += 1;
+        },
+        heartbeat: () => undefined,
+        onRead: (hook: (count: number) => void) => (onRead = hook),
+        live: () => rows,
+      };
+    }
+
+    it("does not accept a re-read when two changes cancel and leave the boundary in place", async () => {
+      // Pages of three over T-0…T-9. T-0 is done, so Load older re-reads from
+      // the top: [T-1, T-2, T-3]. Then T-1 is done and unseen T-4 is updated
+      // to the top: [T-4, T-2, T-3, T-5, …]. Offset 2 still starts on T-3 and
+      // repeats nothing, yet T-4 was never read.
+      const all = Array.from({ length: 10 }, (_, index) => `T-${index}`);
+      const list = ledgered(all);
+      const { result } = renderHook(() =>
+        useListWindow(list.load, (row) => row.id, [], { pageSize: 3, fence: list.fence }),
+      );
+      await waitFor(() => expect(result.current.loaded).toBe(true));
+
+      list.write(all.slice(1));
+      // Read 2 is the older page, refused by the fence; read 3 is the re-read's first page.
+      list.onRead((count) => {
+        if (count === 3) list.write(["T-4", "T-2", "T-3", "T-5", "T-6", "T-7", "T-8", "T-9"]);
+      });
+      act(() => result.current.loadOlder());
+      await waitFor(() => expect(result.current.loadingOlder).toBe(false));
+
+      const got = ids(result.current.data);
+      expect(got).toEqual(list.live().slice(0, got.length));
+      expect(got).toContain("T-4");
+      expect(got).not.toContain("T-1");
+      expect(result.current.exhausted).toBe(false);
+    });
+
+    it("appends an older page without a re-read when nothing was written", async () => {
+      const list = ledgered(["R-0", "R-1", "R-2", "R-3", "R-4"]);
+      const asked: number[] = [];
+      const { result } = renderHook(() =>
+        useListWindow(
+          (page) => {
+            asked.push(page.offset);
+            return list.load(page);
+          },
+          (row) => row.id,
+          [],
+          { pageSize: 3, fence: list.fence },
+        ),
+      );
+      await waitFor(() => expect(result.current.loaded).toBe(true));
+      act(() => result.current.loadOlder());
+      await waitFor(() => expect(result.current.data).toHaveLength(5));
+      expect(asked).toEqual([0, 2]);
+    });
+
+    it("re-reads when something was written since the window was read, even if the page lines up", async () => {
+      // T-9 is updated to the top and T-0 is done: the boundary T-2 stays at offset 2.
+      const list = ledgered(["T-0", "T-1", "T-2", "T-3", "T-9"]);
+      const { result } = renderHook(() =>
+        useListWindow(list.load, (row) => row.id, [], { pageSize: 3, fence: list.fence }),
+      );
+      await waitFor(() => expect(result.current.loaded).toBe(true));
+
+      list.write(["T-9", "T-1", "T-2", "T-3"]);
+      act(() => result.current.loadOlder());
+      await waitFor(() => expect(result.current.loadingOlder).toBe(false));
+      expect(ids(result.current.data)).toEqual(["T-9", "T-1", "T-2", "T-3"]);
+    });
+  });
 });
