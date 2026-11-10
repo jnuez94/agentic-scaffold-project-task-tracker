@@ -205,4 +205,26 @@ describe("useOperatorSession", () => {
     // Exactly one confirming re-read, then the verdict stands. UI-14 still holds.
     expect(reads).toBe(2);
   });
+
+  it("finds its session in a project with more than 500 sessions", async () => {
+    // The CLI pages oldest first. Tablet had 937 sessions and the console's
+    // own was #929, so an unfiltered first page never contained it.
+    const onStaleCleared = vi.fn();
+    const history = Array.from({ length: 500 }, (_, index) =>
+      session({ id: `old-${index}`, status: "ended", agent_id: "jade" }),
+    );
+    const current = session({ id: "console-new" });
+    const api = {
+      sessions: (query?: Record<string, unknown>) =>
+        Promise.resolve(query?.status === "active" ? [current] : history),
+    } as unknown as Coordination;
+
+    const { result } = renderHook(() =>
+      useOperatorSession(api, "local-operator", "console-new", onStaleCleared),
+    );
+
+    await waitFor(() => expect(result.current.activeSessionId).toBe("console-new"));
+    expect(result.current.selectable.map((row) => row.id)).toEqual(["console-new"]);
+    expect(onStaleCleared).not.toHaveBeenCalled();
+  });
 });

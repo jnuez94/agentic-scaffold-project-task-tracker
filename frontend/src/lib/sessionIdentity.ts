@@ -59,7 +59,7 @@ export function sessionReason(
     case "none-selected":
       return `No active session is selected for ${actorId}. Start or select one in the header.`;
     case "missing":
-      return `The previously selected session no longer exists. Select an active session for ${actorId}.`;
+      return `The previously selected session is no longer active. Select an active session for ${actorId}.`;
     case "ended":
       return `The previously selected session has ended. Select an active session for ${actorId}.`;
     case "wrong-actor":

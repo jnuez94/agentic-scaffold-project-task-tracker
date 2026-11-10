@@ -20,7 +20,7 @@ import {
 import { useResource } from "./useResource.ts";
 
 export interface OperatorSession {
-  /** Every session known to the project, for the selector. */
+  /** Every active session in the project. */
   sessions: Session[];
   /** Active sessions belonging to the selected actor. */
   selectable: Session[];
@@ -40,7 +40,15 @@ export function useOperatorSession(
   persistedSessionId: string | null,
   onStaleCleared: () => void,
 ): OperatorSession {
-  const resource = useResource(() => coordination.sessions({ limit: 500 }), [coordination]);
+  // Ask for active sessions only. The CLI lists oldest first, so an
+  // unfiltered page stops at the project's first 500 sessions; once a project
+  // passes that, the console's own new session falls off the end, reads as
+  // `missing`, gets cleared, and cannot be picked in the header. Only active
+  // sessions can be selected or resolved anyway, and there are few of them.
+  const resource = useResource(
+    () => coordination.sessions({ status: "active", limit: 500 }),
+    [coordination],
+  );
   const sessions = resource.data ?? [];
 
   // Before the list arrives there is nothing to validate against, so treat the
