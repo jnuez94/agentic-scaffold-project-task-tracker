@@ -8,14 +8,21 @@
  *   loaded revision says so ("revision 3 -> 4");
  * - a decision, an artifact or an escalation is guarded by status, so the
  *   change that lost the race is the first move away from the loaded status,
- *   and everything recorded after it counts.
+ *   and everything recorded after it counts. A status can be revisited
+ *   (draft -> review -> draft), so the search starts at the loaded row's
+ *   `updated_at`: a move recorded before the snapshot was taken is history,
+ *   not a change since. Rows after that second count even when they come
+ *   before the move (a correction made after the load).
  */
 
 import type { AuditEntry } from "../api/contract.ts";
 import { parseBecause } from "./because.ts";
 import { humanize } from "./labels.ts";
 
-export type Loaded = { revision: number } | { status: string };
+export type Loaded =
+  | { revision: number }
+  /** `updatedAt` is the loaded row's `updated_at`, the snapshot's boundary. */
+  | { status: string; updatedAt?: string };
 
 /** What the operator was changing, to name a collision ("You were editing Assignees"). */
 export interface Editing {
@@ -36,8 +43,15 @@ export function changesSince(entries: readonly AuditEntry[], loaded: Loaded): Au
       return match ? Number(match[1]) >= loaded.revision : false;
     });
   } else {
-    const first = ascending.findIndex((entry) => entry.detail.startsWith(`${loaded.status} -> `));
-    since = first === -1 ? [] : ascending.slice(first);
+    // Timestamps are whole seconds, so a row in the snapshot's own second may
+    // be the change that produced it or one that raced it: those count only
+    // from the move away from the loaded status. Later seconds always count.
+    const boundary = loaded.updatedAt ? Date.parse(loaded.updatedAt) : Number.NEGATIVE_INFINITY;
+    const after = ascending.filter((entry) => Date.parse(entry.created_at) >= boundary);
+    const move = after.findIndex((entry) => entry.detail.startsWith(`${loaded.status} -> `));
+    const later = loaded.updatedAt ? after.findIndex((entry) => Date.parse(entry.created_at) > boundary) : -1;
+    const starts = [move, later].filter((index) => index !== -1);
+    since = starts.length && move !== -1 ? after.slice(Math.min(...starts)) : [];
   }
   return since.reverse();
 }

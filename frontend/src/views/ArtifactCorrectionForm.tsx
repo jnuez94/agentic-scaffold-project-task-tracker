@@ -70,7 +70,7 @@ export function ArtifactCorrectionForm({
       title={`Correct record · ${artifact.id}`}
       headingId="artifact-correct-heading"
       error={error}
-      conflict={mismatch ? <SinceLoaded objectType="artifact" objectId={artifact.id} loaded={{ status: artifact.status }} editing={EDITING.correction} /> : undefined}
+      conflict={mismatch ? <SinceLoaded objectType="artifact" objectId={artifact.id} loaded={{ status: artifact.status, updatedAt: artifact.updated_at }} editing={EDITING.correction} /> : undefined}
       blocked={blocked}
       pending={pending}
       submitLabel="Correct record"
