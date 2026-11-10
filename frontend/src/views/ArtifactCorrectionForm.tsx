@@ -20,6 +20,7 @@ import {
 import { NOT_VERIFIED_MANY } from "../lib/artifactPaths.ts";
 import { errorCopy, hasErrorCopy } from "../lib/errorCopy.ts";
 import { useApp } from "../state/AppContext.tsx";
+import { useLoadedWatermark } from "../state/useLoadedWatermark.ts";
 import { RecordSheet } from "./RecordSheet.tsx";
 import { SinceLoaded } from "./SinceLoaded.tsx";
 import { EDITING } from "../lib/sinceLoaded.ts";
@@ -34,6 +35,7 @@ export function ArtifactCorrectionForm({
   onChanged: () => void;
 }) {
   const { coordination, identity, announce } = useApp();
+  const auditId = useLoadedWatermark("artifact", "artifacts", artifact);
   const [draft, setDraft] = useState(() => correctionDraftFrom(artifact));
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -70,7 +72,7 @@ export function ArtifactCorrectionForm({
       title={`Correct record · ${artifact.id}`}
       headingId="artifact-correct-heading"
       error={error}
-      conflict={mismatch ? <SinceLoaded objectType="artifact" objectId={artifact.id} loaded={{ status: artifact.status, updatedAt: artifact.updated_at }} editing={EDITING.correction} /> : undefined}
+      conflict={mismatch ? <SinceLoaded objectType="artifact" objectId={artifact.id} loaded={{ status: artifact.status, updatedAt: artifact.updated_at, auditId }} editing={EDITING.correction} /> : undefined}
       blocked={blocked}
       pending={pending}
       submitLabel="Correct record"

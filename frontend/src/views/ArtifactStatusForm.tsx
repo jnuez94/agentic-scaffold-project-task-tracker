@@ -17,6 +17,7 @@ import {
 } from "../lib/artifactActions.ts";
 import { errorCopy, hasErrorCopy } from "../lib/errorCopy.ts";
 import { useApp } from "../state/AppContext.tsx";
+import { useLoadedWatermark } from "../state/useLoadedWatermark.ts";
 import { RecordSheet } from "./RecordSheet.tsx";
 import { SinceLoaded } from "./SinceLoaded.tsx";
 import { EDITING } from "../lib/sinceLoaded.ts";
@@ -31,6 +32,7 @@ export function ArtifactStatusForm({
   onChanged: () => void;
 }) {
   const { coordination, identity, announce } = useApp();
+  const auditId = useLoadedWatermark("artifact", "artifacts", artifact);
   const [status, setStatus] = useState<ArtifactStatus | "">("");
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -65,7 +67,7 @@ export function ArtifactStatusForm({
       title={`Change status · ${artifact.id}`}
       headingId="artifact-status-heading"
       error={error}
-      conflict={mismatch ? <SinceLoaded objectType="artifact" objectId={artifact.id} loaded={{ status: artifact.status, updatedAt: artifact.updated_at }} editing={EDITING.status} /> : undefined}
+      conflict={mismatch ? <SinceLoaded objectType="artifact" objectId={artifact.id} loaded={{ status: artifact.status, updatedAt: artifact.updated_at, auditId }} editing={EDITING.status} /> : undefined}
       blocked={blocked}
       pending={pending}
       submitLabel="Change status"

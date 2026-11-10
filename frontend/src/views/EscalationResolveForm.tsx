@@ -25,6 +25,7 @@ import {
   type TaskIdState,
 } from "../lib/escalationResolution.ts";
 import { useApp } from "../state/AppContext.tsx";
+import { useLoadedWatermark } from "../state/useLoadedWatermark.ts";
 import { BecausePicker } from "./BecausePicker.tsx";
 import { RecordSheet } from "./RecordSheet.tsx";
 import { SinceLoaded } from "./SinceLoaded.tsx";
@@ -42,6 +43,7 @@ export function EscalationResolveForm({
   onChanged: () => void;
 }) {
   const { coordination, identity, announce } = useApp();
+  const auditId = useLoadedWatermark("escalation", "escalations", escalation);
   const [draft, setDraft] = useState<ResolutionDraft>(emptyResolution);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -81,7 +83,7 @@ export function EscalationResolveForm({
       title={`Resolve · ${escalation.id}`}
       headingId="escalation-resolve-heading"
       error={error}
-      conflict={mismatch ? <SinceLoaded objectType="escalation" objectId={escalation.id} loaded={{ status: escalation.status, updatedAt: escalation.updated_at }} editing={EDITING.status} /> : undefined}
+      conflict={mismatch ? <SinceLoaded objectType="escalation" objectId={escalation.id} loaded={{ status: escalation.status, updatedAt: escalation.updated_at, auditId }} editing={EDITING.status} /> : undefined}
       blocked={blocked}
       pending={pending}
       submitLabel="Resolve"
