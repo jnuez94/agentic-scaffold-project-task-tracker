@@ -11,7 +11,14 @@
 import { Fragment, useMemo } from "react";
 import type { TaskDetail } from "../api/contract.ts";
 import { becauseHref, describeCause } from "../lib/because.ts";
-import { blockingCause, blockingTaskIds, NO_RECORDED_REASON, waitsOn } from "../lib/blockedReason.ts";
+import {
+  BLOCKING_ACTIONS,
+  blockingCause,
+  blockingRecovery,
+  blockingTaskIds,
+  NO_RECORDED_REASON,
+  waitsOn,
+} from "../lib/blockedReason.ts";
 import { useApp } from "../state/AppContext.tsx";
 import { buildHash } from "../state/useHashRoute.ts";
 import { useResource } from "../state/useResource.ts";
@@ -29,12 +36,21 @@ export function BlockedReason({ detail }: { detail: TaskDetail }) {
     { enabled: ids.length > 0 },
   );
   const history = useResource(
-    () => coordination.audit({ object_type: "task", object_id: detail.id, action: "status", limit: HISTORY_LIMIT }),
+    // Status moves and session recoveries both move a task into blocked.
+    () =>
+      Promise.all(
+        BLOCKING_ACTIONS.map((action) =>
+          coordination.audit({ object_type: "task", object_id: detail.id, action, limit: HISTORY_LIMIT }),
+        ),
+      ).then((pages) => pages.flat()),
     [coordination, detail.id, detail.revision],
   );
 
   const waits = waitsOn(ids, blockers.data ?? []);
-  const cause = blockingCause(history.data ?? []);
+  // Only this task's rows, whatever the resource still holds.
+  const own = (history.data ?? []).filter((entry) => entry.object_id === detail.id);
+  const cause = blockingCause(own);
+  const recovery = blockingRecovery(own);
 
   return (
     <div className="blocked-reason" role="note">
@@ -59,7 +75,13 @@ export function BlockedReason({ detail }: { detail: TaskDetail }) {
           Blocked because of <a href={becauseHref(cause)}>{describeCause(cause)}</a>.
         </p>
       ) : null}
-      {!waits.length && !cause && history.loaded ? (
+      {recovery ? (
+        <p>
+          Blocked when {recovery.session ? <span className="mono">session {recovery.session}</span> : "its session"}{" "}
+          was recovered{recovery.reason ? `: ${recovery.reason}` : ""}.
+        </p>
+      ) : null}
+      {!waits.length && !cause && !recovery && history.loaded ? (
         <p className="small muted">{NO_RECORDED_REASON}</p>
       ) : null}
     </div>

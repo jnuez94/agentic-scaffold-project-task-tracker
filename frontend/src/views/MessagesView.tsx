@@ -20,13 +20,13 @@ import { loadedCountLabel } from "../lib/conversation.ts";
 import { markedReadLine } from "../lib/inbox.ts";
 import { filterRows } from "../lib/filters.ts";
 import { CLEAR_FILTER_HINT, NO_MESSAGES_MATCH } from "../lib/copy.ts";
-import { isTruncated } from "../lib/pagination.ts";
 import { getScrollParent, scrollToBottom } from "../lib/scrollParent.ts";
 import { useMeasuredHeight } from "../state/useMeasuredHeight.ts";
 import { useApp } from "../state/AppContext.tsx";
 import { BOUNDS } from "../state/layoutStore.ts";
 import type { Layout } from "../state/useLayout.ts";
-import { useResource } from "../state/useResource.ts";
+import { useListWindow } from "../state/useListWindow.ts";
+import { LoadOlder } from "../components/LoadOlder.tsx";
 import { useMessageView } from "../state/useMessageView.ts";
 import type { InboxState } from "../state/useInbox.ts";
 import { resolveMessageView } from "../state/viewPreference.ts";
@@ -35,8 +35,6 @@ import { InboxView } from "./InboxView.tsx";
 import { MessageInspector } from "./MessageInspector.tsx";
 import { RECORD_CONFIGS } from "./recordConfigs.tsx";
 import { receiptSuffix } from "../lib/receipt.ts";
-
-const REQUEST_LIMIT = 500;
 
 export function MessagesView({
   filter,
@@ -76,9 +74,22 @@ export function MessagesView({
   };
 
   const config = RECORD_CONFIGS.messages;
-  const resource = useResource(
-    () => coordination.messages({ limit: REQUEST_LIMIT }),
+  // Newest first, a page at a time (UI-86): oldest first stopped at the
+  // project's first 500 messages and never showed the latest.
+  const resource = useListWindow(
+    (page) => coordination.messages({ order_by: "created_at:desc", ...page }),
+    (message) => message.id,
     [coordination, reloadKey],
+  );
+  const loadOlder = (announce?: () => void) => (
+    <LoadOlder
+      exhausted={resource.exhausted}
+      loading={resource.loadingOlder}
+                busy={resource.loading || !resource.pageable}
+      onLoad={resource.loadOlder}
+      announce={announce}
+      endLabel="All messages loaded"
+    />
   );
 
   const rows = useMemo(
@@ -224,6 +235,9 @@ export function MessagesView({
             <SkeletonRows rows={6} columns={3} />
           ) : null}
 
+          {resource.loaded && view === "conversation" && !resource.exhausted ? (
+            <p className="small">{loadOlder()}</p>
+          ) : null}
           {resource.loaded && view === "conversation" ? (
             <ConversationView
               messages={rows}
@@ -244,7 +258,8 @@ export function MessagesView({
               defaultOrder={config.defaultOrder}
               idPrefix="messages"
               filtered={Boolean(filter)}
-              truncated={isTruncated((resource.data ?? []).length, REQUEST_LIMIT)}
+              truncated={!resource.exhausted}
+              pagerCopy={{ truncatedNotice: ({ announce }) => loadOlder(announce) }}
               loaded={resource.loaded}
               loading={resource.loading}
               selectedKey={selected?.id ?? null}

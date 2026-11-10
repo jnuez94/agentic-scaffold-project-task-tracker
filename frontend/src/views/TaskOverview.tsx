@@ -28,7 +28,9 @@ export function Overview({
 
   return (
     <>
-      {blocked ? <BlockedReason detail={detail} /> : null}
+      {/* Keyed by task: switching tasks must not show the last task's cause
+       * while the next one's history loads, or after it fails. */}
+      {blocked ? <BlockedReason key={detail.id} detail={detail} /> : null}
 
       <Field label="Description">
         <TextBlock text={detail.description} />

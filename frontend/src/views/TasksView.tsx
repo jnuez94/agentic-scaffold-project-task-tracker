@@ -11,7 +11,7 @@ import { ResizeHandle } from "../components/ResizeHandle.tsx";
 import { attentionReason, needsAttention, type AttentionReason } from "../lib/attention.ts";
 import { attentionTotal, summariseAttention } from "../lib/attentionSummary.ts";
 import { filterRows } from "../lib/filters.ts";
-import { isTruncated, rangeLabel } from "../lib/pagination.ts";
+import { rangeLabel } from "../lib/pagination.ts";
 import { anyPicked, whereClauses, type PickerValues } from "../lib/recordPickers.ts";
 import { orderByTerm } from "../lib/requestOrder.ts";
 import { timeInStateLine } from "../lib/timeInState.ts";
@@ -25,6 +25,9 @@ import { useQueueScope } from "../state/useQueueScope.ts";
 import { OPEN_SCOPE, requestStatus } from "../state/queueScopeStore.ts";
 import { useBoardWatch } from "../state/useBoardWatch.ts";
 import { useResource } from "../state/useResource.ts";
+import { useListWindow } from "../state/useListWindow.ts";
+import { activeSessions } from "../lib/listQueries.ts";
+import { LoadOlder } from "../components/LoadOlder.tsx";
 import { TaskInspector } from "./TaskInspector.tsx";
 import { TaskCreatePanel } from "./TaskCreatePanel.tsx";
 import { TASK_DEFAULT_ORDER, taskColumns } from "./taskColumns.tsx";
@@ -61,14 +64,18 @@ export function TasksView({
   const [picked, setPicked] = useState<PickerValues>({});
   const where = useMemo(() => whereClauses(picked), [picked]);
 
-  const tasks = useResource(
-    () => coordination.tasks({
+  // Most recently changed first unless the operator sorted (UI-86), a page
+  // at a time: the CLI's own order is oldest first, which left the newest
+  // work off a board past 500 tasks.
+  const tasks = useListWindow(
+    (page) => coordination.tasks({
         status: requestStatus(scope),
         assignee: assignee || undefined,
         where: where.length ? where : undefined,
-        order_by: orderBy,
-        limit: REQUEST_LIMIT,
+        order_by: orderBy ?? "updated_at:desc",
+        ...page,
       }),
+    (task) => task.id,
     [scope, assignee, orderBy, where],
   );
 
@@ -83,7 +90,7 @@ export function TasksView({
   // Sessions, only so the stale-claim clause of needsAttention can fire. Kept
   // separate from the task load so a sessions failure quiets the highlight
   // rather than emptying the queue.
-  const sessions = useResource(() => coordination.sessions({ status: "active" }), []);
+  const sessions = useResource(() => activeSessions(coordination), []);
   const staleSessionIds = useMemo(() => {
     const now = new Date();
     return new Set(
@@ -117,9 +124,12 @@ export function TasksView({
   const watch = useBoardWatch(
     {
       head: () => coordination.summary({ section: "totals" }).then((summary) => summary.audit_cursor),
-      changes: (since) => coordination.audit({ since, limit: REQUEST_LIMIT }),
+      // Heartbeats left out by the server, so a page of them cannot hide a change (UI-86).
+      changes: (since) => coordination.audit({ since, exclude_action: "heartbeat", limit: REQUEST_LIMIT }),
     },
-    tasks.data,
+    // Anchored to the newest page's read, not the rows: appending older rows
+    // must not re-anchor the watch and clear a pending notice (UI-86).
+    tasks.lastUpdated,
     { enabled: tasks.loaded },
   );
 
@@ -258,19 +268,29 @@ export function TasksView({
           requestSort={{ state: requestSort, onChange: setRequestSort }}
           idPrefix="tasks"
           filtered={Boolean(filter)}
-          truncated={isTruncated((tasks.data ?? []).length, REQUEST_LIMIT)}
-          pagerCopy={
-            anyPicked(picked)
+          truncated={!tasks.exhausted}
+          pagerCopy={{
+            ...(anyPicked(picked)
               ? {
-                  rangeLabel: (page, size, total) =>
+                  rangeLabel: (page: number, size: number, total: number) =>
                     rangeLabel(page, size, total, {
                       matching: true,
                       filtered: Boolean(filter),
-                      truncated: isTruncated((tasks.data ?? []).length, REQUEST_LIMIT),
+                      truncated: !tasks.exhausted,
                     }),
                 }
-              : undefined
-          }
+              : {}),
+            truncatedNotice: ({ announce }) => (
+              <LoadOlder
+                exhausted={tasks.exhausted}
+                loading={tasks.loadingOlder}
+                busy={tasks.loading || !tasks.pageable}
+                onLoad={tasks.loadOlder}
+                announce={announce}
+                endLabel="All tasks loaded"
+              />
+            ),
+          }}
           loading={tasks.loading}
           loaded={tasks.loaded}
           selectedKey={selectedId}

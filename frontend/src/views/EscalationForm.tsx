@@ -16,6 +16,7 @@
  * duplicate check and the same suggestion without either having to load them.
  */
 
+import { NEWEST_FIRST, SIDE_LIST_LIMIT } from "../lib/listQueries.ts";
 import { useEffect, useRef, useState } from "react";
 import type { Agent } from "../api/contract.ts";
 import { ApiError } from "../api/errors.ts";
@@ -65,7 +66,12 @@ export function EscalationForm({
   onRaised: (id: string) => void;
 }) {
   const { coordination, identity, announce, mutationsEnabled } = useApp();
-  const existing = useResource(() => coordination.escalations({ limit: 500 }), [coordination]);
+  // Newest first: the first 500 escalations missed every newer id, so the
+  // suggested id could already be taken (UI-86).
+  const existing = useResource(
+    () => coordination.escalations({ order_by: NEWEST_FIRST, limit: SIDE_LIST_LIMIT }),
+    [coordination],
+  );
   const existingIds = (existing.data ?? []).map((entry) => entry.id);
 
   const [draft, setDraft] = useState<EscalationDraft>(() =>

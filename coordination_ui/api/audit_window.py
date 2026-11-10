@@ -11,6 +11,8 @@ Runner = Callable[[ArgumentBuilder], Any]
 
 # The CLI's maximum --limit; a page of this size is the cheapest full step.
 PAGE_SIZE = 500
+# How far a filtered read forward may walk: 10,000 rows past the cursor.
+MAX_FORWARD_PAGES = 20
 
 
 class AuditWindow:
@@ -63,7 +65,19 @@ class AuditWindow:
         """What was recorded after ``cursor``, oldest first: ``audit list --since``
         as the CLI spells it, with the filters and exclusions applied."""
 
-        return self._survivors(self._page(since=cursor, limit=self.limit))
+        if not self.exclude_actions:
+            return self._page(since=cursor, limit=self.limit)
+        # With exclusions, one page can be all heartbeats and hide every change
+        # after it, so walk forward until ``limit`` rows survive or the log ends
+        # (UI-86). Bounded, so a long-idle cursor cannot walk the whole log.
+        kept: list[dict[str, Any]] = []
+        for _ in range(MAX_FORWARD_PAGES):
+            page = self._page(since=cursor, limit=PAGE_SIZE)
+            kept.extend(self._survivors(page))
+            if len(kept) >= self.limit or len(page) < PAGE_SIZE:
+                break
+            cursor = int(page[-1]["id"])
+        return kept[: self.limit]
 
     # -- the two recipes ----------------------------------------------------
 

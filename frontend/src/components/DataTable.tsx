@@ -9,7 +9,7 @@
 
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { EmptyState, SkeletonRows } from "./Feedback.tsx";
-import { Pagination, type PagerCopy } from "./Pagination.tsx";
+import { Pagination, TruncatedNotice, type PagerCopy } from "./Pagination.tsx";
 import { SortableHead } from "./SortableHead.tsx";
 import { clampPage, pageSlice } from "../lib/pagination.ts";
 import { usePageSize } from "../state/usePageSize.ts";
@@ -120,7 +120,14 @@ export function DataTable<T>({
     return <SkeletonRows rows={6} columns={columns.length} />;
   }
   if (rows.length === 0) {
-    return <EmptyState title={emptyTitle} hint={emptyHint} />;
+    // Nothing matched in the rows loaded so far, but older rows may: keep the
+    // control that loads them (UI-86).
+    return (
+      <>
+        <EmptyState title={emptyTitle} hint={emptyHint} />
+        {paginate && truncated ? <TruncatedNotice copy={pagerCopy} /> : null}
+      </>
+    );
   }
 
   return (

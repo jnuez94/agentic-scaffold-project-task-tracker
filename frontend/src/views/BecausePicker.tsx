@@ -8,6 +8,7 @@
  * not cite anything. Only records that exist are offered.
  */
 
+import { NEWEST_FIRST } from "../lib/listQueries.ts";
 import { useState } from "react";
 import { FormField } from "../components/FormField.tsx";
 import { causeOptions, type CauseSubject } from "../lib/because.ts";
@@ -32,12 +33,13 @@ export function BecausePicker({
   const { coordination } = useApp();
   const [open, setOpen] = useState(Boolean(value));
   const decisions = useResource(
-    () => coordination.decisions({ limit: REQUEST_LIMIT }),
+    // Newest first: a cause is usually recent, and the first 500 missed it (UI-86).
+    () => coordination.decisions({ order_by: NEWEST_FIRST, limit: REQUEST_LIMIT }),
     [subject.id],
     { enabled: open },
   );
   const escalations = useResource(
-    () => coordination.escalations({ status: "open", limit: REQUEST_LIMIT }),
+    () => coordination.escalations({ status: "open", order_by: NEWEST_FIRST, limit: REQUEST_LIMIT }),
     [subject.id],
     { enabled: open },
   );

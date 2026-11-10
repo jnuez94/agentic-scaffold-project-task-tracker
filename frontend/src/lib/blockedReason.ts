@@ -12,7 +12,11 @@
  *    CLI writes a status note into the task's notes field, replacing what was
  *    there, not into the audit detail, so the note itself is not in the
  *    history and is not read here;
- * 3. neither: a stated absence.
+ * 3. session recovery: when a claim's session is recovered, the CLI moves the
+ *    task into blocked as a `recover_claim` row, not a `status` row. That
+ *    move starts a new blocked episode, so a cause cited on an earlier move is
+ *    not carried across it; the recovery and its reason are shown instead;
+ * 4. none of these: a stated absence.
  *
  * `blocked_claims` and `notes` are never the reason. Both keep their own
  * places on the Overview, shown in full.
@@ -33,16 +37,49 @@ export function blockingTaskIds(taskId: string, dependencies: readonly Dependenc
     .map((edge) => edge.depends_on_task_id);
 }
 
+const INTO_BLOCKED = /-> blocked(;|$)/;
+
+/** Actions that can move a task into blocked: a status change, or session recovery. */
+export const BLOCKING_ACTIONS = ["status", "recover_claim"] as const;
+
+/** The most recent move into blocked, from a task's audit rows in any order. */
+function latestBlockingMove(entries: readonly AuditEntry[]): AuditEntry | undefined {
+  return entries
+    .filter(
+      (entry) =>
+        (BLOCKING_ACTIONS as readonly string[]).includes(entry.action) && INTO_BLOCKED.test(entry.detail),
+    )
+    .reduce<AuditEntry | undefined>((latest, entry) => (!latest || entry.id > latest.id ? entry : latest), undefined);
+}
+
 /**
- * The cause cited with the most recent move into blocked, from a task's
- * status audit rows in any order. Null when the move cited none.
+ * The cause cited with the most recent move into blocked. Null when that move
+ * cited none, including when it was a session recovery.
  */
 export function blockingCause(entries: readonly AuditEntry[]): Because | null {
-  const moves = entries
-    .filter((entry) => entry.action === "status" && /-> blocked(;|$)/.test(entry.detail))
-    .sort((a, b) => b.id - a.id);
-  const latest = moves[0];
-  return latest ? parseBecause(latest.detail).because : null;
+  const latest = latestBlockingMove(entries);
+  return latest?.action === "status" ? parseBecause(latest.detail).because : null;
+}
+
+export interface Recovery {
+  /** The recovered session, when the row names it. */
+  session: string | null;
+  /** The reason given for the recovery, or "" when none was. */
+  reason: string;
+}
+
+/**
+ * When the most recent move into blocked was a session recovery, what it
+ * recorded. The CLI writes `session ID; old -> blocked; revision a -> b; REASON`.
+ */
+export function blockingRecovery(entries: readonly AuditEntry[]): Recovery | null {
+  const latest = latestBlockingMove(entries);
+  if (latest?.action !== "recover_claim") return null;
+  const parts = latest.detail.split("; ");
+  const session = /^session (\S+)$/.exec(parts[0] ?? "")?.[1] ?? latest.session_id ?? null;
+  const revision = parts.findIndex((part) => part.startsWith("revision "));
+  const reason = revision >= 0 ? parts.slice(revision + 1).join("; ").trim() : "";
+  return { session, reason };
 }
 
 export interface WaitsOn {

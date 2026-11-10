@@ -69,8 +69,9 @@ function show(task: TaskDetail, history: AuditEntry[]) {
   const fetchImpl = vi.fn(async (input: RequestInfo | URL) => {
     const url = String(input);
     calls.push(url);
+    const action = new URL(url, "http://x").searchParams.get("action");
     const data = url.includes("/api/audit")
-      ? history
+      ? history.filter((entry) => !action || entry.action === action)
       : url.includes("/api/tasks")
         ? [
             { id: "SEC-1", status: "todo" },
@@ -127,5 +128,45 @@ describe("Why this is blocked", () => {
     expect(screen.getByText(BOUNDARY)).toBeTruthy();
     expect(screen.getByText(HOLD)).toBeTruthy();
     expect(screen.queryByText("Blocked claims")).toBeNull();
+  });
+
+  it("shows a session recovery, not a cause cited before the task was claimed again", async () => {
+    const { note } = show(relShaped({ dependencies: [] }), [
+      move(900, "todo -> blocked; revision 2 -> 3; because=escalation:ESC-OLD"),
+      move(910, "blocked -> in_progress; revision 3 -> 4"),
+      { ...move(920, "session s-9; in_progress -> blocked; revision 4 -> 5; heartbeat expired"), action: "recover_claim" },
+    ]);
+    await waitFor(() => expect(note().textContent).toContain("Blocked when session s-9 was recovered: heartbeat expired."));
+    expect(note().textContent).not.toContain("ESC-OLD");
+    expect(note().textContent).not.toContain("No reason was recorded");
+  });
+
+  it("drops task A's cause when switching to task B, while B's history loads and after it fails", async () => {
+    let failB: (error: Error) => void = () => {};
+    const fetchImpl = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.includes("/api/audit") && url.includes("REL-2")) {
+        return new Promise<Response>((_, reject) => (failB = reject));
+      }
+      const data = url.includes("/api/audit") && url.includes("action=status")
+        ? [move(900, "todo -> blocked; revision 2 -> 3; because=escalation:ESC-A")]
+        : [];
+      return new Response(JSON.stringify({ ok: true, data }), { status: 200 });
+    });
+    const client = new ApiClient(() => null, "", fetchImpl);
+    const view = (task: TaskDetail) => (
+      <AppProvider store={new IdentityStore(null)} client={client}>
+        <Overview detail={task} />
+      </AppProvider>
+    );
+    const { rerender } = render(view(relShaped({ dependencies: [] })));
+    await waitFor(() => expect(screen.getByRole("note").textContent).toContain("ESC-A"));
+
+    rerender(view(relShaped({ id: "REL-2", dependencies: [] })));
+    expect(screen.getByRole("note").textContent).not.toContain("ESC-A");
+    await waitFor(() => expect(fetchImpl.mock.calls.some(([url]) => String(url).includes("REL-2"))).toBe(true));
+    failB(new Error("offline"));
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    expect(screen.getByRole("note").textContent).not.toContain("ESC-A");
   });
 });

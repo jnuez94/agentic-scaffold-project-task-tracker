@@ -21,6 +21,7 @@
  * check needs is paid on open, not on every render of the bar.
  */
 
+import { openTasks } from "../lib/listQueries.ts";
 import { useState } from "react";
 import { ApiError } from "../api/errors.ts";
 import { describeThrown } from "../lib/copy.ts";
@@ -42,7 +43,9 @@ export function EndSessionControl({
   const [pending, setPending] = useState(false);
   const [failure, setFailure] = useState<string | undefined>();
 
-  const tasks = useResource(() => coordination.tasks({ limit: 500 }), [coordination]);
+  // Open tasks only: a claim is never on done work, and the first 500 tasks
+  // missed claims on newer ones (UI-86).
+  const tasks = useResource(() => openTasks(coordination), [coordination]);
   const claimed = tasksClaimedBy(tasks.data ?? [], sessionId);
   // Unknown is treated as held: enabling End before the claims load risks
   // offering an action the CLI will refuse, which is the pattern this

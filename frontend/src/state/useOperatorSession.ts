@@ -18,6 +18,7 @@ import {
   type SessionRejection,
 } from "../lib/sessionIdentity.ts";
 import { useResource } from "./useResource.ts";
+import { activeSessions } from "../lib/listQueries.ts";
 
 export interface OperatorSession {
   /** Every active session in the project. */
@@ -46,7 +47,7 @@ export function useOperatorSession(
   // `missing`, gets cleared, and cannot be picked in the header. Only active
   // sessions can be selected or resolved anyway, and there are few of them.
   const resource = useResource(
-    () => coordination.sessions({ status: "active", limit: 500 }),
+    () => activeSessions(coordination),
     [coordination],
   );
   const sessions = resource.data ?? [];

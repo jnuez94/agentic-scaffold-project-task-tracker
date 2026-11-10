@@ -8,7 +8,7 @@ import { DataTable } from "../components/DataTable.tsx";
 import { ErrorBanner } from "../components/Feedback.tsx";
 import { filterRows } from "../lib/filters.ts";
 import { CLEAR_FILTER_HINT } from "../lib/copy.ts";
-import { isTruncated, rangeLabel } from "../lib/pagination.ts";
+import { rangeLabel } from "../lib/pagination.ts";
 import { anyPicked, whereClauses, type PickerValues } from "../lib/recordPickers.ts";
 import { orderByTerm } from "../lib/requestOrder.ts";
 import type { SortState } from "../lib/sorting.ts";
@@ -19,11 +19,10 @@ import { RECORD_CONFIGS } from "./recordConfigs.tsx";
 import { withActionColumn } from "./recordActionColumn.tsx";
 import { INSPECTOR_CONFIGS } from "./inspectorConfigs.tsx";
 import { RecordPanels } from "./RecordPanels.tsx";
+import { LoadOlder } from "../components/LoadOlder.tsx";
 import { RecordPickers } from "./RecordPickers.tsx";
 import { ArtifactRegisterForm } from "./ArtifactRegisterForm.tsx";
 import type { Agent } from "../api/contract.ts";
-
-const REQUEST_LIMIT = 500;
 
 export function RecordsView<T = Record<string, unknown>>({
   route,
@@ -94,7 +93,7 @@ export function RecordsView<T = Record<string, unknown>>({
       return;
     }
     if (inspecting && String(inspecting["id"]) === detail) return;
-    const loaded = ((records.data ?? []) as Record<string, unknown>[]).find(
+    const loaded = ((records.data ?? [])).find(
       (row) => String(row["id"]) === detail,
     );
     if (loaded) {
@@ -138,7 +137,7 @@ export function RecordsView<T = Record<string, unknown>>({
   const rows = useMemo(
     () =>
       filterRows(
-        (records.data ?? []) as Record<string, unknown>[],
+        (records.data ?? []),
         config?.filterFields ?? [],
         filter,
       ),
@@ -151,7 +150,7 @@ export function RecordsView<T = Record<string, unknown>>({
   const inspected = useMemo(() => {
     if (!inspecting) return null;
     const id = String(inspecting["id"]);
-    const fresh = ((records.data ?? []) as Record<string, unknown>[]).find(
+    const fresh = ((records.data ?? [])).find(
       (row) => String(row["id"]) === id,
     );
     return fresh ?? inspecting;
@@ -221,22 +220,28 @@ export function RecordsView<T = Record<string, unknown>>({
           requestSort={{ state: requestSort, onChange: setRequestSort }}
           idPrefix={route}
           filtered={Boolean(filter)}
-          truncated={isTruncated(
-            ((records.data ?? [])).length,
-            REQUEST_LIMIT,
-          )}
-          pagerCopy={
-            anyPicked(picked)
+          truncated={!records.exhausted}
+          pagerCopy={{
+            ...(anyPicked(picked)
               ? {
-                  rangeLabel: (page, size, total) =>
+                  rangeLabel: (page: number, size: number, total: number) =>
                     rangeLabel(page, size, total, {
                       matching: true,
                       filtered: Boolean(filter),
-                      truncated: isTruncated((records.data ?? []).length, REQUEST_LIMIT),
+                      truncated: !records.exhausted,
                     }),
                 }
-              : undefined
-          }
+              : {}),
+            truncatedNotice: ({ announce }) => (
+              <LoadOlder
+                exhausted={records.exhausted}
+                loading={records.loadingOlder}
+                busy={records.loading || !records.pageable}
+                onLoad={records.loadOlder}
+                announce={announce}
+              />
+            ),
+          }}
           loading={records.loading}
           loaded={records.loaded}
           selectedKey={

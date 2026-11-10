@@ -245,4 +245,38 @@ describe("RecordsView across a route change", () => {
     await userEvent.click(screen.getByRole("button", { name: /^Status/ }));
     await waitFor(() => expect(calls.some((u) => u.includes("order_by=status%3Aasc"))).toBe(true));
   });
+
+  it("asks for the newest rows first, and loads older ones on request (UI-86)", async () => {
+    const page = Array.from({ length: 500 }, (_, index) => ({ ...DECISION, id: `DEC-N${index}` }));
+    const older = [{ ...DECISION, id: "DEC-OLD" }];
+    const { impl, calls } = routedFetch({
+      "/api/decisions": async () => ok(calls.at(-1)!.includes("offset=500") ? older : page),
+    });
+    render(wrap(impl, <RecordsView key="decisions" route="decisions" filter="" />));
+    await screen.findByText("DEC-N0");
+    expect(calls[0]).toContain("order_by=created_at%3Adesc");
+    expect(calls[0]).toContain("offset=0");
+
+    await userEvent.click(screen.getByRole("button", { name: "Load older" }));
+    await waitFor(() => expect(calls.some((u) => u.includes("offset=500"))).toBe(true));
+    // The older page came back short, so the window is whole and the control goes.
+    await waitFor(() => expect(screen.queryByRole("button", { name: "Load older" })).toBeNull());
+  });
+
+  it("keeps Load older when the filter matches nothing in the newest page (UI-86)", async () => {
+    const page = Array.from({ length: 500 }, (_, index) => ({ ...DECISION, id: `DEC-N${index}` }));
+    const older = [page[499], { ...DECISION, id: "DEC-OLD", title: "Retire the needle" }];
+    const { impl, calls } = routedFetch({
+      "/api/decisions": async () => ok(calls.at(-1)!.includes("offset=499") ? older : page),
+    });
+    render(wrap(impl, <RecordsView key="decisions" route="decisions" filter="needle" />));
+    await waitFor(() => expect(calls.length).toBeGreaterThan(0));
+    // Nothing among the newest 500 matches, but the control stays.
+    const control = await screen.findByRole("button", { name: "Load older" });
+    expect(screen.queryByText("DEC-OLD")).toBeNull();
+
+    await userEvent.click(control);
+    await screen.findByText("DEC-OLD");
+    await waitFor(() => expect(screen.queryByRole("button", { name: "Load older" })).toBeNull());
+  });
 });

@@ -36,6 +36,22 @@ export interface PagerCopy {
 
 const TRUNCATED_NOTICE = "The request limit was reached, so more rows may exist that are not loaded.";
 
+/**
+ * The truncation notice on its own, for a window where nothing matched. A
+ * filter can leave no row from the newest page while older pages may still
+ * hold matches, so the control that loads them must not vanish with the table.
+ */
+export function TruncatedNotice({ copy }: { copy?: PagerCopy }) {
+  return (
+    <p className="pagination-truncated small">
+      {typeof copy?.truncatedNotice === "function"
+        ? // No range label here to announce; the rows that load bring the table.
+          copy.truncatedNotice({ announce: () => undefined })
+        : (copy?.truncatedNotice ?? TRUNCATED_NOTICE)}
+    </p>
+  );
+}
+
 export interface PaginationProps {
   page: number;
   size: PageSize;
