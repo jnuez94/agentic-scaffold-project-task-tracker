@@ -219,4 +219,59 @@ describe("useListWindow", () => {
     act(() => result.current.loadOlder());
     await waitFor(() => expect(ids(result.current.data)).toEqual(["B1", "B2", "S", "B3"]));
   });
+
+  it("does not skip a row when the set changes again between the pages of a re-read", async () => {
+    // 8 open tasks, pages of 3. T-1 is done after the first page, which sends
+    // Load older to a re-read from the top. T-2 is done after the re-read's
+    // first page: plain offsets would then skip T-5.
+    const all = ["T-1", "T-2", "T-3", "T-4", "T-5", "T-6", "T-7", "T-8"];
+    let rows = all;
+    const asked: Page[] = [];
+    let afterNext: (() => void) | null = null;
+    const load = (page: Page) => {
+      asked.push(page);
+      const answer = named(...rows.slice(page.offset, page.offset + page.limit));
+      const hook = afterNext;
+      afterNext = null;
+      hook?.();
+      return Promise.resolve(answer);
+    };
+    const { result } = renderHook(() => useListWindow(load, (row) => row.id, [], { pageSize: 3 }));
+    await waitFor(() => expect(result.current.loaded).toBe(true));
+
+    rows = all.slice(1);
+    // The overlap read misses; then T-2 is done once the re-read's first page is in.
+    let reads = 0;
+    const done = () => {
+      reads += 1;
+      if (reads === 2) rows = all.slice(2);
+      else afterNext = done;
+    };
+    afterNext = done;
+    act(() => result.current.loadOlder());
+    await waitFor(() => expect(result.current.loadingOlder).toBe(false));
+
+    const got = ids(result.current.data);
+    // Whatever is shown is a gapless run of the live list from its top.
+    expect(got).toEqual(all.slice(2).slice(0, got.length));
+    expect(got).toContain("T-5");
+    expect(result.current.error).toBeUndefined();
+  });
+
+  it("fails the load, keeps the rows and stays pageable when the set moves under every re-read", async () => {
+    let shift = 0;
+    const load = (page: Page) => {
+      const rows = Array.from({ length: 40 }, (_, index) => `T-${index + shift}`);
+      shift += 1;
+      return Promise.resolve(named(...rows.slice(page.offset, page.offset + page.limit)));
+    };
+    const { result } = renderHook(() => useListWindow(load, (row) => row.id, [], { pageSize: 3 }));
+    await waitFor(() => expect(result.current.loaded).toBe(true));
+    const held = ids(result.current.data);
+
+    act(() => result.current.loadOlder());
+    await waitFor(() => expect(result.current.error?.code).toBe("list_moving"));
+    expect(ids(result.current.data)).toEqual(held);
+    expect(result.current.exhausted).toBe(false);
+  });
 });
