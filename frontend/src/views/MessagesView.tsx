@@ -85,6 +85,7 @@ export function MessagesView({
     <LoadOlder
       exhausted={resource.exhausted}
       loading={resource.loadingOlder}
+                busy={resource.loading}
       onLoad={resource.loadOlder}
       announce={announce}
       endLabel="All messages loaded"

@@ -127,7 +127,9 @@ export function TasksView({
       // Heartbeats left out by the server, so a page of them cannot hide a change (UI-86).
       changes: (since) => coordination.audit({ since, exclude_action: "heartbeat", limit: REQUEST_LIMIT }),
     },
-    tasks.data,
+    // Anchored to the newest page's read, not the rows: appending older rows
+    // must not re-anchor the watch and clear a pending notice (UI-86).
+    tasks.lastUpdated,
     { enabled: tasks.loaded },
   );
 
@@ -282,6 +284,7 @@ export function TasksView({
               <LoadOlder
                 exhausted={tasks.exhausted}
                 loading={tasks.loadingOlder}
+                busy={tasks.loading}
                 onLoad={tasks.loadOlder}
                 announce={announce}
                 endLabel="All tasks loaded"

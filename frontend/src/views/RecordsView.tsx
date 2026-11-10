@@ -236,6 +236,7 @@ export function RecordsView<T = Record<string, unknown>>({
               <LoadOlder
                 exhausted={records.exhausted}
                 loading={records.loadingOlder}
+                busy={records.loading}
                 onLoad={records.loadOlder}
                 announce={announce}
               />
