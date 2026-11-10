@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { AuditEntry, Dependency } from "../api/contract.ts";
-import { blockingCause, blockingTaskIds, waitsOn } from "./blockedReason.ts";
+import { blockingCause, blockingRecovery, blockingTaskIds, waitsOn } from "./blockedReason.ts";
 
 const edge = (over: Partial<Dependency>): Dependency => ({
   task_id: "REL-1",
@@ -74,5 +74,34 @@ describe("waitsOn", () => {
       { id: "UX-12", status: "in review" },
       { id: "GONE-1", status: null },
     ]);
+  });
+});
+
+describe("session recovery (softory #14 review)", () => {
+  const recovered = (id: number, detail: string): AuditEntry => ({ ...status(id, detail), action: "recover_claim" });
+  // Blocked citing ESC-OLD, claimed again, then blocked by session recovery.
+  const history = [
+    status(10, "todo -> blocked; revision 2 -> 3; because=escalation:ESC-OLD"),
+    status(20, "blocked -> in_progress; revision 3 -> 4"),
+    recovered(30, "session s-9; in_progress -> blocked; revision 4 -> 5; heartbeat expired"),
+  ];
+
+  it("does not carry an earlier cause across a later recovery", () => {
+    expect(blockingCause(history)).toBeNull();
+    expect(blockingRecovery(history)).toEqual({ session: "s-9", reason: "heartbeat expired" });
+  });
+
+  it("reads a cause again once a later status move blocks it", () => {
+    const later = [
+      ...history,
+      status(40, "blocked -> in_progress; revision 5 -> 6"),
+      status(50, "in_progress -> blocked; revision 6 -> 7; because=decision:DEC-2"),
+    ];
+    expect(blockingCause(later)).toEqual({ type: "decision", id: "DEC-2" });
+    expect(blockingRecovery(later)).toBeNull();
+  });
+
+  it("ignores a recovery that did not move the task into blocked", () => {
+    expect(blockingRecovery([recovered(5, "session s-1; in_progress -> todo; revision 1 -> 2; stale")])).toBeNull();
   });
 });
