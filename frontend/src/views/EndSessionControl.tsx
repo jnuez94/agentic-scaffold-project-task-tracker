@@ -92,6 +92,13 @@ export function EndSessionControl({
           ending will be refused while any claim is held.
         </p>
       ) : null}
+      {tasks.loaded && !tasks.data ? (
+        // The claims are unknown. The CLI still refuses to end a session that
+        // holds one, so the control stays; the operator is told why it may fail.
+        <p className="small muted">
+          This session's claims could not be checked. Ending is refused if it holds any.
+        </p>
+      ) : null}
       {failure ? (
         <p className="small field-problem" role="alert">
           {failure}

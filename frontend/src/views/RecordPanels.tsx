@@ -72,7 +72,7 @@ export function RecordPanels({
       ) : null}
 
       {sheet ? (
-        <RecordActionSheet sheet={sheet} tasks={tasks} onClose={() => setSheet(null)} onChanged={onRecovered} />
+        <RecordActionSheet sheet={sheet} tasks={tasks} tasksKnown={tasksKnown} onClose={() => setSheet(null)} onChanged={onRecovered} />
       ) : null}
 
       {acting ? (

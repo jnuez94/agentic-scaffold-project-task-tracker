@@ -14,11 +14,14 @@ import type { OpenSheet } from "./RecordActions.tsx";
 export function RecordActionSheet({
   sheet,
   tasks,
+  tasksKnown = true,
   onClose,
   onChanged,
 }: {
   sheet: OpenSheet;
   tasks: readonly TaskListRow[];
+  /** False when the open tasks could not be read whole. */
+  tasksKnown?: boolean;
   onClose: () => void;
   onChanged: () => void;
 }) {
@@ -26,7 +29,7 @@ export function RecordActionSheet({
   return (
     <>
       <div className="sheet-scrim" onClick={onClose} aria-hidden="true" />
-      {sheet.kind === "retire" ? <AgentRetirement agent={sheet.agent} tasks={tasks} {...shared} /> : null}
+      {sheet.kind === "retire" ? <AgentRetirement agent={sheet.agent} tasks={tasks} tasksKnown={tasksKnown} {...shared} /> : null}
       {sheet.kind === "ruling" ? <DecisionStatusForm decision={sheet.decision} {...shared} /> : null}
       {sheet.kind === "artifactStatus" ? <ArtifactStatusForm artifact={sheet.artifact} {...shared} /> : null}
       {sheet.kind === "artifactCorrect" ? <ArtifactCorrectionForm artifact={sheet.artifact} {...shared} /> : null}

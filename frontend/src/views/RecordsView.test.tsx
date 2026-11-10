@@ -330,6 +330,33 @@ describe("RecordsView across a route change", () => {
   });
 });
 
+describe("RecordsView when the open tasks cannot be read whole (UI-88)", () => {
+  it("carries the unknown state into the retirement sheet", async () => {
+    const AGENT = { id: "greg", name: "Greg", role: "pm", actor_type: "ai", status: "active", capabilities: "" };
+    // Every page of open tasks comes back full, so the full read is refused.
+    const full = Array.from({ length: 500 }, (_, index) => ({ id: `T-${index}`, status: "todo", assignees: ["greg"] }));
+    const { impl } = routedFetch({
+      "/api/agents": async () => ok([AGENT]),
+      "/api/tasks": async () => ok(full),
+      "/api/sessions": async () => ok([]),
+    });
+    const store = new IdentityStore({
+      getItem: () => JSON.stringify({ actorId: "local-operator", sessionId: "console-1" }),
+      setItem: () => undefined,
+      removeItem: () => undefined,
+    });
+    render(
+      <AppProvider store={store} client={new ApiClient(() => "console-1", "", impl)}>
+        <RecordsView route="agents" filter="" detail="greg" />
+      </AppProvider>,
+    );
+    const retire = await screen.findByRole("button", { name: "Retire agent…" });
+    await waitFor(() => expect((retire as HTMLButtonElement).disabled).toBe(false));
+    await userEvent.click(retire);
+    await waitFor(() => expect(screen.getByRole("alert").textContent).toContain("could not be checked"), { timeout: 4000 });
+  });
+});
+
 function okOne(row: unknown): Response {
   return new Response(JSON.stringify({ ok: true, data: row }), { status: 200 });
 }
