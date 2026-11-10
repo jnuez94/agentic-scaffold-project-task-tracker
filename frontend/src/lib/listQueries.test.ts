@@ -133,3 +133,35 @@ describe("openTasks at the ceiling (UI-88)", () => {
     await expect(openTasks(longer.coordination)).rejects.toBeInstanceOf(ListTooLong);
   });
 });
+
+describe("openTasks inside a fence over the audit log (UI-90)", () => {
+  it("reads again when changes cancel between pages and leave the boundary in place", async () => {
+    // 501 open tasks. After page one, T-0000 is done and a reopened task
+    // sorts in before the boundary: the boundary row keeps its offset, and
+    // the reopened task, which holds the claim, was never read.
+    let rows = Array.from({ length: 501 }, (_, index) => task(index + 1));
+    let head = 5;
+    let reads = 0;
+    const coordination = {
+      tasks: (query: Record<string, unknown>) => {
+        const offset = Number(query["offset"]);
+        const page = rows.slice(offset, offset + 500);
+        reads += 1;
+        if (reads === 1) {
+          const reopened = task(0, { id: "T-0001a", status: "in_progress", claim_session_id: "stale-1", claimed_by: "david" });
+          rows = [rows[1]!, reopened, ...rows.slice(2)].sort((a, b) => a.id.localeCompare(b.id));
+          rows = [task(1), ...rows].slice(1);
+          head += 2;
+        }
+        return Promise.resolve(page);
+      },
+      summary: () => Promise.resolve({ audit_cursor: head }),
+      audit: (query: { since: number }) => Promise.resolve(head > query.since ? [{ id: head }] : []),
+    } as unknown as Coordination;
+
+    const tasks = await openTasks(coordination);
+
+    expect(tasksClaimedBy(tasks, "stale-1").map((row) => row.id)).toEqual(["T-0001a"]);
+    expect(reads).toBeGreaterThan(2);
+  });
+});

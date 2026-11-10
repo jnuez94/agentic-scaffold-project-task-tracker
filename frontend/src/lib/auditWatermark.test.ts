@@ -7,12 +7,20 @@ import { describe, expect, it } from "vitest";
 import type { Coordination } from "../api/coordination.ts";
 import { readMarked, readOneMarked, watermarkOf } from "./auditWatermark.ts";
 
+/**
+ * A ledger whose head the test scripts. `since` answers from the head that
+ * the next summary read would give, as the audit log would.
+ */
 function source(head: () => Promise<number>) {
   const order: string[] = [];
   const coordination = {
     summary: () => {
       order.push("head");
       return head().then((audit_cursor) => ({ audit_cursor }));
+    },
+    audit: (query: { since: number }) => {
+      order.push("since");
+      return head().then((now) => (now > query.since ? [{ id: now }] : []));
     },
   } as unknown as Coordination;
   return { coordination, order };
@@ -25,7 +33,7 @@ describe("readMarked", () => {
       order.push("rows");
       return Promise.resolve([{ id: "A" }, { id: "B" }]);
     });
-    expect(order).toEqual(["head", "rows", "head"]);
+    expect(order).toEqual(["head", "rows", "since"]);
     expect(rows.map((row) => watermarkOf(row))).toEqual([42, 42]);
   });
 

@@ -25,6 +25,7 @@ import { useMeasuredHeight } from "../state/useMeasuredHeight.ts";
 import { useApp } from "../state/AppContext.tsx";
 import { BOUNDS } from "../state/layoutStore.ts";
 import type { Layout } from "../state/useLayout.ts";
+import { ledgerFence } from "../lib/auditWatermark.ts";
 import { useListWindow } from "../state/useListWindow.ts";
 import { LoadOlder } from "../components/LoadOlder.tsx";
 import { useMessageView } from "../state/useMessageView.ts";
@@ -76,10 +77,12 @@ export function MessagesView({
   const config = RECORD_CONFIGS.messages;
   // Newest first, a page at a time (UI-86): oldest first stopped at the
   // project's first 500 messages and never showed the latest.
+  const fence = useMemo(() => ledgerFence(coordination), [coordination]);
   const resource = useListWindow(
     (page) => coordination.messages({ order_by: "created_at:desc", ...page }),
     (message) => message.id,
     [coordination, reloadKey],
+    { fence },
   );
   const loadOlder = (announce?: () => void) => (
     <LoadOlder

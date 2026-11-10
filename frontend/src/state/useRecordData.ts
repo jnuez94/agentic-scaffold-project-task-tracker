@@ -12,7 +12,7 @@
 
 import { useMemo } from "react";
 import type { Coordination } from "../api/coordination.ts";
-import { readMarked } from "../lib/auditWatermark.ts";
+import { ledgerFence, readMarked } from "../lib/auditWatermark.ts";
 import { activeSessions, NEWEST_FIRST, openTasks } from "../lib/listQueries.ts";
 import type { RouteName } from "./useHashRoute.ts";
 import { useListWindow } from "./useListWindow.ts";
@@ -42,6 +42,7 @@ export function useRecordData(
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [whereKey, orderBy, route]);
 
+  const fence = useMemo(() => ledgerFence(coordination), [coordination]);
   const records = useListWindow<Record<string, unknown>>(
     (page) =>
       config
@@ -56,7 +57,7 @@ export function useRecordData(
         : Promise.resolve([]),
     (row) => String(row["id"]),
     [route, query, reloadKey],
-    { enabled: Boolean(config) },
+    { enabled: Boolean(config), fence },
   );
 
   // Escalations need them to check a resolution's follow-up tasks (UI-82).

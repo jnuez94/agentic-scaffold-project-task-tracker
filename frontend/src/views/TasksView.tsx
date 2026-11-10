@@ -26,6 +26,7 @@ import { OPEN_SCOPE, requestStatus } from "../state/queueScopeStore.ts";
 import { useBoardWatch } from "../state/useBoardWatch.ts";
 import { useResource } from "../state/useResource.ts";
 import { useListWindow } from "../state/useListWindow.ts";
+import { ledgerFence } from "../lib/auditWatermark.ts";
 import { activeSessions } from "../lib/listQueries.ts";
 import { LoadOlder } from "../components/LoadOlder.tsx";
 import { TaskInspector } from "./TaskInspector.tsx";
@@ -67,6 +68,7 @@ export function TasksView({
   // Most recently changed first unless the operator sorted (UI-86), a page
   // at a time: the CLI's own order is oldest first, which left the newest
   // work off a board past 500 tasks.
+  const fence = useMemo(() => ledgerFence(coordination), [coordination]);
   const tasks = useListWindow(
     (page) => coordination.tasks({
         status: requestStatus(scope),
@@ -77,6 +79,7 @@ export function TasksView({
       }),
     (task) => task.id,
     [scope, assignee, orderBy, where],
+    { fence },
   );
 
   // The scope is the request's since 1.4.0 (`--status` repeats), so the

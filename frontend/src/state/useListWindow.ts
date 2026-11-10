@@ -16,6 +16,15 @@
  * the top to the same depth plus a page, replacing what was held; that read
  * checks every page boundary the same way.
  *
+ * A boundary that lines up proves less than it seems: two changes can cancel
+ * (one row leaves above it, another moves to the top) and leave it in place
+ * with a row skipped. So a caller passes a `fence` over the audit log, and a
+ * read of more than one query is accepted only when nothing was written from
+ * before its first query to after its last: an older page joins the window
+ * only if nothing was written since the window was read, and a re-read is
+ * made again until it runs with nothing written under it. Without a fence
+ * (or when the ledger's head cannot be read) the boundary checks stand alone.
+ *
  * Each first-page load is a generation. "Load older" is refused until the
  * current generation's first page has succeeded: while it is pending, and
  * after it failed, when the rows still shown answer the previous query. An
@@ -30,6 +39,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ApiError } from "../api/errors.ts";
 import { describeThrown } from "../lib/copy.ts";
+import type { Fence } from "../lib/auditWatermark.ts";
 import type { Resource } from "./useResource.ts";
 
 export const LIST_PAGE_SIZE = 500;
@@ -52,7 +62,7 @@ export function useListWindow<T>(
   load: (page: Page) => Promise<T[]>,
   keyOf: (row: T) => string,
   deps: readonly unknown[],
-  options: { enabled?: boolean; pageSize?: number } = {},
+  options: { enabled?: boolean; pageSize?: number; fence?: Fence } = {},
 ): ListWindow<T> {
   const enabled = options.enabled ?? true;
   const pageSize = options.pageSize ?? LIST_PAGE_SIZE;
@@ -81,6 +91,11 @@ export function useListWindow<T>(
   const replacing = useRef(false);
   const older = useRef(false);
   const mounted = useRef(true);
+  const fenceRef = useRef(options.fence);
+  fenceRef.current = options.fence;
+  // A ledger head read before the held window's first query: the window is
+  // whole as long as nothing was written after it. Undefined when unknown.
+  const heldHead = useRef<number | undefined>(undefined);
 
   useEffect(() => {
     mounted.current = true;
@@ -106,10 +121,21 @@ export function useListWindow<T>(
     replacing.current = true;
     setAskedFor(current);
     setLoading(true);
-    loadRef
-      .current({ limit: pageSize, offset: 0 })
+    // One query is one snapshot. The head read before it is at or before that
+    // snapshot, which is the safe side: a write in between reads as a change.
+    let headBefore: number | undefined;
+    const fence = fenceRef.current;
+    const first = () => loadRef.current({ limit: pageSize, offset: 0 });
+    (fence
+      ? fence.head().then((head) => {
+          headBefore = head;
+          return first();
+        })
+      : first()
+    )
       .then((page) => {
         if (!mounted.current || current !== generation.current) return;
+        heldHead.current = headBefore;
         keep(page);
         heldGeneration.current = current;
         setHeldFor(current);
@@ -138,11 +164,14 @@ export function useListWindow<T>(
    * rows held stay, and nothing is called exhausted.
    */
   const reread = useCallback(
-    async (depth: number): Promise<{ rows: T[]; short: boolean }> => {
+    async (depth: number): Promise<{ rows: T[]; short: boolean; head: number | undefined }> => {
       for (let attempt = 0; attempt < REREAD_ATTEMPTS; attempt += 1) {
+        const fence = fenceRef.current;
+        const head = await fence?.head();
         const rows: T[] = [];
         const seen = new Set<string>();
         let moved = false;
+        let short = false;
         while (rows.length < depth) {
           const last = rows[rows.length - 1];
           const page = await loadRef.current({ limit: pageSize, offset: last ? rows.length - 1 : 0 });
@@ -160,9 +189,16 @@ export function useListWindow<T>(
             seen.add(keyRef.current(row));
             rows.push(row);
           }
-          if (page.length < pageSize) return { rows, short: true };
+          if (page.length < pageSize) {
+            short = true;
+            break;
+          }
         }
-        if (!moved) return { rows, short: false };
+        if (moved) continue;
+        // Changes that cancel leave every boundary in place: only the ledger
+        // can say nothing was written under the read.
+        if (fence && head !== undefined && !(await fence.quietSince(head))) continue;
+        return { rows, short, head };
       }
       throw new ApiError("list_moving", "The list kept changing while it was read. Try again.", 0);
     },
@@ -184,15 +220,20 @@ export function useListWindow<T>(
 
     const lastKey = keyRef.current(last);
     // One row early: the page must start on the last row held.
-    const step = async (): Promise<{ rows: T[]; short: boolean }> => {
+    const step = async (): Promise<{ rows: T[]; short: boolean; head: number | undefined }> => {
+      const fence = fenceRef.current;
+      const head = heldHead.current;
       const page = await loadRef.current({ limit: pageSize, offset: before.length - 1 });
-      if (page[0] && keyRef.current(page[0]) === lastKey) {
+      // With a fence, the page joins only if nothing was written since the
+      // window was read; asked after the page, so the page is covered too.
+      const quiet = fence && head !== undefined ? await fence.quietSince(head) : true;
+      if (quiet && page[0] && keyRef.current(page[0]) === lastKey) {
         const seen = new Set(before.map((row) => keyRef.current(row)));
         const next = page.slice(1);
         // A row already held coming back below the boundary means the rows
         // above it moved after all, however the boundary lines up.
         if (!next.some((row) => seen.has(keyRef.current(row)))) {
-          return { rows: [...before, ...next], short: page.length < pageSize };
+          return { rows: [...before, ...next], short: page.length < pageSize, head };
         }
       }
       // The rows before it moved: read the window again rather than guess.
@@ -200,8 +241,9 @@ export function useListWindow<T>(
     };
 
     step()
-      .then(({ rows, short }) => {
+      .then(({ rows, short, head }) => {
         if (!mounted.current || current !== generation.current) return;
+        heldHead.current = head;
         keep(rows);
         setExhausted(short);
         setError(undefined);
