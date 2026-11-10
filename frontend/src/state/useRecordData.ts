@@ -12,6 +12,7 @@
 
 import { useMemo } from "react";
 import type { Coordination } from "../api/coordination.ts";
+import { readMarked } from "../lib/auditWatermark.ts";
 import { activeSessions, NEWEST_FIRST, openTasks } from "../lib/listQueries.ts";
 import type { RouteName } from "./useHashRoute.ts";
 import { useListWindow } from "./useListWindow.ts";
@@ -44,9 +45,14 @@ export function useRecordData(
   const records = useListWindow<Record<string, unknown>>(
     (page) =>
       config
-        ? (config.load(coordination, { ...query, limit: String(page.limit), offset: String(page.offset) }) as Promise<
-            Record<string, unknown>[]
-          >)
+        ? // Each page is marked with the audit head read before it (UI-88).
+          readMarked(
+            coordination,
+            () =>
+              config.load(coordination, { ...query, limit: String(page.limit), offset: String(page.offset) }) as Promise<
+                Record<string, unknown>[]
+              >,
+          )
         : Promise.resolve([]),
     (row) => String(row["id"]),
     [route, query, reloadKey],

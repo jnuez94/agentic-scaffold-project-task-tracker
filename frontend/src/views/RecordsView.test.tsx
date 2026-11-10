@@ -254,8 +254,9 @@ describe("RecordsView across a route change", () => {
     });
     render(wrap(impl, <RecordsView key="decisions" route="decisions" filter="" />));
     await screen.findByText("DEC-N0");
-    expect(calls[0]).toContain("order_by=created_at%3Adesc");
-    expect(calls[0]).toContain("offset=0");
+    const first = calls.find((u) => u.includes("/api/decisions"))!;
+    expect(first).toContain("order_by=created_at%3Adesc");
+    expect(first).toContain("offset=0");
 
     await userEvent.click(screen.getByRole("button", { name: "Load older" }));
     await waitFor(() => expect(calls.some((u) => u.includes("offset=500"))).toBe(true));

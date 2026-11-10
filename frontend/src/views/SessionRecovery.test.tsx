@@ -67,7 +67,7 @@ function harness(recover: (body: unknown) => Promise<unknown>) {
 
 function show(
   fetchImpl: typeof fetch,
-  options: { actorId?: string | null; target?: Session; tasks?: TaskListRow[] } = {},
+  options: { actorId?: string | null; target?: Session; tasks?: TaskListRow[]; tasksKnown?: boolean } = {},
 ) {
   const onClose = vi.fn();
   const onRecovered = vi.fn();
@@ -76,6 +76,7 @@ function show(
       <SessionRecovery
         session={options.target ?? session()}
         tasks={options.tasks ?? claimed}
+        tasksKnown={options.tasksKnown}
         actorId={options.actorId === undefined ? "local-operator" : options.actorId}
         onClose={onClose}
         onRecovered={onRecovered}
@@ -228,5 +229,14 @@ describe("SessionRecovery — outcomes", () => {
     }
     await user.keyboard("{Escape}");
     expect(onClose).toHaveBeenCalled();
+  });
+});
+
+describe("SessionRecovery — when the open tasks could not be read whole (UI-88)", () => {
+  it("says the claims are not listed, never that the session holds none", () => {
+    const { fetchImpl } = harness(async () => ({}));
+    show(fetchImpl, { tasks: [], tasksKnown: false });
+    expect(screen.getByRole("alert").textContent).toContain("could not be read");
+    expect(screen.queryByText(/holds no claimed tasks/)).toBeNull();
   });
 });

@@ -36,6 +36,7 @@ interface Recovered {
 export function SessionRecovery({
   session,
   tasks,
+  tasksKnown = true,
   actorId,
   onClose,
   onRecovered,
@@ -43,6 +44,11 @@ export function SessionRecovery({
   session: Session;
   /** Loaded tasks, used to name what recovery will block. */
   tasks: readonly TaskListRow[];
+  /**
+   * False when the open tasks could not be read whole (a failed read, or a
+   * list that kept changing): the preview then says so, not "no claimed tasks".
+   */
+  tasksKnown?: boolean;
   actorId: string | null;
   onClose: () => void;
   onRecovered: () => void;
@@ -168,7 +174,12 @@ export function SessionRecovery({
               <span className="field-label">
                 What recovery does {claimed.length > 0 ? `to ${claimed.length} task${claimed.length === 1 ? "" : "s"}` : ""}
               </span>
-              {claimed.length === 0 ? (
+              {!tasksKnown ? (
+                <p className="small" role="alert">
+                  The open tasks could not be read, so the tasks this session holds are not listed
+                  here. Recovery still sets every task it holds to blocked and clears its claim.
+                </p>
+              ) : claimed.length === 0 ? (
                 <p className="small muted">
                   This session holds no claimed tasks, so recovery only ends the session.
                 </p>

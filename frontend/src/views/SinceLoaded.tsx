@@ -41,7 +41,7 @@ export function SinceLoaded({
   const changes = changesSince(history.data, loaded);
   if (!changes.length) return null;
 
-  const collision = collisionLine(changes, editing);
+  const collision = collisionLine(changes, editing, loaded);
   const more = changes.length - SHOWN;
 
   return (

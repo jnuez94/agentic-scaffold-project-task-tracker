@@ -134,3 +134,15 @@ describe("changesSince from a coherent audit watermark (UI-87)", () => {
   });
 });
 
+describe("collisionLine without an audit position (UI-88)", () => {
+  const edit = row(10, "update", "fields=uri", "artifact");
+  it("claims a collision only when the boundary is an audit id", () => {
+    expect(collisionLine([edit], EDITING.correction, { status: "draft", auditId: 9 })).toMatch(/You were editing/);
+    expect(collisionLine([edit], EDITING.correction, { status: "draft", updatedAt: "2026-11-10T00:00:00+00:00" })).toBeNull();
+    // A task's revision is exact, so its collisions stand.
+    expect(collisionLine([row(3, "assign", "add=x; revision 2 -> 3")], EDITING.assignees, { revision: 2 })).toMatch(
+      /You were editing/,
+    );
+  });
+});
+

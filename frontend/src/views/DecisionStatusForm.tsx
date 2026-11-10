@@ -22,7 +22,7 @@ import {
 } from "../lib/decisionRuling.ts";
 import { errorCopy, hasErrorCopy } from "../lib/errorCopy.ts";
 import { useApp } from "../state/AppContext.tsx";
-import { useLoadedWatermark } from "../state/useLoadedWatermark.ts";
+import { watermarkOf } from "../lib/auditWatermark.ts";
 import { useFocusTrap } from "../state/useFocusTrap.ts";
 import { useReturnFocus } from "../state/useReturnFocus.ts";
 import { useEscape } from "../state/useEscape.ts";
@@ -39,7 +39,6 @@ export function DecisionStatusForm({
   onChanged: () => void;
 }) {
   const { coordination, identity, session, announce } = useApp();
-  const auditId = useLoadedWatermark("decision", "decisions", decision);
   const [draft, setDraft] = useState<RulingDraft>({ status: "", note: "" });
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -104,7 +103,7 @@ export function DecisionStatusForm({
             <div>
               <p>{error}</p>
               {mismatch ? (
-                <SinceLoaded objectType="decision" objectId={decision.id} loaded={{ status: decision.status, updatedAt: decision.updated_at, auditId }} editing={EDITING.status} />
+                <SinceLoaded objectType="decision" objectId={decision.id} loaded={{ status: decision.status, updatedAt: decision.updated_at, auditId: watermarkOf(decision) }} editing={EDITING.status} />
               ) : null}
             </div>
           </div>
