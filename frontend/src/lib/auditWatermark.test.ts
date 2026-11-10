@@ -5,7 +5,8 @@
 
 import { describe, expect, it } from "vitest";
 import type { Coordination } from "../api/coordination.ts";
-import { readMarked, readOneMarked, watermarkOf } from "./auditWatermark.ts";
+import { ApiError } from "../api/errors.ts";
+import { ledgerFence, readMarked, readOneMarked, watermarkOf } from "./auditWatermark.ts";
 
 /**
  * A ledger whose head the test scripts. `since` answers from the head that
@@ -67,6 +68,37 @@ describe("readMarked", () => {
     let head = 0;
     const { coordination } = source(() => Promise.resolve((head += 1)));
     const rows = await readMarked(coordination, () => Promise.resolve([{ id: "A" }]));
+    expect(watermarkOf(rows[0]!)).toBeUndefined();
+  });
+});
+
+describe("ledgerFence.quietSince (UI-91)", () => {
+  it("asks for a complete scan, so an empty answer is proof", async () => {
+    const queries: unknown[] = [];
+    const coordination = {
+      audit: (query: unknown) => {
+        queries.push(query);
+        return Promise.resolve([]);
+      },
+    } as unknown as Coordination;
+    expect(await ledgerFence(coordination).quietSince(5)).toBe(true);
+    expect(queries).toEqual([{ since: 5, exclude_action: "heartbeat", limit: 1, complete: true }]);
+  });
+
+  it("is not quiet when the scan could not reach the end of the log", async () => {
+    // 10,000 heartbeats and then an update: the server refuses to call that empty.
+    const coordination = {
+      audit: () => Promise.reject(new ApiError("audit_scan_incomplete", "too long", 503)),
+    } as unknown as Coordination;
+    expect(await ledgerFence(coordination).quietSince(5)).toBe(false);
+  });
+
+  it("does not mark rows read behind a backlog the scan could not finish", async () => {
+    const coordination = {
+      summary: () => Promise.resolve({ audit_cursor: 5 }),
+      audit: () => Promise.reject(new ApiError("audit_scan_incomplete", "too long", 503)),
+    } as unknown as Coordination;
+    const rows = await readMarked(coordination, () => Promise.resolve([{ id: "T-1" }]));
     expect(watermarkOf(rows[0]!)).toBeUndefined();
   });
 });

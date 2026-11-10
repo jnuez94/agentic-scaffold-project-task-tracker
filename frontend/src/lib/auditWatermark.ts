@@ -60,7 +60,11 @@ export function ledgerFence(coordination: Coordination): Fence {
     },
     quietSince: async (head) => {
       try {
-        return (await coordination.audit({ since: head, exclude_action: "heartbeat", limit: 1 })).length === 0;
+        // `complete`: the server walks a bounded stretch of the log, and
+        // answers with an error, not an empty list, when it could not reach
+        // the end. An empty list is then proof, not a scan that gave up (UI-91).
+        const written = await coordination.audit({ since: head, exclude_action: "heartbeat", limit: 1, complete: true });
+        return written.length === 0;
       } catch {
         return false;
       }

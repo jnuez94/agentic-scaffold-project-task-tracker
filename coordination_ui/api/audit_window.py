@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections.abc import Callable, Iterable, Mapping
 from typing import Any
 
-from ..cli import ArgumentBuilder
+from ..cli import ArgumentBuilder, CoordinationError
 
 Runner = Callable[[ArgumentBuilder], Any]
 
@@ -47,6 +47,7 @@ class AuditWindow:
         before: int | None = None,
         since: int | None = None,
         exclude_actions: Iterable[str] = (),
+        complete: bool = False,
     ) -> None:
         self.run = run
         self.limit = limit
@@ -54,6 +55,7 @@ class AuditWindow:
         self.before = before
         self.since = since
         self.exclude_actions = frozenset(exclude_actions)
+        self.complete = complete
 
     def rows(self) -> list[dict[str, Any]]:
         if self.since is not None:
@@ -77,6 +79,16 @@ class AuditWindow:
             if len(kept) >= self.limit or len(page) < PAGE_SIZE:
                 break
             cursor = int(page[-1]["id"])
+        else:
+            # Every page was full and too few rows survived: rows past the
+            # walk were never examined, so what was kept is not the answer.
+            if self.complete:
+                raise CoordinationError(
+                    "audit_scan_incomplete",
+                    "The audit log after this cursor is too long to read to its end.",
+                    {"since": self.since, "scanned_to": cursor},
+                    http_status=503,
+                )
         return kept[: self.limit]
 
     # -- the two recipes ----------------------------------------------------

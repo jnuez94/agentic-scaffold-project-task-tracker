@@ -91,7 +91,9 @@ def get_audit(request: Request) -> Any:
     them, because a client reading forward wants them that way.
     ``exclude_action`` drops one action from the window after the CLI
     answers, so the view's default can be ``limit`` coordination events
-    rather than ``limit`` rows of heartbeats.
+    rather than ``limit`` rows of heartbeats. ``complete`` with ``since``
+    refuses to answer when the bounded walk forward did not reach the end of
+    the log, so an empty list always means nothing was recorded.
     """
 
     requested = request.q_int("limit")
@@ -119,6 +121,7 @@ def get_audit(request: Request) -> Any:
         before=before,
         since=since,
         exclude_actions=(excluded,) if excluded else (),
+        complete=request.q_flag("complete"),
     ).rows()
 
 
