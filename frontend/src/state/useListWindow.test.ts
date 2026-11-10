@@ -184,4 +184,39 @@ describe("useListWindow", () => {
     // The rows already shown are still stale, so the notice stays.
     expect(result.current.watch.summary).toMatch(/1 task changed/);
   });
+
+  it("refuses to page after a replacement query fails, while still showing the old rows", async () => {
+    // Query a reads [A1, A2, S]; query b would read [B1, B2, S, B3] but its
+    // first page fails. Paging from the held rows would stitch b's S, B3 onto
+    // a's rows, since both share S at the boundary.
+    const rows: Record<string, string[]> = { a: ["A1", "A2", "S"], b: ["B1", "B2", "S", "B3"] };
+    let failB = true;
+    const load = vi.fn((query: string, page: Page) => {
+      if (query === "b" && page.offset === 0 && failB) return Promise.reject(new Error("offline"));
+      return Promise.resolve(named(...rows[query]!.slice(page.offset, page.offset + page.limit)));
+    });
+    const { result, rerender } = renderHook(
+      ({ query }) => useListWindow((page) => load(query, page), (row) => row.id, [query], { pageSize: 3 }),
+      { initialProps: { query: "a" } },
+    );
+    await waitFor(() => expect(result.current.pageable).toBe(true));
+
+    rerender({ query: "b" });
+    await waitFor(() => expect(result.current.error).toBeDefined());
+    expect(ids(result.current.data)).toEqual(["A1", "A2", "S"]);
+    expect(result.current.pageable).toBe(false);
+
+    act(() => result.current.loadOlder());
+    expect(load.mock.calls.filter(([, page]) => page.offset > 0)).toHaveLength(0);
+    expect(ids(result.current.data)).toEqual(["A1", "A2", "S"]);
+    expect(result.current.error).toBeDefined();
+
+    // Once b's first page succeeds, paging follows b.
+    failB = false;
+    act(() => result.current.refresh());
+    await waitFor(() => expect(ids(result.current.data)).toEqual(["B1", "B2", "S"]));
+    await waitFor(() => expect(result.current.pageable).toBe(true));
+    act(() => result.current.loadOlder());
+    await waitFor(() => expect(ids(result.current.data)).toEqual(["B1", "B2", "S", "B3"]));
+  });
 });

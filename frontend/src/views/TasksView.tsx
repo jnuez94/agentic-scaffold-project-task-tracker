@@ -284,7 +284,7 @@ export function TasksView({
               <LoadOlder
                 exhausted={tasks.exhausted}
                 loading={tasks.loadingOlder}
-                busy={tasks.loading}
+                busy={tasks.loading || !tasks.pageable}
                 onLoad={tasks.loadOlder}
                 announce={announce}
                 endLabel="All tasks loaded"

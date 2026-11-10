@@ -15,9 +15,11 @@
  * and the page follows on exactly. If it isn't, the window is read again from
  * the top to the same depth plus a page, replacing what was held.
  *
- * Each first-page load is a generation. "Load older" is refused while one is
- * pending, and an older page that lands after a newer generation started is
- * dropped, so rows of two different queries never mix.
+ * Each first-page load is a generation. "Load older" is refused until the
+ * current generation's first page has succeeded: while it is pending, and
+ * after it failed, when the rows still shown answer the previous query. An
+ * older page that lands after a newer generation started is dropped, so rows
+ * of two different queries never mix.
  *
  * The result is a `Resource`, so a view reads `data`, `loaded`, and `refresh`
  * as before. `lastUpdated` moves only when the newest page is read, never when
@@ -36,6 +38,8 @@ export interface ListWindow<T> extends Resource<T[]> {
   exhausted: boolean;
   /** An older page is being read. */
   loadingOlder: boolean;
+  /** The rows held answer the current query, so an older page may follow them. */
+  pageable: boolean;
   loadOlder: () => void;
 }
 
@@ -57,6 +61,9 @@ export function useListWindow<T>(
   const [exhausted, setExhausted] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<Date | undefined>(undefined);
   const [nonce, setNonce] = useState(0);
+  // Generations as state, for render: the one asked for, and the one held.
+  const [askedFor, setAskedFor] = useState(0);
+  const [heldFor, setHeldFor] = useState(0);
 
   const loadRef = useRef(load);
   loadRef.current = load;
@@ -65,6 +72,8 @@ export function useListWindow<T>(
   const held = useRef<T[]>([]);
   // The query generation the held rows answer; bumped by every first-page load.
   const generation = useRef(0);
+  // The generation whose first page filled `held`. Paging follows only that.
+  const heldGeneration = useRef(0);
   // True from a first-page request until it settles: no paging meanwhile.
   const replacing = useRef(false);
   const older = useRef(false);
@@ -92,12 +101,15 @@ export function useListWindow<T>(
     if (!enabled) return;
     const current = ++generation.current;
     replacing.current = true;
+    setAskedFor(current);
     setLoading(true);
     loadRef
       .current({ limit: pageSize, offset: 0 })
       .then((page) => {
         if (!mounted.current || current !== generation.current) return;
         keep(page);
+        heldGeneration.current = current;
+        setHeldFor(current);
         setExhausted(page.length < pageSize);
         setError(undefined);
         setLastUpdated(new Date());
@@ -139,6 +151,9 @@ export function useListWindow<T>(
   const loadOlder = useCallback(() => {
     if (!enabled || replacing.current || older.current) return;
     const current = generation.current;
+    // A failed reload leaves the previous query's rows: an older page of the
+    // new query must not be stitched onto them.
+    if (heldGeneration.current !== current) return;
     const before = held.current;
     const last = before[before.length - 1];
     if (!last) return;
@@ -180,5 +195,6 @@ export function useListWindow<T>(
 
   const refresh = useCallback(() => setNonce((value) => value + 1), []);
 
-  return { data, error, loading, loaded, lastUpdated, refresh, exhausted, loadingOlder, loadOlder };
+  const pageable = heldFor !== 0 && heldFor === askedFor && !loading;
+  return { data, error, loading, loaded, lastUpdated, refresh, exhausted, loadingOlder, loadOlder, pageable };
 }
