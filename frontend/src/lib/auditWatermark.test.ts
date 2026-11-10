@@ -25,7 +25,7 @@ describe("readMarked", () => {
       order.push("rows");
       return Promise.resolve([{ id: "A" }, { id: "B" }]);
     });
-    expect(order).toEqual(["head", "rows"]);
+    expect(order).toEqual(["head", "rows", "head"]);
     expect(rows.map((row) => watermarkOf(row))).toEqual([42, 42]);
   });
 
@@ -39,5 +39,26 @@ describe("readMarked", () => {
     const { coordination } = source(() => Promise.resolve(7));
     const row = await readOneMarked(coordination, () => Promise.resolve({ id: "ESC-1" }));
     expect(watermarkOf(row)).toBe(7);
+  });
+
+  it("reads again when a write commits between the head and the records", async () => {
+    // Head 9 is read, correction 10 commits, and the record read shows it.
+    // Marking that row 9 would list correction 10 as a change since.
+    const heads = [9, 10, 10, 10];
+    const { coordination } = source(() => Promise.resolve(heads.shift()!));
+    let reads = 0;
+    const rows = await readMarked(coordination, () => {
+      reads += 1;
+      return Promise.resolve([{ id: "ART-1", type: "spec" }]);
+    });
+    expect(reads).toBe(2);
+    expect(watermarkOf(rows[0]!)).toBe(10);
+  });
+
+  it("leaves rows unmarked when the ledger moves under every attempt", async () => {
+    let head = 0;
+    const { coordination } = source(() => Promise.resolve((head += 1)));
+    const rows = await readMarked(coordination, () => Promise.resolve([{ id: "A" }]));
+    expect(watermarkOf(rows[0]!)).toBeUndefined();
   });
 });

@@ -5,7 +5,7 @@
 import { describe, expect, it } from "vitest";
 import type { TaskListRow } from "../api/contract.ts";
 import type { Coordination } from "../api/coordination.ts";
-import { activeSessions, ListMoving, openTasks } from "./listQueries.ts";
+import { activeSessions, ListMoving, ListTooLong, openTasks } from "./listQueries.ts";
 import { outstandingAssignments } from "./retirement.ts";
 import { tasksClaimedBy } from "./staleness.ts";
 
@@ -110,5 +110,26 @@ describe("openTasks while the set changes between pages (UI-88)", () => {
       },
     } as unknown as Coordination;
     await expect(openTasks(coordination)).rejects.toBeInstanceOf(ListMoving);
+  });
+});
+
+describe("openTasks at the ceiling (UI-88)", () => {
+  it("reads 49,902 open tasks whole, with the only claim on the last one", async () => {
+    const rows = Array.from({ length: 49_901 }, (_, index) => task(index));
+    rows.push(task(49_901, { status: "in_progress", claim_session_id: "stale-1", claimed_by: "david" }));
+    const { coordination } = board(rows);
+
+    const tasks = await openTasks(coordination);
+
+    expect(tasks).toHaveLength(49_902);
+    expect(tasksClaimedBy(tasks, "stale-1")).toHaveLength(1);
+  });
+
+  it("reads exactly 50,000 whole, and refuses a longer list", async () => {
+    const full = board(Array.from({ length: 50_000 }, (_, index) => task(index)));
+    expect(await openTasks(full.coordination)).toHaveLength(50_000);
+
+    const longer = board(Array.from({ length: 50_600 }, (_, index) => task(index)));
+    await expect(openTasks(longer.coordination)).rejects.toBeInstanceOf(ListTooLong);
   });
 });

@@ -14,8 +14,13 @@ import type { Coordination } from "../api/coordination.ts";
 import { OPEN_SCOPE, requestStatus } from "../state/queueScopeStore.ts";
 
 export const SIDE_LIST_LIMIT = 500;
-/** A ceiling on a full read: 100 pages, 50,000 rows. */
-const MAX_PAGES = 100;
+/** A ceiling on a full read: 50,000 rows. */
+const MAX_ROWS = 50_000;
+/**
+ * The pages that takes. Each page after the first repeats one row, so it adds
+ * one fewer than its size.
+ */
+const MAX_PAGES = 1 + Math.ceil((MAX_ROWS - SIDE_LIST_LIMIT) / (SIDE_LIST_LIMIT - 1));
 
 /** A full read restarts at most this many times when the set keeps moving. */
 const ATTEMPTS = 3;
@@ -24,6 +29,13 @@ const ATTEMPTS = 3;
 export class ListMoving extends Error {
   constructor() {
     super("The list kept changing while it was read. Try again.");
+  }
+}
+
+/** The set is longer than a full read goes, so it was not read whole. */
+export class ListTooLong extends Error {
+  constructor() {
+    super(`The list holds more than ${MAX_ROWS} rows, so it was not read whole.`);
   }
 }
 
@@ -38,7 +50,8 @@ export class ListMoving extends Error {
  * row at the boundary would be skipped. So each page after the first starts
  * one row early, on the last row already read. If that row is still there,
  * nothing before it moved; if not, the read starts again (UI-88). A set that
- * moves under every attempt is refused rather than returned incomplete.
+ * moves under every attempt is refused rather than returned incomplete, and
+ * so is one that is still going at the ceiling.
  */
 export async function readAll<T extends { id: string }>(
   page: (query: { order_by: string; limit: number; offset: number }) => Promise<T[]>,
@@ -65,7 +78,8 @@ async function readOnce<T extends { id: string }>(
     }
     if (batch.length < SIDE_LIST_LIMIT) return rows;
   }
-  return rows;
+  // Every page came back full: more rows remain than were read.
+  throw new ListTooLong();
 }
 
 /**
