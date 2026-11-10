@@ -400,5 +400,72 @@ describe("useListWindow", () => {
       await waitFor(() => expect(result.current.loadingOlder).toBe(false));
       expect(ids(result.current.data)).toEqual(["T-9", "T-1", "T-2", "T-3"]);
     });
+
+    it("does not accept a re-read across pages when its head could not be read (UI-92)", async () => {
+      // As the cancelling case above, but the head request at the start of
+      // the re-read fails once. With no head there is nothing to prove the
+      // pages whole, so they are read again, not shown as the complete list.
+      const all = Array.from({ length: 10 }, (_, index) => `T-${index}`);
+      const list = ledgered(all);
+      let headReads = 0;
+      let quietAsked = 0;
+      const fence = {
+        // Read 1 is the first page's; read 2 opens the re-read and fails.
+        head: () => {
+          headReads += 1;
+          return headReads === 2 ? Promise.resolve(undefined) : list.fence.head();
+        },
+        quietSince: (at: number) => {
+          quietAsked += 1;
+          return list.fence.quietSince(at);
+        },
+      };
+      const { result } = renderHook(() => useListWindow(list.load, (row) => row.id, [], { pageSize: 3, fence }));
+      await waitFor(() => expect(result.current.loaded).toBe(true));
+
+      list.write(all.slice(1));
+      list.onRead((count) => {
+        if (count === 3) list.write(["T-4", "T-2", "T-3", "T-5", "T-6", "T-7", "T-8", "T-9"]);
+      });
+      act(() => result.current.loadOlder());
+      await waitFor(() => expect(result.current.loadingOlder).toBe(false));
+
+      const got = ids(result.current.data);
+      expect(got).toEqual(list.live().slice(0, got.length));
+      expect(got).toContain("T-4");
+      expect(got).not.toContain("T-1");
+      expect(result.current.exhausted).toBe(false);
+      expect(quietAsked).toBeGreaterThan(1);
+    });
+
+    it("fails the load, and calls nothing exhausted, when the head can never be read", async () => {
+      const all = Array.from({ length: 5 }, (_, index) => `T-${index}`);
+      const list = ledgered(all);
+      const fence = { head: () => Promise.resolve(undefined), quietSince: () => Promise.resolve(true) };
+      const { result } = renderHook(() => useListWindow(list.load, (row) => row.id, [], { pageSize: 3, fence }));
+      await waitFor(() => expect(result.current.loaded).toBe(true));
+
+      act(() => result.current.loadOlder());
+      await waitFor(() => expect(result.current.loadingOlder).toBe(false));
+
+      // The older page is not stitched on unverified, and the re-read of two
+      // pages cannot be verified either: the held rows stay, with an error.
+      expect(ids(result.current.data)).toEqual(["T-0", "T-1", "T-2"]);
+      expect(result.current.error?.code).toBe("list_moving");
+      expect(result.current.exhausted).toBe(false);
+    });
+
+    it("accepts a re-read that is a single request without a head", async () => {
+      // One request is one snapshot: nothing to prove.
+      const list = ledgered(["T-0", "T-1", "T-2", "T-3"]);
+      const fence = { head: () => Promise.resolve(undefined), quietSince: () => Promise.resolve(false) };
+      const { result } = renderHook(() => useListWindow(list.load, (row) => row.id, [], { pageSize: 3, fence }));
+      await waitFor(() => expect(result.current.loaded).toBe(true));
+      list.write(["T-1"]);
+      act(() => result.current.loadOlder());
+      await waitFor(() => expect(result.current.loadingOlder).toBe(false));
+      expect(ids(result.current.data)).toEqual(["T-1"]);
+      expect(result.current.exhausted).toBe(true);
+    });
   });
 });
