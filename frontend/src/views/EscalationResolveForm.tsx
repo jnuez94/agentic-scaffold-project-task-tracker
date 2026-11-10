@@ -143,9 +143,10 @@ const LOOKUP_DELAY_MS = 300;
 function useFollowUpCheck(followUps: string, tasks: readonly TaskListRow[]): (id: string) => TaskIdState {
   const { coordination } = useApp();
   const loaded = useMemo(() => new Set(tasks.map((task) => task.id)), [tasks]);
-  const [looked, setLooked] = useState<Record<string, TaskIdState>>({});
+  // A Map, not an object: an id like "constructor" must not find an inherited property.
+  const [looked, setLooked] = useState<ReadonlyMap<string, TaskIdState>>(() => new Map());
   // Only a well-formed id is sent to the server; anything else cannot be a task.
-  const unknown = splitIds(followUps).filter((id) => IDENTIFIER.test(id) && !loaded.has(id) && !(id in looked));
+  const unknown = splitIds(followUps).filter((id) => IDENTIFIER.test(id) && !loaded.has(id) && !looked.has(id));
   const key = unknown.join(" ");
 
   useEffect(() => {
@@ -153,13 +154,13 @@ function useFollowUpCheck(followUps: string, tasks: readonly TaskListRow[]): (id
     // Wait for typing to pause, so "UI-1" is not looked up on the way to "UI-12".
     const timer = setTimeout(() => {
       const ids = key.split(" ");
-      setLooked((current) => ({ ...current, ...Object.fromEntries(ids.map((id) => [id, "checking" as const])) }));
+      setLooked((current) => new Map([...current, ...ids.map((id) => [id, "checking"] as const)]));
       for (const id of ids) {
         coordination.task(id).then(
-          () => setLooked((current) => ({ ...current, [id]: "known" })),
+          () => setLooked((current) => new Map(current).set(id, "known")),
           (caught: unknown) => {
             const state: TaskIdState = caught instanceof ApiError && caught.code === "not_found" ? "missing" : "failed";
-            setLooked((current) => ({ ...current, [id]: state }));
+            setLooked((current) => new Map(current).set(id, state));
           },
         );
       }
@@ -170,6 +171,6 @@ function useFollowUpCheck(followUps: string, tasks: readonly TaskListRow[]): (id
   return (id) => {
     if (loaded.has(id)) return "known";
     if (!IDENTIFIER.test(id)) return "missing";
-    return looked[id] ?? "checking";
+    return looked.get(id) ?? "checking";
   };
 }

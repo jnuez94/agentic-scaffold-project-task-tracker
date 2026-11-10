@@ -108,6 +108,14 @@ describe("Resolve on the escalation inspector", () => {
     expect(sent).toHaveLength(0);
   });
 
+  it("looks up an id named like an object property, and refuses it when it is not a task", async () => {
+    const { dialog, user } = await openSheet();
+    await user.type(within(dialog).getByLabelText("Resolution"), "Done.");
+    await user.type(within(dialog).getByLabelText(/Follow-up tasks/), "constructor");
+    expect(await within(dialog).findByText("constructor is not a task on this board.")).toBeTruthy();
+    expect(within(dialog).getByRole<HTMLButtonElement>("button", { name: "Resolve" }).disabled).toBe(true);
+  });
+
   it("accepts a follow-up that is a task but not on the loaded page", async () => {
     const { dialog, user } = await openSheet();
     await user.type(within(dialog).getByLabelText("Resolution"), "Done.");
