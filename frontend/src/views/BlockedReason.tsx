@@ -47,8 +47,10 @@ export function BlockedReason({ detail }: { detail: TaskDetail }) {
   );
 
   const waits = waitsOn(ids, blockers.data ?? []);
-  const cause = blockingCause(history.data ?? []);
-  const recovery = blockingRecovery(history.data ?? []);
+  // Only this task's rows, whatever the resource still holds.
+  const own = (history.data ?? []).filter((entry) => entry.object_id === detail.id);
+  const cause = blockingCause(own);
+  const recovery = blockingRecovery(own);
 
   return (
     <div className="blocked-reason" role="note">
