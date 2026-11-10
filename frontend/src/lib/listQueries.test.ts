@@ -23,10 +23,17 @@ const task = (index: number, over: Partial<TaskListRow> = {}): TaskListRow =>
     ...over,
   }) as TaskListRow;
 
+/** A ledger nothing is written to: every read inside it is proved whole. */
+const quiet = {
+  summary: () => Promise.resolve({ audit_cursor: 1 }),
+  audit: () => Promise.resolve([]),
+};
+
 /** A board that pages by offset in id order and records every request. */
 function board(rows: TaskListRow[]) {
   const asked: Record<string, unknown>[] = [];
   const coordination = {
+    ...quiet,
     tasks: (query: Record<string, unknown>) => {
       asked.push(query);
       const offset = Number(query["offset"] ?? 0);
@@ -82,6 +89,7 @@ describe("openTasks while the set changes between pages (UI-88)", () => {
     rows.push(claimed);
     let reads = 0;
     const coordination = {
+      ...quiet,
       tasks: (query: Record<string, unknown>) => {
         const offset = Number(query["offset"]);
         const page = rows.slice(offset, offset + 500);
@@ -163,5 +171,44 @@ describe("openTasks inside a fence over the audit log (UI-90)", () => {
 
     expect(tasksClaimedBy(tasks, "stale-1").map((row) => row.id)).toEqual(["T-0001a"]);
     expect(reads).toBeGreaterThan(2);
+  });
+
+  it("does not accept pages read with no audit head (UI-92)", async () => {
+    // The summary request fails on the first attempt only; the pages succeed.
+    const rows = Array.from({ length: 501 }, (_, index) => task(index + 1));
+    let heads = 0;
+    let quietAsked = 0;
+    const coordination = {
+      tasks: (query: Record<string, unknown>) => {
+        const offset = Number(query["offset"]);
+        return Promise.resolve(rows.slice(offset, offset + 500));
+      },
+      summary: () => {
+        heads += 1;
+        return heads === 1 ? Promise.reject(new Error("offline")) : Promise.resolve({ audit_cursor: 5 });
+      },
+      audit: () => {
+        quietAsked += 1;
+        return Promise.resolve([]);
+      },
+    } as unknown as Coordination;
+
+    expect(await openTasks(coordination)).toHaveLength(501);
+    expect(heads).toBe(2);
+    expect(quietAsked).toBe(1);
+  });
+
+  it("says the list is moving when the audit head can never be read", async () => {
+    const rows = Array.from({ length: 501 }, (_, index) => task(index + 1));
+    const coordination = {
+      tasks: (query: Record<string, unknown>) => {
+        const offset = Number(query["offset"]);
+        return Promise.resolve(rows.slice(offset, offset + 500));
+      },
+      summary: () => Promise.reject(new Error("offline")),
+      audit: () => Promise.resolve([]),
+    } as unknown as Coordination;
+
+    await expect(openTasks(coordination)).rejects.toBeInstanceOf(ListMoving);
   });
 });

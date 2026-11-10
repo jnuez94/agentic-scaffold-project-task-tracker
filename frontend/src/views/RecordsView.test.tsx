@@ -42,7 +42,7 @@ const ARTIFACT = {
   updated_at: "2026-07-26T10:00:00+00:00",
 };
 
-function ok(rows: unknown[]): Response {
+function ok(rows: unknown): Response {
   return new Response(JSON.stringify({ ok: true, data: rows }), { status: 200 });
 }
 
@@ -252,6 +252,9 @@ describe("RecordsView across a route change", () => {
     const older = [page[499], { ...DECISION, id: "DEC-OLD" }];
     const { impl, calls } = routedFetch({
       "/api/decisions": async () => ok(calls.at(-1)!.includes("offset=499") ? older : page),
+      // A ledger nothing was written to, so the older page joins the window.
+      "/api/summary": async () => ok({ audit_cursor: 1 }),
+      "/api/audit": async () => ok([]),
     });
     render(wrap(impl, <RecordsView key="decisions" route="decisions" filter="" />));
     await screen.findByText("DEC-N0");
@@ -271,6 +274,9 @@ describe("RecordsView across a route change", () => {
     const older = [page[499], { ...DECISION, id: "DEC-OLD", title: "Retire the needle" }];
     const { impl, calls } = routedFetch({
       "/api/decisions": async () => ok(calls.at(-1)!.includes("offset=499") ? older : page),
+      // A ledger nothing was written to, so the older page joins the window.
+      "/api/summary": async () => ok({ audit_cursor: 1 }),
+      "/api/audit": async () => ok([]),
     });
     render(wrap(impl, <RecordsView key="decisions" route="decisions" filter="needle" />));
     await waitFor(() => expect(calls.length).toBeGreaterThan(0));

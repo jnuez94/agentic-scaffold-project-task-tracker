@@ -65,8 +65,11 @@ export async function readAll<T extends { id: string }>(
     // One page is one snapshot. Across pages, changes that cancel (one row
     // out, one in, above the boundary) leave the boundary in place, so only
     // the ledger can say nothing was written under the read (UI-90).
-    const pages = rows.length > SIDE_LIST_LIMIT;
-    if (pages && fence && head !== undefined && !(await fence.quietSince(head))) continue;
+    // A full first page is always followed by a second request, even when
+    // that one brings back only the boundary row.
+    const pages = rows.length >= SIDE_LIST_LIMIT;
+    // With no head read before them, the pages cannot be proved whole (UI-92).
+    if (pages && fence && !(head !== undefined && (await fence.quietSince(head)))) continue;
     return rows;
   }
   throw new ListMoving();

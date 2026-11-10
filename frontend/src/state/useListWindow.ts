@@ -172,8 +172,10 @@ export function useListWindow<T>(
         const seen = new Set<string>();
         let moved = false;
         let short = false;
+        let requests = 0;
         while (rows.length < depth) {
           const last = rows[rows.length - 1];
+          requests += 1;
           const page = await loadRef.current({ limit: pageSize, offset: last ? rows.length - 1 : 0 });
           const next = last ? page.slice(1) : page;
           // The boundary row can hold its place while a row already read
@@ -196,8 +198,10 @@ export function useListWindow<T>(
         }
         if (moved) continue;
         // Changes that cancel leave every boundary in place: only the ledger
-        // can say nothing was written under the read.
-        if (fence && head !== undefined && !(await fence.quietSince(head))) continue;
+        // can say nothing was written under the read. One request is one
+        // snapshot and needs no proof; several with no head read before them
+        // cannot be proved whole, so they are read again, not accepted (UI-92).
+        if (fence && requests > 1 && !(head !== undefined && (await fence.quietSince(head)))) continue;
         return { rows, short, head };
       }
       throw new ApiError("list_moving", "The list kept changing while it was read. Try again.", 0);
@@ -226,7 +230,9 @@ export function useListWindow<T>(
       const page = await loadRef.current({ limit: pageSize, offset: before.length - 1 });
       // With a fence, the page joins only if nothing was written since the
       // window was read; asked after the page, so the page is covered too.
-      const quiet = fence && head !== undefined ? await fence.quietSince(head) : true;
+      // A window whose head could not be read cannot be proved unchanged, so
+      // its older page is not stitched on: the window is read again (UI-92).
+      const quiet = fence ? head !== undefined && (await fence.quietSince(head)) : true;
       if (quiet && page[0] && keyRef.current(page[0]) === lastKey) {
         const seen = new Set(before.map((row) => keyRef.current(row)));
         const next = page.slice(1);
