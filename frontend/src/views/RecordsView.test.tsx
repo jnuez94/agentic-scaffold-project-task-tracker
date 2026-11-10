@@ -262,5 +262,21 @@ describe("RecordsView across a route change", () => {
     // The older page came back short, so the window is whole and the control goes.
     await waitFor(() => expect(screen.queryByRole("button", { name: "Load older" })).toBeNull());
   });
-});
 
+  it("keeps Load older when the filter matches nothing in the newest page (UI-86)", async () => {
+    const page = Array.from({ length: 500 }, (_, index) => ({ ...DECISION, id: `DEC-N${index}` }));
+    const older = [page[499], { ...DECISION, id: "DEC-OLD", title: "Retire the needle" }];
+    const { impl, calls } = routedFetch({
+      "/api/decisions": async () => ok(calls.at(-1)!.includes("offset=499") ? older : page),
+    });
+    render(wrap(impl, <RecordsView key="decisions" route="decisions" filter="needle" />));
+    await waitFor(() => expect(calls.length).toBeGreaterThan(0));
+    // Nothing among the newest 500 matches, but the control stays.
+    const control = await screen.findByRole("button", { name: "Load older" });
+    expect(screen.queryByText("DEC-OLD")).toBeNull();
+
+    await userEvent.click(control);
+    await screen.findByText("DEC-OLD");
+    await waitFor(() => expect(screen.queryByRole("button", { name: "Load older" })).toBeNull());
+  });
+});
