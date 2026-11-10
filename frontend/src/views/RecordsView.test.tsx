@@ -248,9 +248,10 @@ describe("RecordsView across a route change", () => {
 
   it("asks for the newest rows first, and loads older ones on request (UI-86)", async () => {
     const page = Array.from({ length: 500 }, (_, index) => ({ ...DECISION, id: `DEC-N${index}` }));
-    const older = [{ ...DECISION, id: "DEC-OLD" }];
+    // The older page starts on the last row held, then brings what follows it.
+    const older = [page[499], { ...DECISION, id: "DEC-OLD" }];
     const { impl, calls } = routedFetch({
-      "/api/decisions": async () => ok(calls.at(-1)!.includes("offset=500") ? older : page),
+      "/api/decisions": async () => ok(calls.at(-1)!.includes("offset=499") ? older : page),
     });
     render(wrap(impl, <RecordsView key="decisions" route="decisions" filter="" />));
     await screen.findByText("DEC-N0");
@@ -259,7 +260,8 @@ describe("RecordsView across a route change", () => {
     expect(first).toContain("offset=0");
 
     await userEvent.click(screen.getByRole("button", { name: "Load older" }));
-    await waitFor(() => expect(calls.some((u) => u.includes("offset=500"))).toBe(true));
+    await waitFor(() => expect(calls.some((u) => u.includes("offset=499"))).toBe(true));
+    await screen.findByText("DEC-N0");
     // The older page came back short, so the window is whole and the control goes.
     await waitFor(() => expect(screen.queryByRole("button", { name: "Load older" })).toBeNull());
   });

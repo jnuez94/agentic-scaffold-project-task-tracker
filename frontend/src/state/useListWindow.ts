@@ -13,7 +13,8 @@
  * would skip a row nobody saw. So each older page starts one row early, on the
  * last row already held. If that row is still there, nothing before it moved
  * and the page follows on exactly. If it isn't, the window is read again from
- * the top to the same depth plus a page, replacing what was held.
+ * the top to the same depth plus a page, replacing what was held; that read
+ * checks every page boundary the same way.
  *
  * Each first-page load is a generation. "Load older" is refused until the
  * current generation's first page has succeeded: while it is pending, and
@@ -32,6 +33,8 @@ import { describeThrown } from "../lib/copy.ts";
 import type { Resource } from "./useResource.ts";
 
 export const LIST_PAGE_SIZE = 500;
+/** A re-read restarts at most this many times when the set keeps moving. */
+const REREAD_ATTEMPTS = 3;
 
 export interface ListWindow<T> extends Resource<T[]> {
   /** The last page came back short: nothing older is left to load. */
@@ -127,23 +130,41 @@ export function useListWindow<T>(
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [...deps, nonce, enabled, pageSize]);
 
-  /** Read the window again from the top, `depth` rows deep, in pages. */
+  /**
+   * Read the window again from the top, at least `depth` rows deep. The set
+   * can move during this read as it did before it, so every page after the
+   * first also starts on the last row read; when that row has moved the read
+   * starts over. A set that moves under every attempt fails the load: the
+   * rows held stay, and nothing is called exhausted.
+   */
   const reread = useCallback(
     async (depth: number): Promise<{ rows: T[]; short: boolean }> => {
-      const rows: T[] = [];
-      const seen = new Set<string>();
-      for (let offset = 0; offset < depth; offset += pageSize) {
-        const page = await loadRef.current({ limit: pageSize, offset });
-        for (const row of page) {
-          const key = keyRef.current(row);
-          if (!seen.has(key)) {
-            seen.add(key);
+      for (let attempt = 0; attempt < REREAD_ATTEMPTS; attempt += 1) {
+        const rows: T[] = [];
+        const seen = new Set<string>();
+        let moved = false;
+        while (rows.length < depth) {
+          const last = rows[rows.length - 1];
+          const page = await loadRef.current({ limit: pageSize, offset: last ? rows.length - 1 : 0 });
+          const next = last ? page.slice(1) : page;
+          // The boundary row can hold its place while a row already read
+          // moves below it (one in above, one down): a repeat says so too.
+          if (
+            (last && (!page[0] || keyRef.current(page[0]) !== keyRef.current(last))) ||
+            next.some((row) => seen.has(keyRef.current(row)))
+          ) {
+            moved = true;
+            break;
+          }
+          for (const row of next) {
+            seen.add(keyRef.current(row));
             rows.push(row);
           }
+          if (page.length < pageSize) return { rows, short: true };
         }
-        if (page.length < pageSize) return { rows, short: true };
+        if (!moved) return { rows, short: false };
       }
-      return { rows, short: false };
+      throw new ApiError("list_moving", "The list kept changing while it was read. Try again.", 0);
     },
     [pageSize],
   );
@@ -167,8 +188,12 @@ export function useListWindow<T>(
       const page = await loadRef.current({ limit: pageSize, offset: before.length - 1 });
       if (page[0] && keyRef.current(page[0]) === lastKey) {
         const seen = new Set(before.map((row) => keyRef.current(row)));
-        const next = page.slice(1).filter((row) => !seen.has(keyRef.current(row)));
-        return { rows: [...before, ...next], short: page.length < pageSize };
+        const next = page.slice(1);
+        // A row already held coming back below the boundary means the rows
+        // above it moved after all, however the boundary lines up.
+        if (!next.some((row) => seen.has(keyRef.current(row)))) {
+          return { rows: [...before, ...next], short: page.length < pageSize };
+        }
       }
       // The rows before it moved: read the window again rather than guess.
       return reread(before.length + pageSize);

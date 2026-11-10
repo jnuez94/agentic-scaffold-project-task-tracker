@@ -169,4 +169,41 @@ describe("Why this is blocked", () => {
     await new Promise((resolve) => setTimeout(resolve, 20));
     expect(screen.getByRole("note").textContent).not.toContain("ESC-A");
   });
+
+  describe("when the history cannot be read", () => {
+    function failing(action: string) {
+      let fail = true;
+      const fetchImpl = vi.fn(async (input: RequestInfo | URL) => {
+        const url = String(input);
+        if (url.includes("/api/audit") && url.includes(`action=${action}`) && fail) {
+          return new Response(JSON.stringify({ ok: false, error: { code: "internal_error", message: "boom" } }), {
+            status: 500,
+          });
+        }
+        const data =
+          url.includes("/api/audit") && url.includes("action=status")
+            ? [move(900, "todo -> blocked; revision 2 -> 3; because=escalation:ESC-REL1-1")]
+            : [];
+        return new Response(JSON.stringify({ ok: true, data }), { status: 200 });
+      });
+      render(
+        <AppProvider store={new IdentityStore(null)} client={new ApiClient(() => null, "", fetchImpl as typeof fetch)}>
+          <Overview detail={relShaped({ dependencies: [] })} />
+        </AppProvider>,
+      );
+      return { recover: () => (fail = false) };
+    }
+
+    it.each(["status", "recover_claim"])("says so, not that no reason was recorded (%s read fails)", async (action) => {
+      const { recover } = failing(action);
+      await waitFor(() => expect(screen.getByRole("alert").textContent).toContain("The reason could not be read."));
+      expect(screen.getByRole("note").textContent).not.toContain("No reason was recorded");
+      expect(screen.getByRole("note").textContent).not.toContain("ESC-REL1-1");
+
+      recover();
+      screen.getByRole("button", { name: "Try again" }).click();
+      await waitFor(() => expect(screen.getByRole("note").textContent).toContain("Blocked because of escalation ESC-REL1-1."));
+      expect(screen.queryByRole("alert")).toBeNull();
+    });
+  });
 });

@@ -48,7 +48,8 @@ export function BlockedReason({ detail }: { detail: TaskDetail }) {
 
   const waits = waitsOn(ids, blockers.data ?? []);
   // Only this task's rows, whatever the resource still holds.
-  const own = (history.data ?? []).filter((entry) => entry.object_id === detail.id);
+  // And nothing from before a failed read: the cause may have changed since.
+  const own = history.error ? [] : (history.data ?? []).filter((entry) => entry.object_id === detail.id);
   const cause = blockingCause(own);
   const recovery = blockingRecovery(own);
 
@@ -81,7 +82,16 @@ export function BlockedReason({ detail }: { detail: TaskDetail }) {
           was recovered{recovery.reason ? `: ${recovery.reason}` : ""}.
         </p>
       ) : null}
-      {!waits.length && !cause && !recovery && history.loaded ? (
+      {history.error ? (
+        // Unread is not absent: a failed read must not say no reason was recorded.
+        <p className="small" role="alert">
+          The reason could not be read.{" "}
+          <button type="button" className="link" onClick={history.refresh}>
+            Try again
+          </button>
+        </p>
+      ) : null}
+      {!waits.length && !cause && !recovery && history.loaded && !history.error ? (
         <p className="small muted">{NO_RECORDED_REASON}</p>
       ) : null}
     </div>
