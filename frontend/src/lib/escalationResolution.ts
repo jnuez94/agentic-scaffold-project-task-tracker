@@ -39,12 +39,27 @@ export function isResolvable(escalation: Pick<Escalation, "status">): boolean {
   return escalation.status === "open" || escalation.status === "in_review";
 }
 
-/** Why the draft cannot be sent yet, or null. Follow-ups must be tasks on this board. */
-export function resolutionBlockedReason(draft: ResolutionDraft, knownTaskIds: readonly string[]): string | null {
+/**
+ * Whether a follow-up id is a task: `known` when it is in the loaded list or
+ * a lookup found it, `missing` when the lookup said not_found, `checking`
+ * while that lookup runs, `failed` when it could not answer.
+ */
+export type TaskIdState = "known" | "missing" | "checking" | "failed";
+
+/**
+ * Why the draft cannot be sent yet, or null. Follow-ups must be tasks on this
+ * board. The loaded list is only the first page of tasks, so an id missing
+ * from it is looked up before it is called missing (UI-85).
+ */
+export function resolutionBlockedReason(draft: ResolutionDraft, stateOf: (id: string) => TaskIdState): string | null {
   if (!draft.resolution.trim()) return "Write the resolution: what was decided and by whom.";
-  const known = new Set(knownTaskIds);
-  const unknown = splitIds(draft.followUps).filter((id) => !known.has(id));
-  if (unknown.length) return `${unknown.join(", ")} ${unknown.length === 1 ? "is not a task" : "are not tasks"} on this board.`;
+  const ids = splitIds(draft.followUps);
+  const missing = ids.filter((id) => stateOf(id) === "missing");
+  if (missing.length) return `${missing.join(", ")} ${missing.length === 1 ? "is not a task" : "are not tasks"} on this board.`;
+  const failed = ids.filter((id) => stateOf(id) === "failed");
+  if (failed.length) return `Could not check ${failed.join(", ")}. Reopen the form to try again.`;
+  const checking = ids.filter((id) => stateOf(id) === "checking");
+  if (checking.length) return `Checking ${checking.join(", ")}…`;
   return null;
 }
 

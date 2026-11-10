@@ -44,6 +44,39 @@ describe("changesSince for a status-guarded record", () => {
     expect(changesSince(history, { status: "review" }).map((entry) => entry.id)).toEqual([4]);
   });
 
+  it("ignores an earlier cycle through the same status (draft -> review -> draft)", () => {
+    const at = (id: number, action: string, detail: string, minute: number): AuditEntry => ({
+      ...row(id, action, detail, "artifact"),
+      created_at: `2026-10-21T10:0${minute}:00+00:00`,
+    });
+    const cycled = [
+      at(1, "create", "draft", 0),
+      at(2, "status", "draft -> review", 1),
+      at(3, "update", "fields=uri", 2),
+      at(4, "status", "review -> draft", 3),
+      // Loaded here: the row's updated_at is 10:03.
+      at(5, "status", "draft -> review", 5),
+    ];
+    const loaded = { status: "draft", updatedAt: "2026-10-21T10:03:00+00:00" };
+    expect(changesSince(cycled, loaded).map((entry) => entry.id)).toEqual([5]);
+    // The pre-load correction is not a collision with the operator's own edit.
+    expect(collisionLine(changesSince(cycled, loaded), EDITING.correction)).toBeNull();
+  });
+
+  it("counts a correction made after the load, before the move", () => {
+    const at = (id: number, action: string, detail: string, minute: number): AuditEntry => ({
+      ...row(id, action, detail, "artifact"),
+      created_at: `2026-10-21T10:0${minute}:00+00:00`,
+    });
+    const history = [
+      at(1, "create", "draft", 0),
+      at(2, "update", "fields=uri", 4),
+      at(3, "status", "draft -> review", 5),
+    ];
+    const loaded = { status: "draft", updatedAt: "2026-10-21T10:00:00+00:00" };
+    expect(changesSince(history, loaded).map((entry) => entry.id)).toEqual([3, 2]);
+  });
+
   it("is empty when the history cannot place the move, as on older single-word details", () => {
     expect(changesSince([row(9, "status", "accepted", "artifact")], { status: "draft" })).toEqual([]);
   });

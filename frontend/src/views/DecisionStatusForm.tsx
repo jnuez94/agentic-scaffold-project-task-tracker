@@ -102,7 +102,7 @@ export function DecisionStatusForm({
             <div>
               <p>{error}</p>
               {mismatch ? (
-                <SinceLoaded objectType="decision" objectId={decision.id} loaded={{ status: decision.status }} editing={EDITING.status} />
+                <SinceLoaded objectType="decision" objectId={decision.id} loaded={{ status: decision.status, updatedAt: decision.updated_at }} editing={EDITING.status} />
               ) : null}
             </div>
           </div>

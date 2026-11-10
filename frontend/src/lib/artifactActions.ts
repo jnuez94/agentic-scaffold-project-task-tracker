@@ -23,7 +23,7 @@ export const ARTIFACT_STATUS_CONSEQUENCE: Record<ArtifactStatus, string> = {
   superseded: "No longer current; whatever replaced it should be named in a review or decision.",
 };
 
-const IDENTIFIER = /^[A-Za-z0-9][A-Za-z0-9._:@+-]{0,127}$/;
+export const IDENTIFIER = /^[A-Za-z0-9][A-Za-z0-9._:@+-]{0,127}$/;
 
 /** One path per line in the form, the CLI's comma-separated field in the record. */
 export function joinPaths(lines: string): string {

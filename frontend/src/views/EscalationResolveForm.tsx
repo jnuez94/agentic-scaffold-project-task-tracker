@@ -7,12 +7,12 @@
  * than answered twice.
  */
 
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { Escalation, TaskListRow } from "../api/contract.ts";
 import { ApiError } from "../api/errors.ts";
 import { Field, TextBlock } from "../components/Fields.tsx";
 import { FormField } from "../components/FormField.tsx";
-import { splitIds } from "../lib/artifactActions.ts";
+import { IDENTIFIER, splitIds } from "../lib/artifactActions.ts";
 import { errorCopy, hasErrorCopy } from "../lib/errorCopy.ts";
 import {
   buildResolutionRequest,
@@ -22,6 +22,7 @@ import {
   resolutionAnnouncement,
   resolutionBlockedReason,
   type ResolutionDraft,
+  type TaskIdState,
 } from "../lib/escalationResolution.ts";
 import { useApp } from "../state/AppContext.tsx";
 import { BecausePicker } from "./BecausePicker.tsx";
@@ -46,7 +47,8 @@ export function EscalationResolveForm({
   const [error, setError] = useState<string | null>(null);
   // UI-33: a status_mismatch shows what changed since the row was loaded.
   const [mismatch, setMismatch] = useState(false);
-  const blocked = resolutionBlockedReason(draft, tasks.map((task) => task.id));
+  const stateOf = useFollowUpCheck(draft.followUps, tasks);
+  const blocked = resolutionBlockedReason(draft, stateOf);
   const note = ownerNote(escalation, identity.actorId);
   const set = <K extends keyof ResolutionDraft>(key: K, value: ResolutionDraft[K]) =>
     setDraft((current) => ({ ...current, [key]: value }));
@@ -79,7 +81,7 @@ export function EscalationResolveForm({
       title={`Resolve · ${escalation.id}`}
       headingId="escalation-resolve-heading"
       error={error}
-      conflict={mismatch ? <SinceLoaded objectType="escalation" objectId={escalation.id} loaded={{ status: escalation.status }} editing={EDITING.status} /> : undefined}
+      conflict={mismatch ? <SinceLoaded objectType="escalation" objectId={escalation.id} loaded={{ status: escalation.status, updatedAt: escalation.updated_at }} editing={EDITING.status} /> : undefined}
       blocked={blocked}
       pending={pending}
       submitLabel="Resolve"
@@ -129,4 +131,46 @@ export function EscalationResolveForm({
       {note ? <p className="small muted">{note}</p> : null}
     </RecordSheet>
   );
+}
+
+const LOOKUP_DELAY_MS = 300;
+
+/**
+ * Look up follow-up ids the loaded task list does not hold. That list is the
+ * first page only, so on a board past it, or for a task created since, an id
+ * absent from it may still be a task (UI-85). Each id is asked once.
+ */
+function useFollowUpCheck(followUps: string, tasks: readonly TaskListRow[]): (id: string) => TaskIdState {
+  const { coordination } = useApp();
+  const loaded = useMemo(() => new Set(tasks.map((task) => task.id)), [tasks]);
+  // A Map, not an object: an id like "constructor" must not find an inherited property.
+  const [looked, setLooked] = useState<ReadonlyMap<string, TaskIdState>>(() => new Map());
+  // Only a well-formed id is sent to the server; anything else cannot be a task.
+  const unknown = splitIds(followUps).filter((id) => IDENTIFIER.test(id) && !loaded.has(id) && !looked.has(id));
+  const key = unknown.join(" ");
+
+  useEffect(() => {
+    if (!key) return;
+    // Wait for typing to pause, so "UI-1" is not looked up on the way to "UI-12".
+    const timer = setTimeout(() => {
+      const ids = key.split(" ");
+      setLooked((current) => new Map([...current, ...ids.map((id) => [id, "checking"] as const)]));
+      for (const id of ids) {
+        coordination.task(id).then(
+          () => setLooked((current) => new Map(current).set(id, "known")),
+          (caught: unknown) => {
+            const state: TaskIdState = caught instanceof ApiError && caught.code === "not_found" ? "missing" : "failed";
+            setLooked((current) => new Map(current).set(id, state));
+          },
+        );
+      }
+    }, LOOKUP_DELAY_MS);
+    return () => clearTimeout(timer);
+  }, [key, coordination]);
+
+  return (id) => {
+    if (loaded.has(id)) return "known";
+    if (!IDENTIFIER.test(id)) return "missing";
+    return looked.get(id) ?? "checking";
+  };
 }

@@ -65,7 +65,7 @@ export function ArtifactStatusForm({
       title={`Change status · ${artifact.id}`}
       headingId="artifact-status-heading"
       error={error}
-      conflict={mismatch ? <SinceLoaded objectType="artifact" objectId={artifact.id} loaded={{ status: artifact.status }} editing={EDITING.status} /> : undefined}
+      conflict={mismatch ? <SinceLoaded objectType="artifact" objectId={artifact.id} loaded={{ status: artifact.status, updatedAt: artifact.updated_at }} editing={EDITING.status} /> : undefined}
       blocked={blocked}
       pending={pending}
       submitLabel="Change status"

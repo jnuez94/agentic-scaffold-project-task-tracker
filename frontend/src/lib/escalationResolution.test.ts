@@ -6,6 +6,7 @@ import {
   ownerNote,
   resolutionAnnouncement,
   resolutionBlockedReason,
+  type TaskIdState,
 } from "./escalationResolution.ts";
 
 describe("isResolvable", () => {
@@ -18,16 +19,22 @@ describe("isResolvable", () => {
 });
 
 describe("resolutionBlockedReason", () => {
-  const draft = { ...emptyResolution(), resolution: "Confirmed by the operator." };
+  const draft = { ...emptyResolution(), resolution: "Ship it." };
+  const states = (map: Record<string, TaskIdState>) => (id: string): TaskIdState => map[id] ?? "missing";
 
-  it("requires a resolution", () => {
-    expect(resolutionBlockedReason({ ...draft, resolution: "  " }, [])).toMatch(/Write the resolution/);
+  it("needs a resolution", () => {
+    expect(resolutionBlockedReason({ ...draft, resolution: "  " }, states({}))).toMatch(/Write the resolution/);
   });
 
-  it("accepts follow-ups that are tasks on the board, and names the ones that are not", () => {
-    expect(resolutionBlockedReason({ ...draft, followUps: "UI-1, UI-2" }, ["UI-1", "UI-2"])).toBeNull();
-    expect(resolutionBlockedReason({ ...draft, followUps: "UI-1 UI-9" }, ["UI-1"])).toBe("UI-9 is not a task on this board.");
-    expect(resolutionBlockedReason({ ...draft, followUps: "X-1, X-2" }, [])).toBe("X-1, X-2 are not tasks on this board.");
+  it("refuses follow-ups that are not tasks, naming them", () => {
+    expect(resolutionBlockedReason({ ...draft, followUps: "UI-1, UI-2" }, states({ "UI-1": "known", "UI-2": "known" }))).toBeNull();
+    expect(resolutionBlockedReason({ ...draft, followUps: "UI-1 UI-9" }, states({ "UI-1": "known" }))).toBe("UI-9 is not a task on this board.");
+    expect(resolutionBlockedReason({ ...draft, followUps: "X-1, X-2" }, states({}))).toBe("X-1, X-2 are not tasks on this board.");
+  });
+
+  it("waits while an id outside the loaded list is looked up, and says when a lookup failed", () => {
+    expect(resolutionBlockedReason({ ...draft, followUps: "UI-700" }, states({ "UI-700": "checking" }))).toBe("Checking UI-700…");
+    expect(resolutionBlockedReason({ ...draft, followUps: "UI-700" }, states({ "UI-700": "failed" }))).toMatch(/Could not check UI-700/);
   });
 });
 

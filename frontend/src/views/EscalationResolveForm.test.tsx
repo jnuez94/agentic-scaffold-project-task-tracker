@@ -43,6 +43,13 @@ function show(row: Escalation, reply: () => Response = () => receipt({ id: row.i
       return response;
     }
     if (url.includes("/api/escalations")) return ok([current]);
+    // One task lies beyond the loaded page, as on a board past 500 tasks.
+    const lookup = /\/api\/tasks\/([^/?]+)/.exec(url);
+    if (lookup) {
+      return ["UI-1", "UI-2", "UI-700"].includes(lookup[1]!)
+        ? ok({ id: lookup[1] })
+        : new Response(JSON.stringify({ ok: false, error: { code: "not_found", message: "no such task" } }), { status: 404 });
+    }
     if (url.includes("/api/tasks")) return ok([{ id: "UI-1" }, { id: "UI-2" }]);
     return ok([]);
   });
@@ -97,8 +104,26 @@ describe("Resolve on the escalation inspector", () => {
     const { dialog, user, sent } = await openSheet();
     await user.type(within(dialog).getByLabelText("Resolution"), "Done.");
     await user.type(within(dialog).getByLabelText(/Follow-up tasks/), "UI-1 UI-9");
-    expect(within(dialog).getByText("UI-9 is not a task on this board.")).toBeTruthy();
+    expect(await within(dialog).findByText("UI-9 is not a task on this board.")).toBeTruthy();
     expect(sent).toHaveLength(0);
+  });
+
+  it("looks up an id named like an object property, and refuses it when it is not a task", async () => {
+    const { dialog, user } = await openSheet();
+    await user.type(within(dialog).getByLabelText("Resolution"), "Done.");
+    await user.type(within(dialog).getByLabelText(/Follow-up tasks/), "constructor");
+    expect(await within(dialog).findByText("constructor is not a task on this board.")).toBeTruthy();
+    expect(within(dialog).getByRole<HTMLButtonElement>("button", { name: "Resolve" }).disabled).toBe(true);
+  });
+
+  it("accepts a follow-up that is a task but not on the loaded page", async () => {
+    const { dialog, user } = await openSheet();
+    await user.type(within(dialog).getByLabelText("Resolution"), "Done.");
+    await user.type(within(dialog).getByLabelText(/Follow-up tasks/), "UI-700");
+    await waitFor(() =>
+      expect(within(dialog).getByRole<HTMLButtonElement>("button", { name: "Resolve" }).disabled).toBe(false),
+    );
+    expect(within(dialog).queryByText(/is not a task/)).toBeNull();
   });
 
   it("sends the outcome, resolution, follow-ups and the loaded status, then closes", async () => {
