@@ -274,4 +274,44 @@ describe("useListWindow", () => {
     expect(ids(result.current.data)).toEqual(held);
     expect(result.current.exhausted).toBe(false);
   });
+
+  it("never shows a row twice when one already read moves below a boundary that still lines up", async () => {
+    // Pages of three. The window holds [X, A, B]. X is done, so Load older
+    // re-reads from the top and gets [A, B, C]. Then N arrives above and A
+    // drops down: [N, B, C, D, A, E, F]. Offset 2 still starts on C, and
+    // brings A a second time.
+    let rows = ["X", "A", "B", "C", "D", "E", "F"];
+    let reads = 0;
+    const load = (page: Page) => {
+      const answer = named(...rows.slice(page.offset, page.offset + page.limit));
+      reads += 1;
+      // Read 1: the first page. Read 2: the overlap, which misses. Read 3: the re-read's first page.
+      if (reads === 3) rows = ["N", "B", "C", "D", "A", "E", "F"];
+      return Promise.resolve(answer);
+    };
+    const { result } = renderHook(() => useListWindow(load, (row) => row.id, [], { pageSize: 3 }));
+    await waitFor(() => expect(result.current.loaded).toBe(true));
+
+    rows = ["A", "B", "C", "D", "E", "F"];
+    act(() => result.current.loadOlder());
+    await waitFor(() => expect(result.current.loadingOlder).toBe(false));
+
+    const got = ids(result.current.data);
+    expect(new Set(got).size).toBe(got.length);
+    expect(got).toEqual(["N", "B", "C", "D", "A", "E", "F"].slice(0, got.length));
+  });
+
+  it("re-reads when an older page brings back a row already held", async () => {
+    // Held [A, B, C]. N arrives above and A drops below the boundary:
+    // offset 2 still starts on C.
+    const list = server(["A", "B", "C", "D", "E", "F"]);
+    const { result } = renderHook(() => useListWindow(list.load, (row) => row.id, [], { pageSize: 3 }));
+    await waitFor(() => expect(result.current.loaded).toBe(true));
+
+    list.set(["N", "B", "C", "D", "A", "E", "F"]);
+    act(() => result.current.loadOlder());
+    await waitFor(() => expect(result.current.loadingOlder).toBe(false));
+    expect(ids(result.current.data)).toEqual(["N", "B", "C", "D", "A", "E", "F"].slice(0, result.current.data!.length));
+    expect(ids(result.current.data)).toContain("N");
+  });
 });

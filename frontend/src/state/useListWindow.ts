@@ -141,18 +141,24 @@ export function useListWindow<T>(
     async (depth: number): Promise<{ rows: T[]; short: boolean }> => {
       for (let attempt = 0; attempt < REREAD_ATTEMPTS; attempt += 1) {
         const rows: T[] = [];
+        const seen = new Set<string>();
         let moved = false;
         while (rows.length < depth) {
           const last = rows[rows.length - 1];
           const page = await loadRef.current({ limit: pageSize, offset: last ? rows.length - 1 : 0 });
-          if (last) {
-            if (!page[0] || keyRef.current(page[0]) !== keyRef.current(last)) {
-              moved = true;
-              break;
-            }
-            rows.push(...page.slice(1));
-          } else {
-            rows.push(...page);
+          const next = last ? page.slice(1) : page;
+          // The boundary row can hold its place while a row already read
+          // moves below it (one in above, one down): a repeat says so too.
+          if (
+            (last && (!page[0] || keyRef.current(page[0]) !== keyRef.current(last))) ||
+            next.some((row) => seen.has(keyRef.current(row)))
+          ) {
+            moved = true;
+            break;
+          }
+          for (const row of next) {
+            seen.add(keyRef.current(row));
+            rows.push(row);
           }
           if (page.length < pageSize) return { rows, short: true };
         }
@@ -182,8 +188,12 @@ export function useListWindow<T>(
       const page = await loadRef.current({ limit: pageSize, offset: before.length - 1 });
       if (page[0] && keyRef.current(page[0]) === lastKey) {
         const seen = new Set(before.map((row) => keyRef.current(row)));
-        const next = page.slice(1).filter((row) => !seen.has(keyRef.current(row)));
-        return { rows: [...before, ...next], short: page.length < pageSize };
+        const next = page.slice(1);
+        // A row already held coming back below the boundary means the rows
+        // above it moved after all, however the boundary lines up.
+        if (!next.some((row) => seen.has(keyRef.current(row)))) {
+          return { rows: [...before, ...next], short: page.length < pageSize };
+        }
       }
       // The rows before it moved: read the window again rather than guess.
       return reread(before.length + pageSize);
