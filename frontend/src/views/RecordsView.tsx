@@ -126,6 +126,29 @@ export function RecordsView<T = Record<string, unknown>>({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [detail, records.data, records.loaded, route, coordination]);
 
+  // A record the window does not hold, because a filter dropped it (an
+  // escalation resolved under the Open filter) or it was opened by link, is
+  // read again by id each time the window reloads, so a ruling made from the
+  // inspector shows there (UI-87). One in the window is fresh already.
+  const inspectedId = inspecting ? String(inspecting["id"]) : null;
+  const reloadedAt = records.lastUpdated;
+  useEffect(() => {
+    if (!inspectedId || !reloadedAt) return;
+    if ((records.data ?? []).some((row) => String(row["id"]) === inspectedId)) return;
+    let stale = false;
+    coordination
+      .show(route, inspectedId)
+      .then((row) => {
+        if (!stale) setInspecting((current) => (current && String(current["id"]) === inspectedId ? row : current));
+      })
+      .catch(() => undefined);
+    return () => {
+      stale = true;
+    };
+    // Re-read on each window reload only, not on every change to the rows held.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [inspectedId, reloadedAt, route, coordination]);
+
   const tableColumns = useMemo(
     () =>
       config

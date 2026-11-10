@@ -111,3 +111,26 @@ describe("collisionLine", () => {
     expect(collisionLine(changes, undefined)).toBeNull();
   });
 });
+
+describe("changesSince from a coherent audit watermark (UI-87)", () => {
+  const at = (entry: AuditEntry, created_at: string): AuditEntry => ({ ...entry, created_at });
+  // The correction was committed before the load, but the CLI stamped the row
+  // a second after the record's updated_at. Then the status moved.
+  const history = [
+    at(row(10, "update", "fields=uri", "artifact"), "2026-11-10T00:00:01+00:00"),
+    at(row(11, "status", "draft -> review", "artifact"), "2026-11-10T00:00:05+00:00"),
+  ];
+
+  it("leaves out a change shown before the load that crosses the second", () => {
+    const loaded = { status: "draft", updatedAt: "2026-11-10T00:00:00+00:00" };
+    // The clock boundary counts the old correction as a change since.
+    expect(changesSince(history, loaded).map((entry) => entry.id)).toEqual([11, 10]);
+    expect(changesSince(history, { ...loaded, auditId: 10 }).map((entry) => entry.id)).toEqual([11]);
+  });
+
+  it("counts every row after the watermark, newest first", () => {
+    const loaded = { status: "draft", updatedAt: "2026-11-10T00:00:00+00:00", auditId: 9 };
+    expect(changesSince(history, loaded).map((entry) => entry.id)).toEqual([11, 10]);
+  });
+});
+

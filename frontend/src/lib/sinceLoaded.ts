@@ -13,6 +13,10 @@
  *   `updated_at`: a move recorded before the snapshot was taken is history,
  *   not a change since. Rows after that second count even when they come
  *   before the move (a correction made after the load).
+ * - when the form read the record's last audit id coherently with it
+ *   (`auditId`, UI-87), every row after that id counts and no clock is read:
+ *   the CLI stamps `updated_at` before its write lock and the audit row after,
+ *   so a change already shown can carry a later second than the snapshot.
  */
 
 import type { AuditEntry } from "../api/contract.ts";
@@ -21,8 +25,12 @@ import { humanize } from "./labels.ts";
 
 export type Loaded =
   | { revision: number }
-  /** `updatedAt` is the loaded row's `updated_at`, the snapshot's boundary. */
-  | { status: string; updatedAt?: string };
+  /**
+   * `updatedAt` is the loaded row's `updated_at`, the snapshot's boundary.
+   * `auditId`, when known, is the last audit row the loaded row reflects, and
+   * replaces that boundary.
+   */
+  | { status: string; updatedAt?: string; auditId?: number };
 
 /** What the operator was changing, to name a collision ("You were editing Assignees"). */
 export interface Editing {
@@ -42,6 +50,9 @@ export function changesSince(entries: readonly AuditEntry[], loaded: Loaded): Au
       const match = REVISION.exec(entry.detail);
       return match ? Number(match[1]) >= loaded.revision : false;
     });
+  } else if (loaded.auditId !== undefined) {
+    const watermark = loaded.auditId;
+    since = ascending.filter((entry) => entry.id > watermark);
   } else {
     // Timestamps are whole seconds, so a row in the snapshot's own second may
     // be the change that produced it or one that raced it: those count only

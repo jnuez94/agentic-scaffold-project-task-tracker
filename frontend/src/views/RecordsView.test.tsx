@@ -279,4 +279,56 @@ describe("RecordsView across a route change", () => {
     await screen.findByText("DEC-OLD");
     await waitFor(() => expect(screen.queryByRole("button", { name: "Load older" })).toBeNull());
   });
+
+  describe("the inspected escalation after a ruling (UI-87)", () => {
+    const OPEN = {
+      id: "ESC-9",
+      raised_by: "greg",
+      owner_id: "owner",
+      status: "open",
+      issue: "Which lane?",
+      resolution: null,
+      related_tasks: [],
+      created_at: "2026-11-10T00:00:00+00:00",
+      updated_at: "2026-11-10T00:00:00+00:00",
+    };
+    const RESOLVED = { ...OPEN, status: "resolved", resolution: "Take lane B", updated_at: "2026-11-10T00:05:00+00:00" };
+
+    it("re-reads a record the Open filter dropped, by id", async () => {
+      let resolved = false;
+      const { impl } = routedFetch({
+        "/api/escalations/ESC-9": async () => okOne(resolved ? RESOLVED : OPEN),
+        "/api/escalations": async () => ok(resolved ? [] : [OPEN]),
+      });
+      const view = (reloadKey: number) =>
+        wrap(impl, <RecordsView route="escalations" filter="" detail="ESC-9" reloadKey={reloadKey} />);
+      const { rerender } = render(view(0));
+      await screen.findByText("Which lane?");
+      expect(screen.queryByText("Take lane B")).toBeNull();
+
+      resolved = true;
+      rerender(view(1));
+      await screen.findByText("Take lane B");
+    });
+
+    it("re-reads a deep-linked record the window never held", async () => {
+      let resolved = false;
+      const { impl } = routedFetch({
+        "/api/escalations/ESC-9": async () => okOne(resolved ? RESOLVED : OPEN),
+        "/api/escalations": async () => ok([]),
+      });
+      const view = (reloadKey: number) =>
+        wrap(impl, <RecordsView route="escalations" filter="" detail="ESC-9" reloadKey={reloadKey} />);
+      const { rerender } = render(view(0));
+      await screen.findByText("Which lane?");
+
+      resolved = true;
+      rerender(view(1));
+      await screen.findByText("Take lane B");
+    });
+  });
 });
+
+function okOne(row: unknown): Response {
+  return new Response(JSON.stringify({ ok: true, data: row }), { status: 200 });
+}
