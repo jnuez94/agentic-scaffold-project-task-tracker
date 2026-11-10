@@ -6,6 +6,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { ApiError } from "../api/errors.ts";
 import { DataTable } from "../components/DataTable.tsx";
 import { ErrorBanner } from "../components/Feedback.tsx";
+import { readOneMarked } from "../lib/auditWatermark.ts";
 import { filterRows } from "../lib/filters.ts";
 import { CLEAR_FILTER_HINT } from "../lib/copy.ts";
 import { rangeLabel } from "../lib/pagination.ts";
@@ -103,8 +104,7 @@ export function RecordsView<T = Record<string, unknown>>({
     }
     if (!records.loaded) return;
     let stale = false;
-    coordination
-      .show(route, detail)
+    readOneMarked(coordination, () => coordination.show(route, detail))
       .then((row) => {
         if (stale) return;
         setInspecting(row);
@@ -136,8 +136,7 @@ export function RecordsView<T = Record<string, unknown>>({
     if (!inspectedId || !reloadedAt) return;
     if ((records.data ?? []).some((row) => String(row["id"]) === inspectedId)) return;
     let stale = false;
-    coordination
-      .show(route, inspectedId)
+    readOneMarked(coordination, () => coordination.show(route, inspectedId))
       .then((row) => {
         if (!stale) setInspecting((current) => (current && String(current["id"]) === inspectedId ? row : current));
       })
@@ -313,6 +312,7 @@ export function RecordsView<T = Record<string, unknown>>({
         inspecting={inspected}
         acting={acting}
         tasks={(tasks.data ?? [])}
+        tasksKnown={Boolean(tasks.data) && !tasks.error}
         sessions={(sessions.data ?? [])}
         actorId={identity.actorId}
         onCloseInspector={() => {

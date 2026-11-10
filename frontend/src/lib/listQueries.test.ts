@@ -5,7 +5,7 @@
 import { describe, expect, it } from "vitest";
 import type { TaskListRow } from "../api/contract.ts";
 import type { Coordination } from "../api/coordination.ts";
-import { activeSessions, openTasks } from "./listQueries.ts";
+import { activeSessions, ListMoving, ListTooLong, openTasks } from "./listQueries.ts";
 import { outstandingAssignments } from "./retirement.ts";
 import { tasksClaimedBy } from "./staleness.ts";
 
@@ -54,7 +54,7 @@ describe("openTasks", () => {
     expect(tasks).toHaveLength(501);
     expect(tasksClaimedBy(tasks, "stale-1").map((row) => row.id)).toEqual(["T-0000"]);
     expect(outstandingAssignments(tasks, "david").map((row) => row.id)).toEqual(["T-0000"]);
-    expect(asked.map((query) => query["offset"])).toEqual([0, 500]);
+    expect(asked.map((query) => query["offset"])).toEqual([0, 499]);
     expect(asked[0]).toMatchObject({ order_by: "id:asc", limit: 500 });
   });
 
@@ -70,5 +70,66 @@ describe("activeSessions", () => {
     const { coordination, asked } = board([]);
     await activeSessions(coordination);
     expect(asked[0]).toMatchObject({ status: "active", order_by: "id:asc", limit: 500, offset: 0 });
+  });
+});
+
+describe("openTasks while the set changes between pages (UI-88)", () => {
+  it("does not skip the boundary task when a task on page one is done before page two", async () => {
+    // 501 open tasks; the last holds the stale session's claim. T-0000 is done
+    // after page one is read, so every later task shifts up one place.
+    let rows = Array.from({ length: 500 }, (_, index) => task(index));
+    const claimed = task(500, { status: "in_progress", claim_session_id: "stale-1", claimed_by: "david" });
+    rows.push(claimed);
+    let reads = 0;
+    const coordination = {
+      tasks: (query: Record<string, unknown>) => {
+        const offset = Number(query["offset"]);
+        const page = rows.slice(offset, offset + 500);
+        reads += 1;
+        if (reads === 1) rows = rows.slice(1);
+        return Promise.resolve(page);
+      },
+    } as unknown as Coordination;
+
+    const tasks = await openTasks(coordination);
+
+    expect(tasksClaimedBy(tasks, "stale-1").map((row) => row.id)).toEqual(["T-0500"]);
+    // The read started again, so the done task is not reported.
+    expect(tasks.map((row) => row.id)).not.toContain("T-0000");
+    expect(tasks).toHaveLength(500);
+  });
+
+  it("refuses to answer when the set moves under every attempt", async () => {
+    let shift = 0;
+    const coordination = {
+      tasks: (query: Record<string, unknown>) => {
+        const offset = Number(query["offset"]);
+        const rows = Array.from({ length: 600 }, (_, index) => task(index + shift));
+        shift += 1;
+        return Promise.resolve(rows.slice(offset, offset + 500));
+      },
+    } as unknown as Coordination;
+    await expect(openTasks(coordination)).rejects.toBeInstanceOf(ListMoving);
+  });
+});
+
+describe("openTasks at the ceiling (UI-88)", () => {
+  it("reads 49,902 open tasks whole, with the only claim on the last one", async () => {
+    const rows = Array.from({ length: 49_901 }, (_, index) => task(index));
+    rows.push(task(49_901, { status: "in_progress", claim_session_id: "stale-1", claimed_by: "david" }));
+    const { coordination } = board(rows);
+
+    const tasks = await openTasks(coordination);
+
+    expect(tasks).toHaveLength(49_902);
+    expect(tasksClaimedBy(tasks, "stale-1")).toHaveLength(1);
+  });
+
+  it("reads exactly 50,000 whole, and refuses a longer list", async () => {
+    const full = board(Array.from({ length: 50_000 }, (_, index) => task(index)));
+    expect(await openTasks(full.coordination)).toHaveLength(50_000);
+
+    const longer = board(Array.from({ length: 50_600 }, (_, index) => task(index)));
+    await expect(openTasks(longer.coordination)).rejects.toBeInstanceOf(ListTooLong);
   });
 });

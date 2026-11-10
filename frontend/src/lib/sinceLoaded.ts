@@ -13,10 +13,12 @@
  *   `updated_at`: a move recorded before the snapshot was taken is history,
  *   not a change since. Rows after that second count even when they come
  *   before the move (a correction made after the load).
- * - when the form read the record's last audit id coherently with it
- *   (`auditId`, UI-87), every row after that id counts and no clock is read:
- *   the CLI stamps `updated_at` before its write lock and the audit row after,
- *   so a change already shown can carry a later second than the snapshot.
+ * - when the audit head read just before the record is known (`auditId`,
+ *   UI-88, lib/auditWatermark), every row after it counts and no clock is
+ *   read: the CLI stamps `updated_at` before its write lock and the audit row
+ *   after, so a change already shown can carry a later second than the
+ *   snapshot. Without it the clock boundary is approximate, so no collision
+ *   is claimed (see `collisionLine`).
  */
 
 import type { AuditEntry } from "../api/contract.ts";
@@ -110,7 +112,15 @@ export function describeChange(entry: AuditEntry): string {
 }
 
 /** The line that leads the list when the operator's own field changed too. */
-export function collisionLine(changes: readonly AuditEntry[], editing: Editing | undefined): string | null {
+export function collisionLine(
+  changes: readonly AuditEntry[],
+  editing: Editing | undefined,
+  loaded?: Loaded,
+): string | null {
+  // A status-guarded record without an audit position is bounded by a clock
+  // that can admit a change from before the load: list it, but never claim it
+  // collided with the operator's edit.
+  if (loaded && !("revision" in loaded) && loaded.auditId === undefined) return null;
   if (!editing || !changes.some(editing.touches)) return null;
   return `You were editing ${editing.label} — it changed too.`;
 }

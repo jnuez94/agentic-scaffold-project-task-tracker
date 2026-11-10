@@ -28,11 +28,18 @@ import { useEscape } from "../state/useEscape.ts";
 export function AgentRetirement({
   agent,
   tasks,
+  tasksKnown = true,
   onClose,
   onChanged,
 }: {
   agent: Agent;
   tasks: readonly TaskListRow[];
+  /**
+   * False when the open tasks could not be read whole (a failed read, a list
+   * that kept changing, or one past the read ceiling): the assignments are
+   * then unknown, and the sheet says so, not nothing.
+   */
+  tasksKnown?: boolean;
   onClose: () => void;
   onChanged: () => void;
 }) {
@@ -54,6 +61,7 @@ export function AgentRetirement({
 
   const retiring = agent.status === "active";
   const outstanding = retiring ? outstandingAssignments(tasks, agent.id) : [];
+  const unchecked = retiring && !tasksKnown;
 
   const submit = async () => {
     if (pending || !identity.actorId) return;
@@ -85,9 +93,11 @@ export function AgentRetirement({
   // The consequence is in the accessible name, so a screen-reader operator
   // hears it before activating rather than after.
   const confirmLabel = retiring
-    ? outstanding.length
-      ? `Retire agent, leaving ${outstanding.length} assigned task${outstanding.length === 1 ? "" : "s"}`
-      : "Retire agent"
+    ? unchecked
+      ? "Retire agent without checking its assignments"
+      : outstanding.length
+        ? `Retire agent, leaving ${outstanding.length} assigned task${outstanding.length === 1 ? "" : "s"}`
+        : "Retire agent"
     : "Restore to active";
 
   return (
@@ -129,7 +139,18 @@ export function AgentRetirement({
           )}
         </p>
 
-        {retiring && outstanding.length > 0 ? (
+        {unchecked ? (
+          <div className="retirement-warning" role="alert">
+            <p>
+              <strong>This agent's assignments could not be checked.</strong>
+            </p>
+            <p className="small">
+              The open tasks could not be read, so tasks still assigned to this agent are not
+              listed here. Retiring leaves any such assignment in place.
+            </p>
+          </div>
+        ) : null}
+        {!unchecked && retiring && outstanding.length > 0 ? (
           <div className="retirement-warning" role="note">
             <p>
               <strong>

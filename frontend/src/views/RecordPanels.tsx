@@ -23,6 +23,7 @@ export function RecordPanels({
   inspecting,
   acting,
   tasks,
+  tasksKnown = true,
   sessions,
   actorId,
   onCloseInspector,
@@ -35,6 +36,7 @@ export function RecordPanels({
   inspecting: Row | null;
   acting: Row | null;
   tasks: readonly TaskListRow[];
+  tasksKnown?: boolean;
   /** Needed to explain the CLI's active-session guard before submission. */
   sessions: readonly Session[];
   actorId: string | null;
@@ -70,7 +72,7 @@ export function RecordPanels({
       ) : null}
 
       {sheet ? (
-        <RecordActionSheet sheet={sheet} tasks={tasks} onClose={() => setSheet(null)} onChanged={onRecovered} />
+        <RecordActionSheet sheet={sheet} tasks={tasks} tasksKnown={tasksKnown} onClose={() => setSheet(null)} onChanged={onRecovered} />
       ) : null}
 
       {acting ? (
@@ -79,6 +81,7 @@ export function RecordPanels({
           <SessionRecovery
             session={acting as unknown as Session}
             tasks={tasks}
+            tasksKnown={tasksKnown}
             actorId={actorId}
             onClose={onCloseAction}
             onRecovered={onRecovered}

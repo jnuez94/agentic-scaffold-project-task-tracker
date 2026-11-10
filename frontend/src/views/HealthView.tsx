@@ -174,6 +174,7 @@ export function HealthView() {
           <SessionRecovery
             session={recovering}
             tasks={(tasks.data ?? [])}
+            tasksKnown={Boolean(tasks.data) && !tasks.error}
             actorId={identity.actorId}
             onClose={() => setRecovering(null)}
             onRecovered={() => {

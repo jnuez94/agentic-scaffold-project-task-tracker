@@ -63,14 +63,14 @@ function harness(update?: (body: unknown) => Promise<unknown>) {
   return { sent, fetchImpl: fetchImpl as unknown as typeof fetch };
 }
 
-function show(fetchImpl: typeof fetch, agent = AGENT, tasks = TASKS) {
+function show(fetchImpl: typeof fetch, agent = AGENT, tasks = TASKS, tasksKnown?: boolean) {
   const store = new IdentityStore(memoryStorage());
   store.save({ actorId: "local-operator", sessionId: "console-1" });
   const onClose = vi.fn();
   const onChanged = vi.fn();
   render(
     <AppProvider store={store} client={new ApiClient(() => "console-1", "", fetchImpl)}>
-      <AgentRetirement agent={agent} tasks={tasks} onClose={onClose} onChanged={onChanged} />
+      <AgentRetirement agent={agent} tasks={tasks} tasksKnown={tasksKnown} onClose={onClose} onChanged={onChanged} />
     </AppProvider>,
   );
   return { onClose, onChanged };
@@ -209,3 +209,12 @@ describe("AgentRetirement — clause 8, accessibility", () => {
     expect(onClose).toHaveBeenCalled();
   });
 });
+
+describe("AgentRetirement — when the open tasks could not be read whole (UI-88)", () => {
+  it("says the assignments could not be checked, in the sheet and on the confirm control", () => {
+    show(harness().fetchImpl, AGENT, [], false);
+    expect(screen.getByRole("alert").textContent).toContain("could not be checked");
+    expect(screen.getByRole("button", { name: "Retire agent without checking its assignments" })).toBeTruthy();
+  });
+});
+
